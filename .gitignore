@@ -1,0 +1,15 @@
+.env
+.env.*
+!.env.example
+
+# Go build artifacts
+bin/
+dist/
+*.exe
+*.out
+
+# Logs
+*.log
+
+# macOS
+.DS_Store
