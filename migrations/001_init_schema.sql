@@ -1,0 +1,293 @@
+CREATE TABLE IF NOT EXISTS periods (
+    id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+    year SMALLINT NOT NULL,
+    quarter TINYINT NULL,
+    month TINYINT NULL,
+    status ENUM('OPEN', 'LOCKED') NOT NULL DEFAULT 'OPEN',
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE KEY uq_period (year, quarter, month)
+);
+
+CREATE TABLE IF NOT EXISTS units (
+    id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+    code VARCHAR(20) NOT NULL,
+    name VARCHAR(150) NOT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE KEY uq_units_code (code)
+);
+
+CREATE TABLE IF NOT EXISTS visis (
+    id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+    code VARCHAR(20) NOT NULL,
+    name VARCHAR(255) NOT NULL,
+    description TEXT,
+    start_year SMALLINT NOT NULL,
+    end_year SMALLINT NOT NULL,
+    is_active TINYINT(1) NOT NULL DEFAULT 1,
+    deleted_at DATETIME NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE KEY uq_visi_code (code)
+);
+
+CREATE TABLE IF NOT EXISTS misis (
+    id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+    visi_id BIGINT UNSIGNED NOT NULL,
+    code VARCHAR(20) NOT NULL,
+    name VARCHAR(255) NOT NULL,
+    description TEXT,
+    deleted_at DATETIME NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT fk_misi_visi FOREIGN KEY (visi_id) REFERENCES visis(id),
+    UNIQUE KEY uq_misi_code (code)
+);
+
+CREATE TABLE IF NOT EXISTS tujuans (
+    id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+    misi_id BIGINT UNSIGNED NOT NULL,
+    code VARCHAR(20) NOT NULL,
+    name VARCHAR(255) NOT NULL,
+    description TEXT,
+    deleted_at DATETIME NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT fk_tujuan_misi FOREIGN KEY (misi_id) REFERENCES misis(id),
+    UNIQUE KEY uq_tujuan_code (code)
+);
+
+CREATE TABLE IF NOT EXISTS indikator_tujuans (
+    id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+    tujuan_id BIGINT UNSIGNED NOT NULL,
+    code VARCHAR(30) NOT NULL,
+    name VARCHAR(255) NOT NULL,
+    formula TEXT,
+    unit VARCHAR(50),
+    baseline DECIMAL(18,2) DEFAULT 0,
+    deleted_at DATETIME NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT fk_ind_tujuan_tujuan FOREIGN KEY (tujuan_id) REFERENCES tujuans(id),
+    UNIQUE KEY uq_ind_tujuan_code (code)
+);
+
+CREATE TABLE IF NOT EXISTS sasarans (
+    id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+    tujuan_id BIGINT UNSIGNED NOT NULL,
+    code VARCHAR(20) NOT NULL,
+    name VARCHAR(255) NOT NULL,
+    description TEXT,
+    deleted_at DATETIME NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT fk_sasaran_tujuan FOREIGN KEY (tujuan_id) REFERENCES tujuans(id),
+    UNIQUE KEY uq_sasaran_code (code)
+);
+
+CREATE TABLE IF NOT EXISTS indikator_sasarans (
+    id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+    sasaran_id BIGINT UNSIGNED NOT NULL,
+    code VARCHAR(30) NOT NULL,
+    name VARCHAR(255) NOT NULL,
+    formula TEXT,
+    unit VARCHAR(50),
+    baseline DECIMAL(18,2) DEFAULT 0,
+    deleted_at DATETIME NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT fk_ind_sasaran_sasaran FOREIGN KEY (sasaran_id) REFERENCES sasarans(id),
+    UNIQUE KEY uq_ind_sasaran_code (code)
+);
+
+CREATE TABLE IF NOT EXISTS programs (
+    id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+    sasaran_id BIGINT UNSIGNED NOT NULL,
+    unit_id BIGINT UNSIGNED NOT NULL,
+    code VARCHAR(30) NOT NULL,
+    name VARCHAR(255) NOT NULL,
+    description TEXT,
+    deleted_at DATETIME NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT fk_program_sasaran FOREIGN KEY (sasaran_id) REFERENCES sasarans(id),
+    CONSTRAINT fk_program_unit FOREIGN KEY (unit_id) REFERENCES units(id),
+    UNIQUE KEY uq_program_code (code)
+);
+
+CREATE TABLE IF NOT EXISTS indikator_programs (
+    id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+    program_id BIGINT UNSIGNED NOT NULL,
+    code VARCHAR(30) NOT NULL,
+    name VARCHAR(255) NOT NULL,
+    formula TEXT,
+    unit VARCHAR(50),
+    baseline DECIMAL(18,2) DEFAULT 0,
+    deleted_at DATETIME NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT fk_ind_program_program FOREIGN KEY (program_id) REFERENCES programs(id),
+    UNIQUE KEY uq_ind_program_code (code)
+);
+
+CREATE TABLE IF NOT EXISTS kegiatans (
+    id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+    program_id BIGINT UNSIGNED NOT NULL,
+    code VARCHAR(30) NOT NULL,
+    name VARCHAR(255) NOT NULL,
+    description TEXT,
+    deleted_at DATETIME NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT fk_kegiatan_program FOREIGN KEY (program_id) REFERENCES programs(id),
+    UNIQUE KEY uq_kegiatan_code (code)
+);
+
+CREATE TABLE IF NOT EXISTS indikator_kegiatans (
+    id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+    kegiatan_id BIGINT UNSIGNED NOT NULL,
+    code VARCHAR(30) NOT NULL,
+    name VARCHAR(255) NOT NULL,
+    formula TEXT,
+    unit VARCHAR(50),
+    baseline DECIMAL(18,2) DEFAULT 0,
+    deleted_at DATETIME NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT fk_ind_kegiatan_kegiatan FOREIGN KEY (kegiatan_id) REFERENCES kegiatans(id),
+    UNIQUE KEY uq_ind_kegiatan_code (code)
+);
+
+CREATE TABLE IF NOT EXISTS sub_kegiatans (
+    id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+    kegiatan_id BIGINT UNSIGNED NOT NULL,
+    code VARCHAR(30) NOT NULL,
+    name VARCHAR(255) NOT NULL,
+    description TEXT,
+    deleted_at DATETIME NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT fk_sub_kegiatan_kegiatan FOREIGN KEY (kegiatan_id) REFERENCES kegiatans(id),
+    UNIQUE KEY uq_sub_kegiatan_code (code)
+);
+
+CREATE TABLE IF NOT EXISTS indikator_sub_kegiatans (
+    id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+    sub_kegiatan_id BIGINT UNSIGNED NOT NULL,
+    code VARCHAR(30) NOT NULL,
+    name VARCHAR(255) NOT NULL,
+    formula TEXT,
+    unit VARCHAR(50),
+    baseline DECIMAL(18,2) DEFAULT 0,
+    deleted_at DATETIME NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT fk_ind_sub_kegiatan_sub_kegiatan FOREIGN KEY (sub_kegiatan_id) REFERENCES sub_kegiatans(id),
+    UNIQUE KEY uq_ind_sub_kegiatan_code (code)
+);
+
+CREATE TABLE IF NOT EXISTS renjas (
+    id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+    period_id BIGINT UNSIGNED NOT NULL,
+    unit_id BIGINT UNSIGNED NOT NULL,
+    code VARCHAR(30) NOT NULL,
+    name VARCHAR(255) NOT NULL,
+    status ENUM('DRAFT', 'SUBMITTED', 'APPROVED', 'REJECTED') NOT NULL DEFAULT 'DRAFT',
+    notes TEXT,
+    deleted_at DATETIME NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT fk_renja_period FOREIGN KEY (period_id) REFERENCES periods(id),
+    CONSTRAINT fk_renja_unit FOREIGN KEY (unit_id) REFERENCES units(id),
+    UNIQUE KEY uq_renja_code (code)
+);
+
+CREATE TABLE IF NOT EXISTS renja_items (
+    id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+    renja_id BIGINT UNSIGNED NOT NULL,
+    program_id BIGINT UNSIGNED NULL,
+    kegiatan_id BIGINT UNSIGNED NULL,
+    sub_kegiatan_id BIGINT UNSIGNED NULL,
+    budget DECIMAL(18,2) NOT NULL DEFAULT 0,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT fk_renja_item_renja FOREIGN KEY (renja_id) REFERENCES renjas(id),
+    CONSTRAINT fk_renja_item_program FOREIGN KEY (program_id) REFERENCES programs(id),
+    CONSTRAINT fk_renja_item_kegiatan FOREIGN KEY (kegiatan_id) REFERENCES kegiatans(id),
+    CONSTRAINT fk_renja_item_sub_kegiatan FOREIGN KEY (sub_kegiatan_id) REFERENCES sub_kegiatans(id)
+);
+
+CREATE TABLE IF NOT EXISTS indikator_kinerjas (
+    id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+    code VARCHAR(30) NOT NULL,
+    name VARCHAR(255) NOT NULL,
+    reference_type ENUM('INDIKATOR_TUJUAN', 'INDIKATOR_SASARAN', 'INDIKATOR_PROGRAM', 'INDIKATOR_KEGIATAN', 'INDIKATOR_SUB_KEGIATAN') NOT NULL,
+    reference_id BIGINT UNSIGNED NOT NULL,
+    formula TEXT,
+    unit VARCHAR(50),
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE KEY uq_indikator_kinerja_code (code)
+);
+
+CREATE TABLE IF NOT EXISTS target_realisasis (
+    id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+    indikator_kinerja_id BIGINT UNSIGNED NOT NULL,
+    period_id BIGINT UNSIGNED NOT NULL,
+    target_value DECIMAL(18,2) NOT NULL DEFAULT 0,
+    realisasi_value DECIMAL(18,2) NOT NULL DEFAULT 0,
+    deviation_value DECIMAL(18,2) NOT NULL DEFAULT 0,
+    capaian_percent DECIMAL(5,2) NOT NULL DEFAULT 0,
+    status ENUM('ON_TRACK', 'WARNING', 'OFF_TRACK') NOT NULL DEFAULT 'ON_TRACK',
+    verification_status ENUM('DRAFT', 'VERIFIED') NOT NULL DEFAULT 'DRAFT',
+    verified_by BIGINT UNSIGNED NULL,
+    verified_at DATETIME NULL,
+    notes TEXT,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT fk_target_realisasi_indikator_kinerja FOREIGN KEY (indikator_kinerja_id) REFERENCES indikator_kinerjas(id),
+    CONSTRAINT fk_target_realisasi_period FOREIGN KEY (period_id) REFERENCES periods(id),
+    UNIQUE KEY uq_target_realisasi (indikator_kinerja_id, period_id)
+);
+
+CREATE TABLE IF NOT EXISTS roles (
+    id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+    code VARCHAR(30) NOT NULL,
+    name VARCHAR(100) NOT NULL,
+    UNIQUE KEY uq_role_code (code)
+);
+
+CREATE TABLE IF NOT EXISTS users (
+    id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+    unit_id BIGINT UNSIGNED NULL,
+    full_name VARCHAR(150) NOT NULL,
+    email VARCHAR(150) NOT NULL,
+    password_hash VARCHAR(255) NOT NULL,
+    is_active TINYINT(1) NOT NULL DEFAULT 1,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT fk_users_unit FOREIGN KEY (unit_id) REFERENCES units(id),
+    UNIQUE KEY uq_users_email (email)
+);
+
+CREATE TABLE IF NOT EXISTS user_roles (
+    user_id BIGINT UNSIGNED NOT NULL,
+    role_id BIGINT UNSIGNED NOT NULL,
+    PRIMARY KEY (user_id, role_id),
+    CONSTRAINT fk_user_roles_user FOREIGN KEY (user_id) REFERENCES users(id),
+    CONSTRAINT fk_user_roles_role FOREIGN KEY (role_id) REFERENCES roles(id)
+);
+
+CREATE TABLE IF NOT EXISTS audit_logs (
+    id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+    user_id BIGINT UNSIGNED NULL,
+    action VARCHAR(100) NOT NULL,
+    resource_type VARCHAR(100) NOT NULL,
+    resource_id BIGINT UNSIGNED NULL,
+    request_payload JSON NULL,
+    ip_address VARCHAR(45) NULL,
+    user_agent VARCHAR(255) NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_audit_user FOREIGN KEY (user_id) REFERENCES users(id)
+);

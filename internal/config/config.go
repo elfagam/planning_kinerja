@@ -1,0 +1,117 @@
+package config
+
+import (
+	"bufio"
+	"os"
+	"strconv"
+	"strings"
+)
+
+// Config contains runtime configuration loaded from environment variables.
+type Config struct {
+	AppName                string
+	AppEnv                 string
+	HTTPAddr               string
+	MySQLDSN               string
+	DBMaxOpenConns         int
+	DBMaxIdleConns         int
+	DBConnMaxLifetimeMins  int
+	DBConnMaxIdleTimeMins  int
+	GinMode                string
+	LogLevel               string
+	AuthEnabled            bool
+	AuthToken              string
+	ReadTimeoutSeconds     int
+	WriteTimeoutSeconds    int
+	ShutdownTimeoutSeconds int
+}
+
+func Load() Config {
+	loadDotEnvIfExists(".env")
+
+	return Config{
+		AppName:                getenv("APP_NAME", "e-plan-ai"),
+		AppEnv:                 getenv("APP_ENV", "development"),
+		HTTPAddr:               getenv("HTTP_ADDR", "localhost:8080"),
+		MySQLDSN:               getenv("MYSQL_DSN", "root@tcp(localhost:3306)/e-plan-ai?parseTime=true"),
+		DBMaxOpenConns:         getenvInt("DB_MAX_OPEN_CONNS", 20),
+		DBMaxIdleConns:         getenvInt("DB_MAX_IDLE_CONNS", 10),
+		DBConnMaxLifetimeMins:  getenvInt("DB_CONN_MAX_LIFETIME_MINUTES", 30),
+		DBConnMaxIdleTimeMins:  getenvInt("DB_CONN_MAX_IDLE_TIME_MINUTES", 10),
+		GinMode:                getenv("GIN_MODE", "debug"),
+		LogLevel:               getenv("LOG_LEVEL", "info"),
+		AuthEnabled:            getenvBool("AUTH_ENABLED", false),
+		AuthToken:              getenv("AUTH_TOKEN", "change-me-in-production"),
+		ReadTimeoutSeconds:     getenvInt("READ_TIMEOUT_SECONDS", 10),
+		WriteTimeoutSeconds:    getenvInt("WRITE_TIMEOUT_SECONDS", 10),
+		ShutdownTimeoutSeconds: getenvInt("SHUTDOWN_TIMEOUT_SECONDS", 10),
+	}
+}
+
+func loadDotEnvIfExists(path string) {
+	f, err := os.Open(path)
+	if err != nil {
+		return
+	}
+	defer f.Close()
+
+	scanner := bufio.NewScanner(f)
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue
+		}
+
+		key, value, ok := strings.Cut(line, "=")
+		if !ok {
+			continue
+		}
+
+		key = strings.TrimSpace(key)
+		value = strings.TrimSpace(value)
+		if key == "" {
+			continue
+		}
+
+		if _, exists := os.LookupEnv(key); exists {
+			continue
+		}
+		_ = os.Setenv(key, value)
+	}
+}
+
+func getenv(key, fallback string) string {
+	v := os.Getenv(key)
+	if v == "" {
+		return fallback
+	}
+	return v
+}
+
+func getenvInt(key string, fallback int) int {
+	v := os.Getenv(key)
+	if v == "" {
+		return fallback
+	}
+
+	n, err := strconv.Atoi(v)
+	if err != nil {
+		return fallback
+	}
+
+	return n
+}
+
+func getenvBool(key string, fallback bool) bool {
+	v := os.Getenv(key)
+	if v == "" {
+		return fallback
+	}
+
+	b, err := strconv.ParseBool(v)
+	if err != nil {
+		return fallback
+	}
+
+	return b
+}

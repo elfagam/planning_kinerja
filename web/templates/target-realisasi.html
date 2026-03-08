@@ -1,0 +1,703 @@
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Target dan Realisasi - E-Planning RSUD</title>
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <link href="/assets/css/app.css" rel="stylesheet" />
+    <style>
+      body[data-module-name="Realisasi Rencana Kerja"] {
+        font-size: 0.92rem;
+      }
+
+      body[data-module-name="Realisasi Rencana Kerja"] .card-body {
+        font-size: 0.9rem;
+      }
+
+      body[data-module-name="Realisasi Rencana Kerja"] .form-label,
+      body[data-module-name="Realisasi Rencana Kerja"] .form-control,
+      body[data-module-name="Realisasi Rencana Kerja"] .form-select,
+      body[data-module-name="Realisasi Rencana Kerja"] .btn {
+        font-size: 0.85rem;
+      }
+
+      body[data-module-name="Realisasi Rencana Kerja"] .table {
+        font-size: 0.82rem;
+      }
+
+      body[data-module-name="Realisasi Rencana Kerja"] .table thead th {
+        font-size: 0.78rem;
+        white-space: nowrap;
+      }
+    </style>
+  </head>
+  <body
+    class="bg-soft-pattern"
+    data-module-name="Realisasi Rencana Kerja"
+    data-api-endpoint="/api/v1/realisasi_rencana_kerja"
+  >
+    <main class="container py-4">
+      <header
+        class="mb-4 p-4 card shadow-sm border-0 header-gradient text-white"
+      >
+        <h1 class="h3 mb-1" id="module-title">CRUD</h1>
+        <p class="mb-0 opacity-75">
+          Kelola data Target dan Realisasi secara terpisah
+        </p>
+      </header>
+
+      <div class="row g-4">
+        <section class="col-lg-4" aria-label="Form Target dan Realisasi">
+          <div class="card border-0 shadow-sm h-100">
+            <div class="card-body">
+              <h2 class="h6 text-uppercase text-muted mb-3">Form Data</h2>
+              <form id="crud-form" class="vstack gap-2" autocomplete="off">
+                <input type="hidden" id="entity-id" />
+
+                <label class="form-label mb-0" for="rencanaKerjaId"
+                  >Rencana Kerja</label
+                >
+                <select id="rencanaKerjaId" class="form-select" required>
+                  <option value="">Pilih rencana kerja</option>
+                </select>
+
+                <label class="form-label mb-0" for="indikatorRkId"
+                  >Indikator Rencana Kerja</label
+                >
+                <select id="indikatorRkId" class="form-select" required>
+                  <option value="">Pilih indikator rencana kerja</option>
+                </select>
+
+                <label class="form-label mb-0" for="tahun">Tahun</label>
+                <input
+                  id="tahun"
+                  type="number"
+                  class="form-control"
+                  min="2000"
+                  max="2100"
+                  required
+                />
+
+                <div class="rounded border p-2 mt-1">
+                  <div
+                    class="d-flex justify-content-between align-items-center mb-2"
+                  >
+                    <label class="form-label mb-0">Periode</label>
+                    <small class="text-muted">Pilih bulan atau triwulan</small>
+                  </div>
+                  <div class="row g-2">
+                    <div class="col-6">
+                      <select id="bulan" class="form-select" aria-label="Bulan">
+                        <option value="">Bulan</option>
+                        <option value="1">1</option>
+                        <option value="2">2</option>
+                        <option value="3">3</option>
+                        <option value="4">4</option>
+                        <option value="5">5</option>
+                        <option value="6">6</option>
+                        <option value="7">7</option>
+                        <option value="8">8</option>
+                        <option value="9">9</option>
+                        <option value="10">10</option>
+                        <option value="11">11</option>
+                        <option value="12">12</option>
+                      </select>
+                    </div>
+                    <div class="col-6">
+                      <select
+                        id="triwulan"
+                        class="form-select"
+                        aria-label="Triwulan"
+                      >
+                        <option value="">Triwulan</option>
+                        <option value="1">1</option>
+                        <option value="2">2</option>
+                        <option value="3">3</option>
+                        <option value="4">4</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="row g-2 mt-1">
+                  <div class="col-md-6">
+                    <label class="form-label mb-0" for="nilaiRealisasi"
+                      >Nilai Realisasi</label
+                    >
+                    <input
+                      id="nilaiRealisasi"
+                      type="number"
+                      step="0.01"
+                      class="form-control"
+                      value="0"
+                      required
+                    />
+                  </div>
+                  <div class="col-md-6">
+                    <label class="form-label mb-0" for="realisasiAnggaran"
+                      >Realisasi Anggaran</label
+                    >
+                    <input
+                      id="realisasiAnggaran"
+                      type="number"
+                      step="0.01"
+                      class="form-control"
+                      value="0"
+                      required
+                    />
+                  </div>
+                </div>
+
+                <label class="form-label mb-0" for="diinputOleh"
+                  >Diinput Oleh (ID User)</label
+                >
+                <input
+                  id="diinputOleh"
+                  type="number"
+                  min="1"
+                  class="form-control"
+                  required
+                />
+
+                <label class="form-label mb-0" for="keterangan"
+                  >Keterangan</label
+                >
+                <textarea
+                  id="keterangan"
+                  class="form-control"
+                  rows="3"
+                  placeholder="Keterangan realisasi"
+                ></textarea>
+
+                <div class="d-flex gap-2 mt-2">
+                  <button type="submit" class="btn btn-primary">Simpan</button>
+                  <button
+                    type="button"
+                    id="btn-reset"
+                    class="btn btn-outline-secondary"
+                  >
+                    Reset
+                  </button>
+                </div>
+                <small id="status-text" class="text-muted" aria-live="polite"
+                  >Siap</small
+                >
+              </form>
+            </div>
+          </div>
+        </section>
+
+        <section class="col-lg-8" aria-label="Daftar Target dan Realisasi">
+          <div class="card border-0 shadow-sm h-100">
+            <div class="card-body">
+              <div
+                class="d-flex justify-content-between align-items-center mb-3"
+              >
+                <h2 class="h6 text-uppercase text-muted mb-0">Daftar Data</h2>
+                <a href="/ui/dashboard" class="btn btn-sm btn-outline-dark"
+                  >Kembali ke Dashboard</a
+                >
+              </div>
+              <div class="row g-2 mb-3">
+                <div class="col-md-8">
+                  <input
+                    id="query"
+                    class="form-control"
+                    placeholder="Cari keterangan"
+                    aria-label="Cari keterangan"
+                  />
+                </div>
+                <div class="col-md-4 d-grid">
+                  <button
+                    id="btn-search"
+                    type="button"
+                    class="btn btn-outline-primary"
+                  >
+                    Cari / Refresh
+                  </button>
+                </div>
+              </div>
+              <div class="table-responsive">
+                <table class="table table-striped table-hover align-middle">
+                  <caption class="visually-hidden">
+                    Tabel data Target dan Realisasi
+                  </caption>
+                  <thead>
+                    <tr>
+                      <th scope="col">ID</th>
+                      <th scope="col">Indikator Rencana Kerja</th>
+                      <th scope="col">Target Tahunan</th>
+                      <th scope="col">Anggaran Tahunan</th>
+                      <th scope="col">Tahun</th>
+                      <th scope="col">Bulan</th>
+                      <th scope="col">Triwulan</th>
+                      <th scope="col">Nilai Realisasi</th>
+                      <th scope="col">Capaian Nilai (%)</th>
+                      <th scope="col">Realisasi Anggaran</th>
+                      <th scope="col">Capaian Anggaran (%)</th>
+                      <th scope="col">Diinput Oleh</th>
+                      <th scope="col">Keterangan</th>
+                      <th scope="col">Aksi</th>
+                    </tr>
+                  </thead>
+                  <tbody id="table-body"></tbody>
+                </table>
+              </div>
+              <div
+                class="d-flex justify-content-between align-items-center mt-2"
+              >
+                <small id="meta-text" class="text-muted">Total 0 data</small>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+    </main>
+
+    <script>
+      (() => {
+        const endpoint = document.body.dataset.apiEndpoint;
+        const rencanaKerjaEndpoint = "/api/v1/rencana_kerja";
+        const indikatorEndpoint = "/api/v1/indikator_rencana_kerja";
+
+        const form = document.getElementById("crud-form");
+        const idInput = document.getElementById("entity-id");
+        const rencanaKerjaInput = document.getElementById("rencanaKerjaId");
+        const indikatorInput = document.getElementById("indikatorRkId");
+        const tahunInput = document.getElementById("tahun");
+        const bulanInput = document.getElementById("bulan");
+        const triwulanInput = document.getElementById("triwulan");
+        const nilaiRealisasiInput = document.getElementById("nilaiRealisasi");
+        const realisasiAnggaranInput =
+          document.getElementById("realisasiAnggaran");
+        const diinputOlehInput = document.getElementById("diinputOleh");
+        const keteranganInput = document.getElementById("keterangan");
+        const statusText = document.getElementById("status-text");
+        const queryInput = document.getElementById("query");
+        const btnSearch = document.getElementById("btn-search");
+        const btnReset = document.getElementById("btn-reset");
+        const tableBody = document.getElementById("table-body");
+        const metaText = document.getElementById("meta-text");
+
+        const rencanaKerjaMap = new Map();
+        const indikatorMap = new Map();
+        const indikatorDetailMap = new Map();
+        let indikatorItemsCache = [];
+
+        function authHeader() {
+          const token =
+            localStorage.getItem("AUTH_TOKEN") ||
+            localStorage.getItem("authToken") ||
+            "";
+          return token ? { Authorization: `Bearer ${token}` } : {};
+        }
+
+        function setStatus(message, isError = false) {
+          statusText.textContent = message;
+          statusText.className = isError
+            ? "text-danger small"
+            : "text-success small";
+        }
+
+        function normalizeRencanaKerja(raw) {
+          return {
+            id: Number(raw.id ?? raw.ID ?? 0),
+            kode: raw.kode ?? raw.Kode ?? "",
+            nama: raw.nama ?? raw.Nama ?? "",
+          };
+        }
+
+        function normalizeIndikator(raw) {
+          return {
+            id: Number(raw.id ?? raw.ID ?? 0),
+            rencanaKerjaId: Number(
+              raw.rencana_kerja_id ?? raw.RencanaKerjaID ?? 0,
+            ),
+            kode: raw.kode ?? raw.Kode ?? "",
+            nama: raw.nama ?? raw.Nama ?? "",
+            targetTahunan: Number(raw.target_tahunan ?? raw.TargetTahunan ?? 0),
+            anggaranTahunan: Number(
+              raw.anggaran_tahunan ?? raw.AnggaranTahunan ?? 0,
+            ),
+          };
+        }
+
+        function normalizeItem(raw) {
+          return {
+            id: Number(raw.id ?? raw.ID ?? 0),
+            indikatorRkId: Number(
+              raw.indikator_rencana_kerja_id ??
+                raw.IndikatorRencanaKerjaID ??
+                0,
+            ),
+            tahun: Number(raw.tahun ?? raw.Tahun ?? 0),
+            bulan: raw.bulan ?? raw.Bulan ?? null,
+            triwulan: raw.triwulan ?? raw.Triwulan ?? null,
+            nilaiRealisasi: Number(
+              raw.nilai_realisasi ?? raw.NilaiRealisasi ?? 0,
+            ),
+            realisasiAnggaran: Number(
+              raw.realisasi_anggaran ?? raw.RealisasiAnggaran ?? 0,
+            ),
+            diinputOleh: Number(raw.diinput_oleh ?? raw.DiinputOleh ?? 0),
+            keterangan: raw.keterangan ?? raw.Keterangan ?? "",
+          };
+        }
+
+        async function fetchJSON(url, options = {}) {
+          const res = await fetch(url, {
+            ...options,
+            headers: {
+              ...(options.headers || {}),
+              ...authHeader(),
+            },
+          });
+
+          const body = await res.json();
+          if (!res.ok || !body.success) {
+            throw new Error(body.error || `HTTP ${res.status}`);
+          }
+          return body.data;
+        }
+
+        function resetForm() {
+          idInput.value = "";
+          rencanaKerjaInput.value = "";
+          indikatorInput.value = "";
+          tahunInput.value = String(new Date().getFullYear());
+          bulanInput.value = "";
+          triwulanInput.value = "";
+          nilaiRealisasiInput.value = "0";
+          realisasiAnggaranInput.value = "0";
+          diinputOlehInput.value = "";
+          keteranganInput.value = "";
+          applyIndikatorFilter("", "");
+        }
+
+        function indikatorLabel(id) {
+          return indikatorMap.get(Number(id)) || `Indikator #${id}`;
+        }
+
+        function formatNumeric(value) {
+          return new Intl.NumberFormat("id-ID", {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+          }).format(Number(value || 0));
+        }
+
+        function formatPercent(realizationValue, targetValue) {
+          const realization = Number(realizationValue || 0);
+          const target = Number(targetValue || 0);
+          if (target <= 0) {
+            return "-";
+          }
+
+          const percent = (realization / target) * 100;
+          return `${formatNumeric(percent)}%`;
+        }
+
+        function fillSelect(selectEl, map, items, defaultText) {
+          selectEl.innerHTML = `<option value="">${defaultText}</option>`;
+          map.clear();
+
+          items.forEach((item) => {
+            const label = `${item.kode} - ${item.nama}`;
+            map.set(item.id, label);
+            const option = document.createElement("option");
+            option.value = String(item.id);
+            option.textContent = label;
+            selectEl.appendChild(option);
+          });
+        }
+
+        function applyIndikatorFilter(
+          rencanaKerjaId,
+          selectedIndikatorId = "",
+        ) {
+          indikatorInput.innerHTML =
+            '<option value="">Pilih indikator rencana kerja</option>';
+          indikatorMap.clear();
+
+          const selectedRkIDNum = Number(rencanaKerjaId || 0);
+          const selectedIndikatorIDNum = Number(selectedIndikatorId || 0);
+
+          const visibleItems = indikatorItemsCache.filter((item) => {
+            if (!selectedRkIDNum) {
+              return true;
+            }
+            return item.rencanaKerjaId === selectedRkIDNum;
+          });
+
+          visibleItems.forEach((item) => {
+            const label = `${item.kode} - ${item.nama}`;
+            indikatorMap.set(item.id, label);
+            indikatorDetailMap.set(item.id, item);
+
+            const option = document.createElement("option");
+            option.value = String(item.id);
+            option.textContent = label;
+            indikatorInput.appendChild(option);
+          });
+
+          if (
+            selectedIndikatorIDNum > 0 &&
+            visibleItems.some((item) => item.id === selectedIndikatorIDNum)
+          ) {
+            indikatorInput.value = String(selectedIndikatorIDNum);
+            return;
+          }
+
+          indikatorInput.value = "";
+        }
+
+        function rowTemplate(item) {
+          const indikatorItem = indikatorDetailMap.get(item.indikatorRkId);
+          const targetTahunan = Number(indikatorItem?.targetTahunan ?? 0);
+          const anggaranTahunan = Number(indikatorItem?.anggaranTahunan ?? 0);
+          const capaianNilai = formatPercent(
+            item.nilaiRealisasi,
+            targetTahunan,
+          );
+          const capaianAnggaran = formatPercent(
+            item.realisasiAnggaran,
+            anggaranTahunan,
+          );
+
+          const tr = document.createElement("tr");
+          tr.innerHTML = `
+            <td>${item.id}</td>
+            <td>${indikatorLabel(item.indikatorRkId)}</td>
+            <td>${formatNumeric(targetTahunan)}</td>
+            <td>${formatNumeric(anggaranTahunan)}</td>
+            <td>${item.tahun || "-"}</td>
+            <td>${item.bulan ?? "-"}</td>
+            <td>${item.triwulan ?? "-"}</td>
+            <td>${item.nilaiRealisasi.toFixed(2)}</td>
+            <td>${capaianNilai}</td>
+            <td>${formatNumeric(item.realisasiAnggaran)}</td>
+            <td>${capaianAnggaran}</td>
+            <td>${item.diinputOleh || "-"}</td>
+            <td>${item.keterangan || "-"}</td>
+            <td class="text-nowrap">
+              <button class="btn btn-sm btn-outline-primary me-1" data-action="edit">Edit</button>
+              <button class="btn btn-sm btn-outline-danger" data-action="delete">Hapus</button>
+            </td>
+          `;
+
+          tr.querySelector('[data-action="edit"]').addEventListener(
+            "click",
+            () => {
+              idInput.value = item.id;
+              const indikatorItem = indikatorDetailMap.get(item.indikatorRkId);
+              const rencanaKerjaId = indikatorItem?.rencanaKerjaId ?? 0;
+              rencanaKerjaInput.value = rencanaKerjaId
+                ? String(rencanaKerjaId)
+                : "";
+              applyIndikatorFilter(rencanaKerjaInput.value, item.indikatorRkId);
+
+              tahunInput.value = String(item.tahun || "");
+              bulanInput.value = item.bulan == null ? "" : String(item.bulan);
+              triwulanInput.value =
+                item.triwulan == null ? "" : String(item.triwulan);
+              nilaiRealisasiInput.value = String(item.nilaiRealisasi);
+              realisasiAnggaranInput.value = String(item.realisasiAnggaran);
+              diinputOlehInput.value = String(item.diinputOleh || "");
+              keteranganInput.value = item.keterangan || "";
+              setStatus(`Mode edit ID ${item.id}`);
+            },
+          );
+
+          tr.querySelector('[data-action="delete"]').addEventListener(
+            "click",
+            async () => {
+              if (!confirm(`Hapus data realisasi ID ${item.id}?`)) {
+                return;
+              }
+
+              try {
+                await fetchJSON(`${endpoint}/${item.id}`, { method: "DELETE" });
+                setStatus("Data berhasil dihapus");
+                if (Number(idInput.value) === item.id) {
+                  resetForm();
+                }
+                await loadList();
+              } catch (error) {
+                setStatus(error.message, true);
+              }
+            },
+          );
+
+          return tr;
+        }
+
+        async function loadReferenceOptions() {
+          try {
+            const [rencanaKerjaData, indikatorData] = await Promise.all([
+              fetchJSON(rencanaKerjaEndpoint),
+              fetchJSON(indikatorEndpoint),
+            ]);
+
+            const rencanaKerjaItems = (
+              Array.isArray(rencanaKerjaData?.items)
+                ? rencanaKerjaData.items
+                : []
+            )
+              .map(normalizeRencanaKerja)
+              .sort((a, b) => a.id - b.id);
+
+            indikatorItemsCache = (
+              Array.isArray(indikatorData?.items) ? indikatorData.items : []
+            )
+              .map(normalizeIndikator)
+              .sort((a, b) => a.id - b.id);
+
+            fillSelect(
+              rencanaKerjaInput,
+              rencanaKerjaMap,
+              rencanaKerjaItems,
+              "Pilih rencana kerja",
+            );
+            applyIndikatorFilter("", "");
+          } catch (error) {
+            setStatus(`Gagal memuat data referensi: ${error.message}`, true);
+          }
+        }
+
+        async function loadList() {
+          tableBody.innerHTML =
+            '<tr><td colspan="14" class="text-center text-muted py-4">Memuat...</td></tr>';
+
+          try {
+            const params = new URLSearchParams();
+            const q = queryInput.value.trim();
+            if (q) {
+              params.set("q", q);
+            }
+
+            const url = params.size
+              ? `${endpoint}?${params.toString()}`
+              : endpoint;
+            const data = await fetchJSON(url);
+
+            const items = (Array.isArray(data?.items) ? data.items : []).map(
+              normalizeItem,
+            );
+
+            tableBody.innerHTML = "";
+            metaText.textContent = `Total ${items.length} data`;
+
+            if (items.length === 0) {
+              tableBody.innerHTML =
+                '<tr><td colspan="14" class="text-center text-muted py-4">Belum ada data</td></tr>';
+              return;
+            }
+
+            items
+              .sort((a, b) => a.id - b.id)
+              .forEach((item) => tableBody.appendChild(rowTemplate(item)));
+          } catch (error) {
+            tableBody.innerHTML =
+              '<tr><td colspan="14" class="text-center text-danger py-4">Gagal memuat data</td></tr>';
+            setStatus(error.message, true);
+          }
+        }
+
+        form.addEventListener("submit", async (event) => {
+          event.preventDefault();
+
+          const payload = {
+            indikator_rencana_kerja_id: Number(indikatorInput.value),
+            tahun: Number(tahunInput.value || 0),
+            nilai_realisasi: Number(nilaiRealisasiInput.value || 0),
+            realisasi_anggaran: Number(realisasiAnggaranInput.value || 0),
+            diinput_oleh: Number(diinputOlehInput.value || 0),
+            keterangan: keteranganInput.value.trim(),
+          };
+
+          const bulanValue = bulanInput.value.trim();
+          if (bulanValue !== "") {
+            payload.bulan = Number(bulanValue);
+          }
+
+          const triwulanValue = triwulanInput.value.trim();
+          if (triwulanValue !== "") {
+            payload.triwulan = Number(triwulanValue);
+          }
+
+          if (!rencanaKerjaInput.value) {
+            setStatus("Rencana kerja wajib dipilih", true);
+            return;
+          }
+
+          if (!payload.indikator_rencana_kerja_id) {
+            setStatus("Indikator rencana kerja wajib dipilih", true);
+            return;
+          }
+
+          const id = idInput.value.trim();
+          const isEdit = id !== "";
+          const url = isEdit ? `${endpoint}/${id}` : endpoint;
+          const method = isEdit ? "PUT" : "POST";
+
+          try {
+            await fetchJSON(url, {
+              method,
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(payload),
+            });
+
+            setStatus(
+              isEdit
+                ? `Data ID ${id} diperbarui`
+                : "Data baru berhasil disimpan",
+            );
+            resetForm();
+            await loadList();
+          } catch (error) {
+            setStatus(error.message, true);
+          }
+        });
+
+        btnReset.addEventListener("click", () => {
+          resetForm();
+          setStatus("Form direset");
+        });
+
+        btnSearch.addEventListener("click", () => {
+          loadList();
+        });
+
+        queryInput.addEventListener("keydown", (event) => {
+          if (event.key === "Enter") {
+            event.preventDefault();
+            loadList();
+          }
+        });
+
+        rencanaKerjaInput.addEventListener("change", () => {
+          applyIndikatorFilter(rencanaKerjaInput.value, "");
+        });
+
+        bulanInput.addEventListener("change", () => {
+          if (bulanInput.value.trim() !== "") {
+            triwulanInput.value = "";
+          }
+        });
+
+        triwulanInput.addEventListener("change", () => {
+          if (triwulanInput.value.trim() !== "") {
+            bulanInput.value = "";
+          }
+        });
+
+        resetForm();
+        loadReferenceOptions();
+        loadList();
+      })();
+    </script>
+  </body>
+</html>

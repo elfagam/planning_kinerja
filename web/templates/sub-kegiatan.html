@@ -1,0 +1,387 @@
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Sub Kegiatan - E-Planning RSUD</title>
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <link href="/assets/css/app.css" rel="stylesheet" />
+  </head>
+  <body
+    class="bg-soft-pattern"
+    data-module-name="Sub Kegiatan"
+    data-api-endpoint="/api/v1/sub_kegiatan"
+  >
+    <main class="container py-4">
+      <header
+        class="mb-4 p-4 card shadow-sm border-0 header-gradient text-white"
+      >
+        <h1 class="h3 mb-1" id="module-title">CRUD</h1>
+        <p class="mb-0 opacity-75">Kelola data Sub Kegiatan secara terpisah</p>
+      </header>
+
+      <div class="row g-4">
+        <section class="col-lg-4" aria-label="Form Sub Kegiatan">
+          <div class="card border-0 shadow-sm">
+            <div class="card-body">
+              <h2 class="h6 text-uppercase text-muted">Form Data</h2>
+              <form id="crud-form" class="vstack gap-2" autocomplete="off">
+                <input type="hidden" id="entity-id" />
+
+                <label class="form-label mb-0" for="kegiatanId">Kegiatan</label>
+                <select id="kegiatanId" class="form-select" required>
+                  <option value="">Pilih kegiatan</option>
+                </select>
+
+                <label class="form-label mb-0" for="kode">Kode</label>
+                <input
+                  id="kode"
+                  class="form-control"
+                  placeholder="SKG-001"
+                  required
+                />
+
+                <label class="form-label mb-0" for="nama">Nama</label>
+                <input
+                  id="nama"
+                  class="form-control"
+                  placeholder="Nama sub kegiatan"
+                  required
+                />
+
+                <label class="form-label mb-0" for="deskripsi">Deskripsi</label>
+                <textarea
+                  id="deskripsi"
+                  class="form-control"
+                  rows="3"
+                  placeholder="Deskripsi"
+                ></textarea>
+
+                <div class="d-flex gap-2 mt-2">
+                  <button type="submit" class="btn btn-primary">Simpan</button>
+                  <button
+                    type="button"
+                    id="btn-reset"
+                    class="btn btn-outline-secondary"
+                  >
+                    Reset
+                  </button>
+                </div>
+                <small id="status-text" class="text-muted" aria-live="polite"
+                  >Siap</small
+                >
+              </form>
+            </div>
+          </div>
+        </section>
+
+        <section class="col-lg-8" aria-label="Daftar Sub Kegiatan">
+          <div class="card border-0 shadow-sm">
+            <div class="card-body">
+              <div
+                class="d-flex justify-content-between align-items-center mb-3"
+              >
+                <h2 class="h6 text-uppercase text-muted mb-0">Daftar Data</h2>
+                <a href="/ui/dashboard" class="btn btn-sm btn-outline-dark"
+                  >Kembali ke Dashboard</a
+                >
+              </div>
+
+              <div class="row g-2 mb-3">
+                <div class="col-md-8">
+                  <input
+                    id="query"
+                    class="form-control"
+                    placeholder="Cari nama atau kode"
+                    aria-label="Cari nama atau kode"
+                  />
+                </div>
+                <div class="col-md-4 d-grid">
+                  <button
+                    id="btn-search"
+                    type="button"
+                    class="btn btn-outline-primary"
+                  >
+                    Cari / Refresh
+                  </button>
+                </div>
+              </div>
+              <div class="table-responsive">
+                <table class="table table-striped table-hover align-middle">
+                  <caption class="visually-hidden">
+                    Tabel data Sub Kegiatan
+                  </caption>
+                  <thead>
+                    <tr>
+                      <th scope="col">ID</th>
+                      <th scope="col">Kegiatan</th>
+                      <th scope="col">Kode</th>
+                      <th scope="col">Nama</th>
+                      <th scope="col">Deskripsi</th>
+                      <th scope="col">Aksi</th>
+                    </tr>
+                  </thead>
+                  <tbody id="table-body"></tbody>
+                </table>
+              </div>
+              <div
+                class="d-flex justify-content-between align-items-center mt-2"
+              >
+                <small id="meta-text" class="text-muted">Total 0 data</small>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+    </main>
+
+    <script>
+      (() => {
+        const endpoint = document.body.dataset.apiEndpoint;
+        const kegiatanEndpoint = "/api/v1/kegiatan";
+        const form = document.getElementById("crud-form");
+        const idInput = document.getElementById("entity-id");
+        const kegiatanIdInput = document.getElementById("kegiatanId");
+        const kodeInput = document.getElementById("kode");
+        const namaInput = document.getElementById("nama");
+        const deskripsiInput = document.getElementById("deskripsi");
+        const statusText = document.getElementById("status-text");
+        const queryInput = document.getElementById("query");
+        const btnSearch = document.getElementById("btn-search");
+        const btnReset = document.getElementById("btn-reset");
+        const tableBody = document.getElementById("table-body");
+        const metaText = document.getElementById("meta-text");
+
+        const kegiatanMap = new Map();
+
+        function authHeader() {
+          const token =
+            localStorage.getItem("AUTH_TOKEN") ||
+            localStorage.getItem("authToken") ||
+            "";
+          return token ? { Authorization: `Bearer ${token}` } : {};
+        }
+
+        function setStatus(message, isError = false) {
+          statusText.textContent = message;
+          statusText.className = isError
+            ? "text-danger small"
+            : "text-success small";
+        }
+
+        function normalizeKegiatan(raw) {
+          return {
+            id: Number(raw.id ?? raw.ID ?? 0),
+            kode: raw.kode ?? raw.Kode ?? "",
+            nama: raw.nama ?? raw.Nama ?? "",
+          };
+        }
+
+        function normalizeItem(raw) {
+          return {
+            id: Number(raw.id ?? raw.ID ?? 0),
+            kegiatanId: Number(raw.kegiatan_id ?? raw.KegiatanID ?? 0),
+            kode: raw.kode ?? raw.Kode ?? "",
+            nama: raw.nama ?? raw.Nama ?? "",
+            deskripsi: raw.deskripsi ?? raw.Deskripsi ?? "",
+          };
+        }
+
+        async function fetchJSON(url, options = {}) {
+          const res = await fetch(url, {
+            ...options,
+            headers: {
+              ...(options.headers || {}),
+              ...authHeader(),
+            },
+          });
+
+          const body = await res.json();
+          if (!res.ok || !body.success) {
+            throw new Error(body.error || `HTTP ${res.status}`);
+          }
+
+          return body.data;
+        }
+
+        function resetForm() {
+          idInput.value = "";
+          kegiatanIdInput.value = "";
+          kodeInput.value = "";
+          namaInput.value = "";
+          deskripsiInput.value = "";
+        }
+
+        function kegiatanLabel(kegiatanId) {
+          return (
+            kegiatanMap.get(Number(kegiatanId)) || `Kegiatan #${kegiatanId}`
+          );
+        }
+
+        function rowTemplate(item) {
+          const tr = document.createElement("tr");
+          tr.innerHTML = `
+            <td>${item.id}</td>
+            <td>${kegiatanLabel(item.kegiatanId)}</td>
+            <td>${item.kode}</td>
+            <td>${item.nama}</td>
+            <td>${item.deskripsi || "-"}</td>
+            <td class="text-nowrap">
+              <button class="btn btn-sm btn-outline-primary me-1" data-action="edit">Edit</button>
+              <button class="btn btn-sm btn-outline-danger" data-action="delete">Hapus</button>
+            </td>
+          `;
+
+          tr.querySelector('[data-action="edit"]').addEventListener(
+            "click",
+            () => {
+              idInput.value = item.id;
+              kegiatanIdInput.value = String(item.kegiatanId);
+              kodeInput.value = item.kode;
+              namaInput.value = item.nama;
+              deskripsiInput.value = item.deskripsi;
+              setStatus(`Mode edit ID ${item.id}`);
+            },
+          );
+
+          tr.querySelector('[data-action="delete"]').addEventListener(
+            "click",
+            async () => {
+              if (!confirm(`Hapus sub kegiatan ${item.nama}?`)) {
+                return;
+              }
+
+              try {
+                await fetchJSON(`${endpoint}/${item.id}`, { method: "DELETE" });
+                setStatus("Data berhasil dihapus");
+                if (Number(idInput.value) === item.id) {
+                  resetForm();
+                }
+                await loadList();
+              } catch (error) {
+                setStatus(error.message, true);
+              }
+            },
+          );
+
+          return tr;
+        }
+
+        async function loadKegiatanOptions() {
+          try {
+            const data = await fetchJSON(kegiatanEndpoint);
+            const kegiatanItems = (Array.isArray(data?.items) ? data.items : [])
+              .map(normalizeKegiatan)
+              .sort((a, b) => a.id - b.id);
+
+            kegiatanMap.clear();
+            kegiatanIdInput.innerHTML =
+              '<option value="">Pilih kegiatan</option>';
+
+            kegiatanItems.forEach((item) => {
+              const label = `${item.kode} - ${item.nama}`;
+              kegiatanMap.set(item.id, label);
+
+              const option = document.createElement("option");
+              option.value = String(item.id);
+              option.textContent = label;
+              kegiatanIdInput.appendChild(option);
+            });
+          } catch (error) {
+            setStatus(
+              `Pilihan kegiatan tidak ditemukan: ${error.message}`,
+              true,
+            );
+          }
+        }
+
+        async function loadList() {
+          tableBody.innerHTML =
+            '<tr><td colspan="6" class="text-center text-muted py-4">Memuat...</td></tr>';
+
+          try {
+            const params = new URLSearchParams();
+            const q = queryInput.value.trim();
+            if (q) {
+              params.set("q", q);
+            }
+
+            const url = params.size
+              ? `${endpoint}?${params.toString()}`
+              : endpoint;
+            const data = await fetchJSON(url);
+            const items = (Array.isArray(data?.items) ? data.items : []).map(
+              normalizeItem,
+            );
+
+            tableBody.innerHTML = "";
+            metaText.textContent = `Total ${items.length} data`;
+
+            if (items.length === 0) {
+              tableBody.innerHTML =
+                '<tr><td colspan="6" class="text-center text-muted py-4">Belum ada data</td></tr>';
+              return;
+            }
+
+            items
+              .sort((a, b) => a.id - b.id)
+              .forEach((item) => tableBody.appendChild(rowTemplate(item)));
+          } catch (error) {
+            tableBody.innerHTML =
+              '<tr><td colspan="6" class="text-center text-danger py-4">Gagal memuat data</td></tr>';
+            setStatus(error.message, true);
+          }
+        }
+
+        form.addEventListener("submit", async (event) => {
+          event.preventDefault();
+
+          const payload = {
+            kegiatan_id: Number(kegiatanIdInput.value),
+            kode: kodeInput.value.trim(),
+            nama: namaInput.value.trim(),
+            deskripsi: deskripsiInput.value.trim(),
+          };
+
+          const id = idInput.value.trim();
+          const isEdit = id !== "";
+          const url = isEdit ? `${endpoint}/${id}` : endpoint;
+          const method = isEdit ? "PUT" : "POST";
+
+          try {
+            await fetchJSON(url, {
+              method,
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(payload),
+            });
+
+            setStatus(
+              isEdit
+                ? `Data ID ${id} diperbarui`
+                : "Data baru berhasil disimpan",
+            );
+            resetForm();
+            await loadList();
+          } catch (error) {
+            setStatus(error.message, true);
+          }
+        });
+
+        btnReset.addEventListener("click", () => {
+          resetForm();
+          setStatus("Form direset");
+        });
+
+        btnSearch.addEventListener("click", () => {
+          loadList();
+        });
+
+        loadKegiatanOptions();
+        loadList();
+      })();
+    </script>
+  </body>
+</html>

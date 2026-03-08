@@ -1,0 +1,10 @@
+{
+  "event_name": "renja.approved",
+  "schema_version": 1,
+  "payload": {
+    "renja_id": "string",
+    "approved_by": "string",
+    "approved_at": "RFC3339 timestamp",
+    "year": "number"
+  }
+}

@@ -1,0 +1,863 @@
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Admin Dashboard - E-Planning RSUD</title>
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <link href="/assets/css/app.css" rel="stylesheet" />
+    <style>
+      :root {
+        --adm-bg: #eef6f5;
+        --adm-panel: #ffffff;
+        --adm-border: #d8e7e4;
+        --adm-ink: #18343f;
+        --adm-muted: #65808b;
+        --adm-accent: #0a6b65;
+        --adm-accent-2: #1f6fa8;
+        --adm-warning: #cb8a1b;
+        --adm-danger: #c9434f;
+      }
+
+      body {
+        background:
+          radial-gradient(
+            circle at 90% 10%,
+            rgba(31, 111, 168, 0.14),
+            transparent 38%
+          ),
+          radial-gradient(
+            circle at 10% 8%,
+            rgba(10, 107, 101, 0.15),
+            transparent 30%
+          ),
+          var(--adm-bg);
+        color: var(--adm-ink);
+      }
+
+      .admin-shell {
+        min-height: 100vh;
+      }
+
+      .admin-sidebar {
+        background: linear-gradient(165deg, #0f5a55, #173b56);
+        color: #e9f7f3;
+      }
+
+      .brand-mark {
+        width: 2.2rem;
+        height: 2.2rem;
+        border-radius: 0.7rem;
+        display: inline-grid;
+        place-items: center;
+        font-weight: 700;
+        background: rgba(255, 255, 255, 0.18);
+      }
+
+      .nav-link.admin-link {
+        color: rgba(239, 252, 249, 0.86);
+        border-radius: 0.6rem;
+        padding: 0.55rem 0.75rem;
+      }
+
+      .nav-link.admin-link:hover,
+      .nav-link.admin-link.active {
+        color: #fff;
+        background: rgba(255, 255, 255, 0.14);
+      }
+
+      .menu-group-label {
+        margin-top: 0.65rem;
+        margin-bottom: 0.15rem;
+        padding: 0 0.75rem;
+        font-size: 0.68rem;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: rgba(220, 245, 241, 0.7);
+      }
+
+      .nav-link.admin-link.grouped-link {
+        margin-left: 0.55rem;
+      }
+
+      .admin-main {
+        background: transparent;
+      }
+
+      .mobile-menu-btn {
+        border-color: rgba(255, 255, 255, 0.45);
+        color: #fff;
+      }
+
+      .mobile-menu-btn:hover {
+        background: rgba(255, 255, 255, 0.14);
+        color: #fff;
+      }
+
+      .offcanvas.admin-offcanvas {
+        background: linear-gradient(165deg, #0f5a55, #173b56);
+        color: #e9f7f3;
+      }
+
+      .offcanvas.admin-offcanvas .btn-close {
+        filter: invert(1) grayscale(1) brightness(200%);
+      }
+
+      .topbar {
+        background: rgba(255, 255, 255, 0.8);
+        border: 1px solid var(--adm-border);
+        border-radius: 1rem;
+        backdrop-filter: blur(6px);
+      }
+
+      .panel {
+        background: var(--adm-panel);
+        border: 1px solid var(--adm-border);
+        border-radius: 1rem;
+      }
+
+      .metric-card {
+        border-left: 5px solid var(--adm-accent-2);
+      }
+
+      .metric-label {
+        font-size: 0.76rem;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: var(--adm-muted);
+      }
+
+      .metric-value {
+        font-size: clamp(1.2rem, 2.4vw, 2rem);
+        letter-spacing: -0.03em;
+        line-height: 1.1;
+      }
+
+      .status-pill {
+        border-radius: 999px;
+        font-size: 0.73rem;
+        font-weight: 700;
+        padding: 0.27rem 0.62rem;
+      }
+
+      .status-on-track {
+        color: #147651;
+        background: rgba(20, 118, 81, 0.13);
+      }
+
+      .status-warning {
+        color: #9b670d;
+        background: rgba(203, 138, 27, 0.16);
+      }
+
+      .status-off-track {
+        color: #a71f34;
+        background: rgba(201, 67, 79, 0.14);
+      }
+
+      .table > :not(caption) > * > * {
+        border-bottom-color: #ecf2f3;
+      }
+
+      .muted-note {
+        color: var(--adm-muted);
+        font-size: 0.83rem;
+      }
+
+      .mini-stat {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 0.6rem;
+      }
+
+      .mini-stat:last-child {
+        margin-bottom: 0;
+      }
+
+      @media (max-width: 991.98px) {
+        .admin-sidebar {
+          border-radius: 0 0 1rem 1rem;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container-fluid admin-shell">
+      <div
+        class="offcanvas offcanvas-start admin-offcanvas"
+        tabindex="-1"
+        id="mobileSidebar"
+        aria-labelledby="mobileSidebarLabel"
+      >
+        <div class="offcanvas-header">
+          <div class="d-flex align-items-center gap-2" id="mobileSidebarLabel">
+            <span class="brand-mark">EP</span>
+            <div>
+              <div class="fw-semibold">E-Planning</div>
+              <small class="text-white-50">Admin RSUD</small>
+            </div>
+          </div>
+          <button
+            type="button"
+            class="btn-close"
+            data-bs-dismiss="offcanvas"
+            aria-label="Close"
+          ></button>
+        </div>
+        <div class="offcanvas-body pt-0">
+          <nav class="nav flex-column gap-1">
+            <a class="nav-link admin-link active" href="/ui/dashboard"
+              >Dashboard</a
+            >
+            <a class="nav-link admin-link" href="/ui/visi">Visi</a>
+            <a class="nav-link admin-link" href="/ui/misi">Misi</a>
+            <a class="nav-link admin-link" href="/ui/tujuan">Tujuan</a>
+            <a class="nav-link admin-link" href="/ui/indikator-tujuan"
+              >Indikator Tujuan</a
+            >
+            <a class="nav-link admin-link" href="/ui/sasaran">Sasaran</a>
+            <a class="nav-link admin-link" href="/ui/indikator-sasaran"
+              >Indikator Sasaran</a
+            >
+            <div class="menu-group-label">Program dan Turunan</div>
+            <a class="nav-link admin-link grouped-link" href="/ui/program"
+              >Program</a
+            >
+            <a class="nav-link admin-link" href="/ui/indikator-program"
+              >Indikator Program</a
+            >
+            <a class="nav-link admin-link grouped-link" href="/ui/kegiatan"
+              >Kegiatan</a
+            >
+            <a class="nav-link admin-link" href="/ui/indikator-kegiatan"
+              >Indikator Kegiatan</a
+            >
+            <a class="nav-link admin-link grouped-link" href="/ui/sub-kegiatan"
+              >Sub Kegiatan</a
+            >
+            <a class="nav-link admin-link" href="/ui/indikator-sub-kegiatan"
+              >Indikator Sub Kegiatan</a
+            >
+            <a class="nav-link admin-link" href="/ui/rencana-kerja"
+              >Rencana Kerja</a
+            >
+            <a class="nav-link admin-link" href="/ui/indikator-kinerja"
+              >Indikator Rencana Kerja</a
+            >
+            <a class="nav-link admin-link" href="/ui/target-realisasi"
+              >Target dan Realisasi</a
+            >
+          </nav>
+        </div>
+      </div>
+
+      <div class="row min-vh-100">
+        <aside class="d-none d-lg-block col-lg-3 col-xl-2 p-0 admin-sidebar">
+          <div class="p-3 p-lg-4">
+            <div class="d-flex align-items-center gap-2 mb-4">
+              <span class="brand-mark">EP</span>
+              <div>
+                <div class="fw-semibold">E-Planning</div>
+                <small class="text-white-50">Admin RSUD</small>
+              </div>
+            </div>
+
+            <nav class="nav flex-column gap-1">
+              <a class="nav-link admin-link active" href="/ui/dashboard"
+                >Dashboard</a
+              >
+              <a class="nav-link admin-link" href="/ui/visi">Visi</a>
+              <a class="nav-link admin-link" href="/ui/misi">Misi</a>
+              <a class="nav-link admin-link" href="/ui/tujuan">Tujuan</a>
+              <a class="nav-link admin-link" href="/ui/indikator-tujuan"
+                >Indikator Tujuan</a
+              >
+              <a class="nav-link admin-link" href="/ui/sasaran">Sasaran</a>
+              <a class="nav-link admin-link" href="/ui/indikator-sasaran"
+                >Indikator Sasaran</a
+              >
+              <div class="menu-group-label">Program dan Turunan</div>
+              <a class="nav-link admin-link grouped-link" href="/ui/program"
+                >Program</a
+              >
+              <a class="nav-link admin-link" href="/ui/indikator-program"
+                >Indikator Program</a
+              >
+              <a class="nav-link admin-link grouped-link" href="/ui/kegiatan"
+                >Kegiatan</a
+              >
+              <a class="nav-link admin-link" href="/ui/indikator-kegiatan"
+                >Indikator Kegiatan</a
+              >
+              <a
+                class="nav-link admin-link grouped-link"
+                href="/ui/sub-kegiatan"
+                >Sub Kegiatan</a
+              >
+              <a class="nav-link admin-link" href="/ui/indikator-sub-kegiatan"
+                >Indikator Sub Kegiatan</a
+              >
+              <a class="nav-link admin-link" href="/ui/rencana-kerja"
+                >Rencana Kerja</a
+              >
+              <a class="nav-link admin-link" href="/ui/indikator-kinerja"
+                >Indikator Rencana Kerja</a
+              >
+
+              <a class="nav-link admin-link" href="/ui/target-realisasi"
+                >Target dan Realisasi</a
+              >
+            </nav>
+          </div>
+        </aside>
+
+        <main class="col-12 col-lg-9 col-xl-10 p-3 p-lg-4 admin-main">
+          <section class="d-lg-none mb-3">
+            <div
+              class="panel p-2"
+              style="background: linear-gradient(130deg, #0f5a55, #173b56)"
+            >
+              <div
+                class="d-flex justify-content-between align-items-center px-2"
+              >
+                <div class="d-flex align-items-center gap-2 text-white">
+                  <span class="brand-mark">EP</span>
+                  <small class="fw-semibold">Menu Admin</small>
+                </div>
+                <button
+                  class="btn btn-sm mobile-menu-btn"
+                  type="button"
+                  data-bs-toggle="offcanvas"
+                  data-bs-target="#mobileSidebar"
+                  aria-controls="mobileSidebar"
+                >
+                  Menu
+                </button>
+              </div>
+            </div>
+          </section>
+
+          <section class="topbar p-3 p-lg-4 mb-3">
+            <div
+              class="d-flex flex-wrap gap-3 justify-content-between align-items-center"
+            >
+              <div>
+                <h1 class="h4 mb-1">Admin Dashboard Kinerja</h1>
+                <p class="muted-note mb-0">
+                  Ringkasan target, realisasi, dan performa program per periode
+                </p>
+              </div>
+              <div class="d-flex gap-2 flex-wrap">
+                <select
+                  id="yearFilter"
+                  class="form-select form-select-sm"
+                  style="min-width: 140px"
+                >
+                  <option value="">Semua Tahun</option>
+                </select>
+                <button id="refreshBtn" class="btn btn-sm btn-primary">
+                  Refresh
+                </button>
+              </div>
+            </div>
+          </section>
+
+          <section class="row g-3 mb-3">
+            <div class="col-6 col-xl-3">
+              <article class="panel metric-card p-3 h-100">
+                <p class="metric-label mb-2">Total Program</p>
+                <h2 id="kpiProgram" class="metric-value mb-0">0</h2>
+              </article>
+            </div>
+            <div class="col-6 col-xl-3">
+              <article class="panel metric-card p-3 h-100">
+                <p class="metric-label mb-2">Total Kegiatan</p>
+                <h2 id="kpiKegiatan" class="metric-value mb-0">0</h2>
+              </article>
+            </div>
+            <div class="col-6 col-xl-3">
+              <article class="panel metric-card p-3 h-100">
+                <p class="metric-label mb-2">Total Anggaran</p>
+                <h2 id="kpiAnggaran" class="metric-value mb-0">Rp0</h2>
+              </article>
+            </div>
+            <div class="col-6 col-xl-3">
+              <article class="panel metric-card p-3 h-100">
+                <p class="metric-label mb-2">Realisasi Anggaran</p>
+                <h2 id="kpiRealisasiAnggaran" class="metric-value mb-0">Rp0</h2>
+                <small id="kpiPersenAnggaran" class="muted-note">0%</small>
+              </article>
+            </div>
+          </section>
+
+          <section class="row g-3 mb-3">
+            <div class="col-xl-8">
+              <article class="panel p-3 h-100">
+                <h2 class="h6 mb-1">Target vs Realisasi</h2>
+                <p class="muted-note mb-3">Agregat per triwulan</p>
+                <canvas id="targetRealisasiChart" height="120"></canvas>
+              </article>
+            </div>
+            <div class="col-xl-4">
+              <article class="panel p-3 h-100">
+                <h2 class="h6 mb-3">Distribusi Status</h2>
+                <div class="mini-stat">
+                  <span class="status-pill status-on-track">On Track</span
+                  ><strong id="statOnTrack">0</strong>
+                </div>
+                <div class="mini-stat">
+                  <span class="status-pill status-warning">Warning</span
+                  ><strong id="statWarning">0</strong>
+                </div>
+                <div class="mini-stat">
+                  <span class="status-pill status-off-track">Off Track</span
+                  ><strong id="statOffTrack">0</strong>
+                </div>
+                <div class="my-3">
+                  <canvas id="statusDistributionChart" height="180"></canvas>
+                </div>
+                <div class="muted-note mb-1">Rata-rata Capaian</div>
+                <div id="statRataCapaian" class="h5 mb-0">0%</div>
+              </article>
+            </div>
+          </section>
+
+          <section class="row g-3 mb-3">
+            <div class="col-xl-6">
+              <article class="panel p-3 h-100">
+                <h2 class="h6 mb-3">Ringkasan Tahunan</h2>
+                <div class="table-responsive">
+                  <table class="table align-middle mb-0">
+                    <thead>
+                      <tr>
+                        <th>Tahun</th>
+                        <th class="text-end">Target</th>
+                        <th class="text-end">Realisasi</th>
+                        <th class="text-end">Capaian</th>
+                      </tr>
+                    </thead>
+                    <tbody id="yearlyBody"></tbody>
+                  </table>
+                </div>
+              </article>
+            </div>
+            <div class="col-xl-6">
+              <article class="panel p-3 h-100">
+                <h2 class="h6 mb-3">Ranking Program</h2>
+                <div class="table-responsive">
+                  <table class="table align-middle mb-0">
+                    <thead>
+                      <tr>
+                        <th>#</th>
+                        <th>Program</th>
+                        <th class="text-end">Capaian</th>
+                      </tr>
+                    </thead>
+                    <tbody id="rankingBody"></tbody>
+                  </table>
+                </div>
+              </article>
+            </div>
+          </section>
+
+          <section class="panel p-3">
+            <div
+              class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2"
+            >
+              <div>
+                <h2 class="h6 mb-1">Data Target dan Realisasi</h2>
+                <p class="muted-note mb-0">
+                  Tabel server-side dengan pencarian dan pagination
+                </p>
+              </div>
+              <a
+                href="/ui/target-realisasi"
+                class="btn btn-sm btn-outline-primary"
+                >Lihat Modul Lengkap</a
+              >
+            </div>
+
+            <div class="row g-2 mb-3">
+              <div class="col-md-6">
+                <input
+                  id="targetSearch"
+                  class="form-control form-control-sm"
+                  placeholder="Cari ID, indikator, status, periode"
+                />
+              </div>
+              <div class="col-md-3">
+                <select id="targetLimit" class="form-select form-select-sm">
+                  <option value="5">5 / halaman</option>
+                  <option value="10" selected>10 / halaman</option>
+                  <option value="20">20 / halaman</option>
+                </select>
+              </div>
+              <div class="col-md-3 d-grid">
+                <button
+                  id="targetReset"
+                  class="btn btn-sm btn-outline-secondary"
+                >
+                  Reset Filter
+                </button>
+              </div>
+            </div>
+
+            <div class="table-responsive">
+              <table class="table align-middle">
+                <thead>
+                  <tr>
+                    <th>ID</th>
+                    <th>Indikator</th>
+                    <th>Periode</th>
+                    <th class="text-end">Target</th>
+                    <th class="text-end">Realisasi</th>
+                    <th class="text-end">Capaian</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody id="targetBody">
+                  <tr>
+                    <td colspan="7" class="text-center text-muted py-4">
+                      Memuat data...
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div class="d-flex justify-content-between align-items-center mt-2">
+              <small id="targetMeta" class="muted-note">Page 1 | Total 0</small>
+              <div
+                class="btn-group btn-group-sm"
+                role="group"
+                aria-label="Pagination target table"
+              >
+                <button id="targetPrev" class="btn btn-outline-secondary">
+                  Prev
+                </button>
+                <button id="targetNext" class="btn btn-outline-secondary">
+                  Next
+                </button>
+              </div>
+            </div>
+          </section>
+
+          <p id="dashboardMsg" class="muted-note mt-3 mb-0"></p>
+        </main>
+      </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+      const fmtNum = (n) =>
+        new Intl.NumberFormat("id-ID").format(Number(n || 0));
+      const fmtPct = (n) => `${Number(n || 0).toFixed(2)}%`;
+      const fmtRupiah = (n) =>
+        new Intl.NumberFormat("id-ID", {
+          style: "currency",
+          currency: "IDR",
+          maximumFractionDigits: 0,
+        }).format(Number(n || 0));
+
+      const yearFilter = document.getElementById("yearFilter");
+      const refreshBtn = document.getElementById("refreshBtn");
+      const msg = document.getElementById("dashboardMsg");
+      const targetSearch = document.getElementById("targetSearch");
+      const targetLimit = document.getElementById("targetLimit");
+      const targetReset = document.getElementById("targetReset");
+      const targetPrev = document.getElementById("targetPrev");
+      const targetNext = document.getElementById("targetNext");
+      const targetMeta = document.getElementById("targetMeta");
+
+      let targetChart;
+      let statusChart;
+      let targetPage = 1;
+      let targetTotalPages = 1;
+
+      async function fetchJSON(url) {
+        const r = await fetch(url, { headers: { Accept: "application/json" } });
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        const payload = await r.json();
+        return payload.data;
+      }
+
+      function setSummaryCards(summary) {
+        document.getElementById("kpiProgram").textContent = fmtNum(
+          summary.total_program,
+        );
+        document.getElementById("kpiKegiatan").textContent = fmtNum(
+          summary.total_kegiatan,
+        );
+        document.getElementById("kpiAnggaran").textContent = fmtRupiah(
+          summary.total_anggaran,
+        );
+        document.getElementById("kpiRealisasiAnggaran").textContent = fmtRupiah(
+          summary.total_realisasi_anggaran,
+        );
+        document.getElementById("kpiPersenAnggaran").textContent =
+          `${fmtPct(summary.persentase_realisasi_anggaran)} dari total anggaran`;
+      }
+
+      function drawStatusChart(stats) {
+        const ctx = document.getElementById("statusDistributionChart");
+        if (statusChart) statusChart.destroy();
+
+        statusChart = new Chart(ctx, {
+          type: "doughnut",
+          data: {
+            labels: ["On Track", "Warning", "Off Track"],
+            datasets: [
+              {
+                data: [
+                  Number(stats.total_status_on_track || 0),
+                  Number(stats.total_status_warning || 0),
+                  Number(stats.total_status_off_track || 0),
+                ],
+                backgroundColor: ["#1f8f67", "#cb8a1b", "#c9434f"],
+                borderColor: ["#ffffff", "#ffffff", "#ffffff"],
+                borderWidth: 2,
+                hoverOffset: 6,
+              },
+            ],
+          },
+          options: {
+            responsive: true,
+            plugins: { legend: { position: "bottom" } },
+            cutout: "62%",
+          },
+        });
+      }
+
+      function setStats(stats) {
+        document.getElementById("statOnTrack").textContent = fmtNum(
+          stats.total_status_on_track,
+        );
+        document.getElementById("statWarning").textContent = fmtNum(
+          stats.total_status_warning,
+        );
+        document.getElementById("statOffTrack").textContent = fmtNum(
+          stats.total_status_off_track,
+        );
+        document.getElementById("statRataCapaian").textContent = fmtPct(
+          stats.rata_rata_capaian_persen,
+        );
+        drawStatusChart(stats);
+      }
+
+      function drawTargetChart(chartData) {
+        const ctx = document.getElementById("targetRealisasiChart");
+        if (targetChart) targetChart.destroy();
+
+        targetChart = new Chart(ctx, {
+          type: "line",
+          data: {
+            labels: chartData.categories || [],
+            datasets: [
+              {
+                label: "Target",
+                data: chartData.series?.target || [],
+                borderColor: "#1f6fa8",
+                backgroundColor: "rgba(31,111,168,.16)",
+                fill: true,
+                tension: 0.3,
+              },
+              {
+                label: "Realisasi",
+                data: chartData.series?.realisasi || [],
+                borderColor: "#0a6b65",
+                backgroundColor: "rgba(10,107,101,.16)",
+                fill: true,
+                tension: 0.3,
+              },
+            ],
+          },
+          options: {
+            responsive: true,
+            plugins: { legend: { position: "bottom" } },
+            scales: { y: { ticks: { callback: (v) => fmtNum(v) } } },
+          },
+        });
+      }
+
+      function setYearlyTable(yearly) {
+        const body = document.getElementById("yearlyBody");
+        body.innerHTML = "";
+        (yearly.items || []).forEach((item) => {
+          body.insertAdjacentHTML(
+            "beforeend",
+            `<tr>
+              <td>${item.tahun}</td>
+              <td class="text-end">${fmtNum(item.total_target_nilai)}</td>
+              <td class="text-end">${fmtNum(item.total_realisasi_nilai)}</td>
+              <td class="text-end fw-semibold">${fmtPct(item.persentase_realisasi_target)}</td>
+            </tr>`,
+          );
+        });
+      }
+
+      function setRankingTable(ranking) {
+        const body = document.getElementById("rankingBody");
+        body.innerHTML = "";
+        (ranking.items || []).forEach((item) => {
+          body.insertAdjacentHTML(
+            "beforeend",
+            `<tr>
+              <td class="fw-semibold">${item.rank}</td>
+              <td>
+                <div class="fw-semibold">${item.program_nama}</div>
+                <div class="small text-muted">${item.program_kode}</div>
+              </td>
+              <td class="text-end fw-semibold">${fmtPct(item.persentase_realisasi_target)}</td>
+            </tr>`,
+          );
+        });
+      }
+
+      function statusClass(status) {
+        if (status === "ON_TRACK") return "status-on-track";
+        if (status === "WARNING") return "status-warning";
+        return "status-off-track";
+      }
+
+      function renderTargetTablePage(rows, page, totalPages, total) {
+        const body = document.getElementById("targetBody");
+        body.innerHTML = "";
+
+        if (!rows.length) {
+          body.innerHTML =
+            '<tr><td colspan="7" class="text-center text-muted py-4">Tidak ada data target/realisasi.</td></tr>';
+          targetMeta.textContent = "Page 1 | Total 0";
+          targetPrev.disabled = true;
+          targetNext.disabled = true;
+          return;
+        }
+
+        rows.forEach((item) => {
+          body.insertAdjacentHTML(
+            "beforeend",
+            `<tr>
+              <td>${item.ID}</td>
+              <td>${item.IndikatorRencanaKerjaID}</td>
+              <td>${item.Tahun}-T${item.Triwulan}</td>
+              <td class="text-end">${fmtNum(item.TargetNilai)}</td>
+              <td class="text-end">${fmtNum(item.RealisasiNilai)}</td>
+              <td class="text-end fw-semibold">${fmtPct(item.CapaianPersen)}</td>
+              <td><span class="status-pill ${statusClass(item.Status)}">${item.Status}</span></td>
+            </tr>`,
+          );
+        });
+
+        targetMeta.textContent = `Page ${page} / ${totalPages} | Total ${total}`;
+        targetPrev.disabled = page <= 1;
+        targetNext.disabled = page >= totalPages;
+      }
+
+      function setTargetTable(payload) {
+        const rows = payload.items || [];
+        targetPage = Number(payload.page || 1);
+        targetTotalPages = Number(payload.total_pages || 1);
+        renderTargetTablePage(
+          rows,
+          targetPage,
+          targetTotalPages,
+          Number(payload.total || 0),
+        );
+      }
+
+      async function loadTargetTable() {
+        const tahun = yearFilter.value;
+        const params = new URLSearchParams();
+        params.set("page", String(targetPage));
+        params.set("limit", targetLimit.value || "10");
+
+        const q = (targetSearch.value || "").trim();
+        if (q) params.set("q", q);
+        if (tahun) params.set("tahun", tahun);
+
+        const payload = await fetchJSON(
+          `/api/v1/performance/target-realisasi?${params.toString()}`,
+        );
+        setTargetTable(payload);
+      }
+
+      function updateYearOptions(yearly) {
+        const years = (yearly.items || []).map((x) => x.tahun);
+        yearFilter.innerHTML = `<option value="">Semua Tahun</option>${years.map((y) => `<option value="${y}">${y}</option>`).join("")}`;
+      }
+
+      async function loadDashboard() {
+        const tahun = yearFilter.value;
+        const q = tahun ? `?tahun=${encodeURIComponent(tahun)}` : "";
+        msg.textContent = "Memuat data dashboard...";
+
+        try {
+          const [summary, stats, yearly, chartData, ranking] =
+            await Promise.all([
+              fetchJSON("/api/v1/performance/dashboard-summary"),
+              fetchJSON(`/api/v1/performance/statistics${q}`),
+              fetchJSON("/api/v1/performance/yearly-summary"),
+              fetchJSON(`/api/v1/performance/chart-target-vs-realisasi${q}`),
+              fetchJSON(
+                `/api/v1/performance/program-ranking${q}&limit=5`.replace(
+                  "?&",
+                  "?",
+                ),
+              ),
+            ]);
+
+          setSummaryCards(summary);
+          setStats(stats);
+          setYearlyTable(yearly);
+          setRankingTable(ranking);
+          drawTargetChart(chartData);
+          await loadTargetTable();
+
+          if (!yearFilter.options.length || yearFilter.options.length === 1) {
+            updateYearOptions(yearly);
+          }
+
+          msg.textContent = "Data dashboard diperbarui.";
+        } catch (err) {
+          msg.textContent = `Gagal memuat dashboard: ${err.message}`;
+        }
+      }
+
+      refreshBtn.addEventListener("click", loadDashboard);
+      yearFilter.addEventListener("change", () => {
+        targetPage = 1;
+        loadDashboard();
+      });
+      targetSearch.addEventListener("input", () => {
+        targetPage = 1;
+        loadTargetTable();
+      });
+      targetLimit.addEventListener("change", () => {
+        targetPage = 1;
+        loadTargetTable();
+      });
+      targetReset.addEventListener("click", () => {
+        targetSearch.value = "";
+        targetLimit.value = "10";
+        targetPage = 1;
+        loadTargetTable();
+      });
+      targetPrev.addEventListener("click", () => {
+        if (targetPage <= 1) return;
+        targetPage -= 1;
+        loadTargetTable();
+      });
+      targetNext.addEventListener("click", () => {
+        if (targetPage >= targetTotalPages) return;
+        targetPage += 1;
+        loadTargetTable();
+      });
+
+      loadDashboard();
+    </script>
+  </body>
+</html>

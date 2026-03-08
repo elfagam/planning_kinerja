@@ -1,0 +1,23 @@
+openapi: 3.0.3
+info:
+  title: Planning Service API
+  version: 1.0.0
+paths:
+  /health:
+    get:
+      summary: Health check
+      responses:
+        "200":
+          description: OK
+  /v1/strategic/{type}:
+    get:
+      summary: List strategic entities by type
+      parameters:
+        - in: path
+          name: type
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK

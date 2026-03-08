@@ -1,0 +1,45 @@
+version: "3.9"
+services:
+  api-gateway:
+    image: golang:1.25
+    working_dir: /app
+    volumes:
+      - ../../:/app
+    command: sh -c "cd services/api-gateway && go mod tidy && go run ./cmd/server"
+    environment:
+      - HTTP_ADDR=:8080
+    ports:
+      - "8080:8080"
+
+  planning-service:
+    image: golang:1.25
+    working_dir: /app
+    volumes:
+      - ../../:/app
+    command: sh -c "cd services/planning-service && go mod tidy && go run ./cmd/server"
+    environment:
+      - HTTP_ADDR=:8081
+    ports:
+      - "8081:8081"
+
+  renja-service:
+    image: golang:1.25
+    working_dir: /app
+    volumes:
+      - ../../:/app
+    command: sh -c "cd services/renja-service && go mod tidy && go run ./cmd/server"
+    environment:
+      - HTTP_ADDR=:8082
+    ports:
+      - "8082:8082"
+
+  performance-service:
+    image: golang:1.25
+    working_dir: /app
+    volumes:
+      - ../../:/app
+    command: sh -c "cd services/performance-service && go mod tidy && go run ./cmd/server"
+    environment:
+      - HTTP_ADDR=:8083
+    ports:
+      - "8083:8083"

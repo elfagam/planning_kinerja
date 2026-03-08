@@ -1,0 +1,11 @@
+{
+  "event_name": "realisasi.recorded",
+  "schema_version": 1,
+  "payload": {
+    "indicator_id": "string",
+    "period": "string",
+    "target": "number",
+    "realization": "number",
+    "recorded_by": "string"
+  }
+}

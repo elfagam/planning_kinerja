@@ -1,0 +1,17 @@
+openapi: 3.0.3
+info:
+  title: Performance Service API
+  version: 1.0.0
+paths:
+  /health:
+    get:
+      summary: Health check
+      responses:
+        "200":
+          description: OK
+  /v1/target-realisasi:
+    get:
+      summary: List target/realisasi data
+      responses:
+        "200":
+          description: OK

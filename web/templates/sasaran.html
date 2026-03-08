@@ -1,0 +1,396 @@
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Sasaran - E-Planning RSUD</title>
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <link href="/assets/css/app.css" rel="stylesheet" />
+    <style>
+      .panel-soft {
+        background: rgba(255, 255, 255, 0.9);
+        border: 1px solid rgba(16, 74, 101, 0.1);
+      }
+
+      .muted-label {
+        font-size: 0.78rem;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: #5d7380;
+      }
+    </style>
+  </head>
+  <body class="bg-soft-pattern" data-api-endpoint="/api/v1/sasaran">
+    <div class="container py-4">
+      <header
+        class="mb-4 p-4 card shadow-sm border-0 header-gradient text-white"
+      >
+        <h1 class="h3 mb-1">Manajemen Sasaran</h1>
+        <p class="mb-0 opacity-75">
+          Kelola data sasaran dan keterkaitannya dengan tujuan strategis
+        </p>
+      </header>
+
+      <div class="row g-4">
+        <div class="col-lg-4">
+          <div class="card border-0 shadow-sm panel-soft">
+            <div class="card-body">
+              <h2 class="h6 mb-3">Form Sasaran</h2>
+              <form id="sasaran-form" class="vstack gap-2">
+                <input type="hidden" id="entity-id" />
+                <label class="form-label mb-0 muted-label">Tujuan</label>
+                <select id="tujuanId" class="form-select" required>
+                  <option value="">Pilih tujuan</option>
+                </select>
+                <label class="form-label mb-0 muted-label">Kode</label>
+                <input
+                  id="kode"
+                  class="form-control"
+                  placeholder="SSR-001"
+                  required
+                />
+                <label class="form-label mb-0 muted-label">Nama Sasaran</label>
+                <input
+                  id="nama"
+                  class="form-control"
+                  placeholder="Peningkatan kepuasan pasien"
+                  required
+                />
+                <label class="form-label mb-0 muted-label">Deskripsi</label>
+                <textarea
+                  id="deskripsi"
+                  class="form-control"
+                  rows="3"
+                  placeholder="Deskripsi sasaran"
+                ></textarea>
+                <div class="d-flex gap-2 mt-2">
+                  <button type="submit" class="btn btn-primary">Simpan</button>
+                  <button
+                    type="button"
+                    id="btn-reset"
+                    class="btn btn-outline-secondary"
+                  >
+                    Reset
+                  </button>
+                </div>
+                <small id="status-text" class="text-muted">Siap</small>
+              </form>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-lg-8">
+          <div class="card border-0 shadow-sm panel-soft">
+            <div class="card-body">
+              <div
+                class="d-flex justify-content-between align-items-center mb-3"
+              >
+                <h2 class="h6 text-uppercase text-muted mb-0">
+                  Daftar Sasaran
+                </h2>
+                <a href="/ui/dashboard" class="btn btn-sm btn-outline-dark"
+                  >Kembali ke Dashboard</a
+                >
+              </div>
+              <div class="row g-2 mb-3">
+                <div class="col-md-5">
+                  <input
+                    id="query"
+                    class="form-control"
+                    placeholder="Cari nama atau kode"
+                  />
+                </div>
+                <div class="col-md-7 d-grid">
+                  <button
+                    id="btn-search"
+                    type="button"
+                    class="btn btn-outline-primary"
+                  >
+                    Cari / Refresh
+                  </button>
+                </div>
+              </div>
+              <div class="table-responsive">
+                <table class="table table-striped table-hover align-middle">
+                  <thead>
+                    <tr>
+                      <th>ID</th>
+                      <th>Tujuan</th>
+                      <th>Kode</th>
+                      <th>Nama Sasaran</th>
+                      <th>Deskripsi</th>
+                      <th>Aksi</th>
+                    </tr>
+                  </thead>
+                  <tbody id="table-body"></tbody>
+                </table>
+              </div>
+              <div
+                class="d-flex justify-content-between align-items-center mt-2"
+              >
+                <small id="meta-text" class="text-muted">Total 0 data</small>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      (() => {
+        const endpoint = document.body.dataset.apiEndpoint;
+        const tujuanEndpoint = "/api/v1/tujuan";
+        const misiEndpoint = "/api/v1/misi";
+        const form = document.getElementById("sasaran-form");
+        const idInput = document.getElementById("entity-id");
+        const tujuanIdInput = document.getElementById("tujuanId");
+        const kodeInput = document.getElementById("kode");
+        const namaInput = document.getElementById("nama");
+        const deskripsiInput = document.getElementById("deskripsi");
+        const statusText = document.getElementById("status-text");
+        const queryInput = document.getElementById("query");
+        const btnSearch = document.getElementById("btn-search");
+        const btnReset = document.getElementById("btn-reset");
+        const tableBody = document.getElementById("table-body");
+        const metaText = document.getElementById("meta-text");
+
+        const misiMap = new Map();
+        const tujuanMap = new Map();
+
+        function authHeader() {
+          const token =
+            localStorage.getItem("AUTH_TOKEN") ||
+            localStorage.getItem("authToken") ||
+            "";
+          return token ? { Authorization: `Bearer ${token}` } : {};
+        }
+
+        function setStatus(message, isError = false) {
+          statusText.textContent = message;
+          statusText.className = isError
+            ? "text-danger small"
+            : "text-success small";
+        }
+
+        function normalizeItem(item) {
+          return {
+            id: item.id ?? item.ID,
+            tujuanId: item.tujuan_id ?? item.TujuanID,
+            kode: item.kode ?? item.Kode,
+            nama: item.nama ?? item.Nama,
+            deskripsi: item.deskripsi ?? item.Deskripsi,
+          };
+        }
+
+        async function fetchJSON(url, options = {}) {
+          const res = await fetch(url, {
+            ...options,
+            headers: {
+              ...(options.headers || {}),
+              ...authHeader(),
+            },
+          });
+          const body = await res.json();
+          if (!res.ok || !body.success) {
+            throw new Error(body.error || `HTTP ${res.status}`);
+          }
+          return body.data;
+        }
+
+        function resetForm() {
+          idInput.value = "";
+          tujuanIdInput.value = "";
+          kodeInput.value = "";
+          namaInput.value = "";
+          deskripsiInput.value = "";
+        }
+
+        function tujuanLabel(tujuanId) {
+          return tujuanMap.get(Number(tujuanId)) || `Tujuan #${tujuanId}`;
+        }
+
+        function rowTemplate(item) {
+          const tr = document.createElement("tr");
+          tr.innerHTML = `
+            <td>${item.id}</td>
+            <td>${tujuanLabel(item.tujuanId)}</td>
+            <td>${item.kode}</td>
+            <td>${item.nama}</td>
+            <td>${item.deskripsi || "-"}</td>
+            <td class="text-nowrap">
+              <button class="btn btn-sm btn-outline-primary me-1" data-action="edit">Edit</button>
+              <button class="btn btn-sm btn-outline-danger" data-action="delete">Hapus</button>
+            </td>
+          `;
+
+          tr.querySelector('[data-action="edit"]').addEventListener(
+            "click",
+            () => {
+              idInput.value = item.id;
+              tujuanIdInput.value = item.tujuanId;
+              kodeInput.value = item.kode;
+              namaInput.value = item.nama;
+              deskripsiInput.value = item.deskripsi || "";
+              setStatus(`Mode edit ID ${item.id}`);
+            },
+          );
+
+          tr.querySelector('[data-action="delete"]').addEventListener(
+            "click",
+            async () => {
+              if (!confirm(`Hapus sasaran ${item.nama}?`)) {
+                return;
+              }
+              try {
+                await fetchJSON(`${endpoint}/${item.id}`, { method: "DELETE" });
+                setStatus("Data berhasil dihapus");
+                if (Number(idInput.value) === item.id) {
+                  resetForm();
+                }
+                await loadList();
+              } catch (error) {
+                setStatus(error.message, true);
+              }
+            },
+          );
+
+          return tr;
+        }
+
+        async function loadTujuanOptions() {
+          try {
+            const [misiData, tujuanData] = await Promise.all([
+              fetchJSON(misiEndpoint),
+              fetchJSON(tujuanEndpoint),
+            ]);
+
+            const misiItems = Array.isArray(misiData?.items)
+              ? misiData.items
+              : [];
+            const tujuanItems = Array.isArray(tujuanData?.items)
+              ? tujuanData.items
+              : [];
+
+            misiMap.clear();
+            misiItems.forEach((raw) => {
+              const id = Number(raw.id ?? raw.ID);
+              const kode = raw.kode ?? raw.Kode;
+              const nama = raw.nama ?? raw.Nama;
+              misiMap.set(id, `${kode} - ${nama}`);
+            });
+
+            tujuanIdInput.innerHTML = '<option value="">Pilih tujuan</option>';
+            tujuanMap.clear();
+            tujuanItems.forEach((raw) => {
+              const id = Number(raw.id ?? raw.ID);
+              const misiId = Number(raw.misi_id ?? raw.MisiID);
+              const kode = raw.kode ?? raw.Kode;
+              const nama = raw.nama ?? raw.Nama;
+              const misiText = misiMap.get(misiId) || `Misi #${misiId}`;
+              const label = `${misiText} / ${kode} - ${nama}`;
+
+              tujuanMap.set(id, label);
+
+              const option = document.createElement("option");
+              option.value = String(id);
+              option.textContent = label;
+              tujuanIdInput.appendChild(option);
+            });
+          } catch (error) {
+            setStatus(`Gagal memuat daftar tujuan: ${error.message}`, true);
+          }
+        }
+
+        async function loadList() {
+          tableBody.innerHTML =
+            '<tr><td colspan="6" class="text-center text-muted py-4">Memuat...</td></tr>';
+          try {
+            const params = new URLSearchParams();
+            const q = queryInput.value.trim();
+            if (q) {
+              params.set("q", q);
+            }
+            const url = params.toString()
+              ? `${endpoint}?${params.toString()}`
+              : endpoint;
+            const data = await fetchJSON(url);
+            const items = Array.isArray(data?.items)
+              ? data.items.map(normalizeItem)
+              : [];
+
+            tableBody.innerHTML = "";
+            if (items.length === 0) {
+              tableBody.innerHTML =
+                '<tr><td colspan="6" class="text-center text-muted py-4">Belum ada data</td></tr>';
+            } else {
+              items.forEach((item) => tableBody.appendChild(rowTemplate(item)));
+            }
+            metaText.textContent = `Total ${items.length} data`;
+          } catch (error) {
+            tableBody.innerHTML =
+              '<tr><td colspan="6" class="text-center text-danger py-4">Gagal memuat data</td></tr>';
+            setStatus(error.message, true);
+          }
+        }
+
+        form.addEventListener("submit", async (event) => {
+          event.preventDefault();
+
+          const payload = {
+            tujuan_id: Number(tujuanIdInput.value),
+            kode: kodeInput.value.trim(),
+            nama: namaInput.value.trim(),
+            deskripsi: deskripsiInput.value.trim(),
+          };
+
+          if (!payload.tujuan_id || !payload.kode || !payload.nama) {
+            setStatus("Tujuan, kode, dan nama wajib diisi", true);
+            return;
+          }
+
+          const id = idInput.value.trim();
+          const isEdit = Boolean(id);
+          const url = isEdit ? `${endpoint}/${id}` : endpoint;
+          const method = isEdit ? "PUT" : "POST";
+
+          try {
+            await fetchJSON(url, {
+              method,
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(payload),
+            });
+
+            setStatus(
+              isEdit ? "Data berhasil diperbarui" : "Data berhasil disimpan",
+            );
+            resetForm();
+            await loadList();
+          } catch (error) {
+            setStatus(error.message, true);
+          }
+        });
+
+        btnSearch.addEventListener("click", () => {
+          loadList();
+        });
+
+        queryInput.addEventListener("keydown", (event) => {
+          if (event.key === "Enter") {
+            event.preventDefault();
+            loadList();
+          }
+        });
+
+        btnReset.addEventListener("click", () => {
+          resetForm();
+          setStatus("Form direset");
+        });
+
+        loadTujuanOptions().then(loadList);
+      })();
+    </script>
+  </body>
+</html>
