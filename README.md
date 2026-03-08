@@ -1,6 +1,17 @@
 # e-plan-ai (E-Planning RSUD)
 
+[![Go CI](https://github.com/elfagam/planning_kinerja/actions/workflows/go-ci.yml/badge.svg)](https://github.com/elfagam/planning_kinerja/actions/workflows/go-ci.yml)
+
 Blueprint awal aplikasi e-Planning RSUD berbasis Golang + Gin + MySQL + Bootstrap.
+
+## Quick Start
+
+```bash
+cp .env.example .env
+go run ./cmd/api
+```
+
+Lalu buka `http://localhost:8080/ui`.
 
 ## Struktur Folder
 
