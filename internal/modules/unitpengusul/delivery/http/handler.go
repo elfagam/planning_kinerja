@@ -248,9 +248,10 @@ func (h *Handler) ensureReady(c *gin.Context) bool {
 }
 
 var unitPengusulAllowedRoles = map[string]bool{
-	"ADMIN":     true,
-	"OPERATOR":  true,
-	"PERENCANA": true,
+	"ADMIN":       true,
+	"SUPER_ADMIN": true,
+	"OPERATOR":    true,
+	"PERENCANA":   true,
 }
 
 func allowedToMutateUnitPengusul(c *gin.Context) bool {

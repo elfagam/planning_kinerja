@@ -223,9 +223,10 @@ func (h *Handler) ensureReady(c *gin.Context) bool {
 
 // visiMutationAllowedRoles are roles permitted to create/update/delete visi.
 var visiMutationAllowedRoles = map[string]bool{
-	"ADMIN":     true,
-	"OPERATOR":  true,
-	"PERENCANA": true,
+	"ADMIN":       true,
+	"SUPER_ADMIN": true,
+	"OPERATOR":    true,
+	"PERENCANA":   true,
 }
 
 func allowedToMutateVisi(c *gin.Context) bool {

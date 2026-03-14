@@ -537,7 +537,8 @@
         }
 
         function canMutateByRole(role) {
-          return normalizeRole(role) === "ADMIN";
+          const normalized = normalizeRole(role);
+          return normalized === "ADMIN" || normalized === "SUPER_ADMIN";
         }
 
         function applyRoleAccess() {
@@ -568,7 +569,7 @@
             });
 
           setStatus(
-            `Mode baca saja — login sebagai role ${currentUserRole || "UNKNOWN"}. Hanya ADMIN yang dapat mengubah data user.`,
+            `Mode baca saja — login sebagai role ${currentUserRole || "UNKNOWN"}. Hanya ADMIN/SUPER_ADMIN yang dapat mengubah data user.`,
           );
         }
 

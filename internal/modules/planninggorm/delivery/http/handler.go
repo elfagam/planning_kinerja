@@ -1062,9 +1062,10 @@ func (h *Handler) ensureReady(c *gin.Context) bool {
 
 // planningMutationAllowedRoles are the roles permitted to mutate any planning resource.
 var planningMutationAllowedRoles = map[string]bool{
-	"ADMIN":     true,
-	"OPERATOR":  true,
-	"PERENCANA": true,
+	"ADMIN":       true,
+	"SUPER_ADMIN": true,
+	"OPERATOR":    true,
+	"PERENCANA":   true,
 }
 
 // allowedToMutatePlanningData returns false (with 403) when the caller's role
@@ -1074,8 +1075,8 @@ func allowedToMutatePlanningData(c *gin.Context, resourcePath string) bool {
 	rawRole, _ := c.Get("auth.role")
 	role := strings.ToUpper(strings.TrimSpace(fmt.Sprintf("%v", rawRole)))
 	if resourcePath == "users" {
-		if role != "ADMIN" {
-			response.Error(c, http.StatusForbidden, "hanya ADMIN yang dapat mengelola data pengguna")
+		if role != "ADMIN" && role != "SUPER_ADMIN" {
+			response.Error(c, http.StatusForbidden, "hanya ADMIN/SUPER_ADMIN yang dapat mengelola data pengguna")
 			return false
 		}
 		return true
