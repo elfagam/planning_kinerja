@@ -191,6 +191,7 @@
 
         const MUTATION_ROLES = new Set(["ADMIN", "OPERATOR", "PERENCANA"]);
         let currentUserRole = "";
+        let roleResolved = false;
 
         function normalizeRole(raw) {
           return String(raw || "")
@@ -203,17 +204,35 @@
         }
 
         function applyRoleAccess() {
-          if (canMutateByRole(currentUserRole)) return;
-          form
-            .querySelectorAll("input, textarea, select, button[type='submit']")
-            .forEach((el) => {
-              el.disabled = true;
+          const controls = form.querySelectorAll(
+            "input, textarea, select, button[type='submit']",
+          );
+          const existingInfo = form.querySelector(
+            '[data-role-readonly-msg="1"]',
+          );
+
+          if (!roleResolved || canMutateByRole(currentUserRole)) {
+            controls.forEach((el) => {
+              el.disabled = false;
             });
-          const info = document.createElement("p");
-          info.className = "text-warning small mt-2 mb-0";
-          info.textContent =
-            "Mode baca saja — role Anda tidak memiliki hak untuk mengubah data visi.";
-          form.appendChild(info);
+            if (existingInfo) {
+              existingInfo.remove();
+            }
+            return;
+          }
+
+          controls.forEach((el) => {
+            el.disabled = true;
+          });
+
+          if (!existingInfo) {
+            const info = document.createElement("p");
+            info.className = "text-warning small mt-2 mb-0";
+            info.setAttribute("data-role-readonly-msg", "1");
+            info.textContent =
+              "Mode baca saja — role Anda tidak memiliki hak untuk mengubah data visi.";
+            form.appendChild(info);
+          }
         }
 
         function authHeader() {
@@ -270,7 +289,8 @@
 
         function rowTemplate(item) {
           const tr = document.createElement("tr");
-          const actionCell = canMutateByRole(currentUserRole)
+          const canMutate = !roleResolved || canMutateByRole(currentUserRole);
+          const actionCell = canMutate
             ? `<button class="btn btn-sm btn-outline-primary me-1" data-action="edit">Edit</button>
               <button class="btn btn-sm btn-outline-danger" data-action="delete">Hapus</button>`
             : `<span class="text-muted small">Read-only</span>`;
@@ -350,7 +370,7 @@
         form.addEventListener("submit", async (e) => {
           e.preventDefault();
 
-          if (!canMutateByRole(currentUserRole)) {
+          if (roleResolved && !canMutateByRole(currentUserRole)) {
             setStatus(
               "Anda tidak memiliki hak akses untuk menyimpan perubahan",
               true,
@@ -408,15 +428,25 @@
               localStorage.getItem("AUTH_TOKEN") ||
               localStorage.getItem("authToken") ||
               "";
-            if (!token) return;
+            if (!token) {
+              roleResolved = false;
+              return;
+            }
             const res = await fetch("/api/v1/auth/me", {
               headers: { Authorization: `Bearer ${token}` },
             });
-            if (!res.ok) return;
+            if (!res.ok) {
+              roleResolved = false;
+              return;
+            }
             const body = await res.json();
-            currentUserRole = normalizeRole(body?.data?.role ?? "");
+            currentUserRole = normalizeRole(
+              body?.data?.role ?? body?.data?.Role ?? "",
+            );
+            roleResolved = currentUserRole !== "";
           } catch (_) {
-            // non-fatal: fallback to read-only
+            // non-fatal: keep editable and rely on backend authorization.
+            roleResolved = false;
           }
         }
 
