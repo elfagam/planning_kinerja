@@ -2,10 +2,13 @@ package http
 
 import (
 	"errors"
+	"fmt"
 	"log"
 	"net/http"
 	"strconv"
 	"strings"
+
+	gomysql "github.com/go-sql-driver/mysql"
 
 	"e-plan-ai/internal/config"
 	"e-plan-ai/internal/shared/database"
@@ -22,10 +25,13 @@ type Handler struct {
 }
 
 type upsertRequest struct {
-	Kode       string `json:"kode"`
-	Nama       string `json:"nama"`
-	Keterangan string `json:"keterangan"`
-	Aktif      *bool  `json:"aktif"`
+	Kode                   string `json:"kode"`
+	Nama                   string `json:"nama"`
+	NamaPenanggungjawab     string `json:"nama_penanggungjawab"`
+	NipPenanggungjawab      string `json:"nip_penanggungjawab"`
+	JabatanPenanggungjawab  string `json:"jabatan_penanggungjawab"`
+	Keterangan             string `json:"keterangan"`
+	Aktif                  *bool  `json:"aktif"`
 }
 
 func NewHandler(cfg config.Config) *Handler {
@@ -62,7 +68,10 @@ func (h *Handler) List(c *gin.Context) {
 	query := h.db.WithContext(c.Request.Context()).Model(&database.UnitPengusul{})
 	if q != "" {
 		like := "%" + q + "%"
-		query = query.Where("kode LIKE ? OR nama LIKE ?", like, like)
+		query = query.Where(
+			"kode LIKE ? OR nama LIKE ? OR nama_penanggungjawab LIKE ? OR nip_penanggungjawab LIKE ?",
+			like, like, like, like,
+		)
 	}
 
 	var items []database.UnitPengusul
@@ -102,6 +111,9 @@ func (h *Handler) Create(c *gin.Context) {
 	if !h.ensureReady(c) {
 		return
 	}
+	if !allowedToMutateUnitPengusul(c) {
+		return
+	}
 
 	var req upsertRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -119,14 +131,22 @@ func (h *Handler) Create(c *gin.Context) {
 	}
 
 	item := database.UnitPengusul{
-		Kode:       strings.TrimSpace(req.Kode),
-		Nama:       strings.TrimSpace(req.Nama),
-		Keterangan: strings.TrimSpace(req.Keterangan),
-		Aktif:      aktif,
+		Kode:                    strings.TrimSpace(req.Kode),
+		Nama:                    strings.TrimSpace(req.Nama),
+		NamaPenanggungjawab:     strings.TrimSpace(req.NamaPenanggungjawab),
+		NipPenanggungjawab:      strings.TrimSpace(req.NipPenanggungjawab),
+		JabatanPenanggungjawab:  strings.TrimSpace(req.JabatanPenanggungjawab),
+		Keterangan:              strings.TrimSpace(req.Keterangan),
+		Aktif:                   aktif,
 	}
 
 	if err := h.db.WithContext(c.Request.Context()).Create(&item).Error; err != nil {
-		response.Error(c, http.StatusBadRequest, "failed to create unit_pengusul")
+		var mysqlErr *gomysql.MySQLError
+		if errors.As(err, &mysqlErr) && mysqlErr.Number == 1062 {
+			response.Error(c, http.StatusConflict, "kode sudah digunakan, gunakan kode lain")
+			return
+		}
+		response.Error(c, http.StatusInternalServerError, "failed to create unit_pengusul")
 		return
 	}
 
@@ -135,6 +155,9 @@ func (h *Handler) Create(c *gin.Context) {
 
 func (h *Handler) Update(c *gin.Context) {
 	if !h.ensureReady(c) {
+		return
+	}
+	if !allowedToMutateUnitPengusul(c) {
 		return
 	}
 
@@ -166,13 +189,21 @@ func (h *Handler) Update(c *gin.Context) {
 
 	item.Kode = strings.TrimSpace(req.Kode)
 	item.Nama = strings.TrimSpace(req.Nama)
+	item.NamaPenanggungjawab = strings.TrimSpace(req.NamaPenanggungjawab)
+	item.NipPenanggungjawab = strings.TrimSpace(req.NipPenanggungjawab)
+	item.JabatanPenanggungjawab = strings.TrimSpace(req.JabatanPenanggungjawab)
 	item.Keterangan = strings.TrimSpace(req.Keterangan)
 	if req.Aktif != nil {
 		item.Aktif = *req.Aktif
 	}
 
 	if err := h.db.WithContext(c.Request.Context()).Save(&item).Error; err != nil {
-		response.Error(c, http.StatusBadRequest, "failed to update unit_pengusul")
+		var mysqlErr *gomysql.MySQLError
+		if errors.As(err, &mysqlErr) && mysqlErr.Number == 1062 {
+			response.Error(c, http.StatusConflict, "kode sudah digunakan, gunakan kode lain")
+			return
+		}
+		response.Error(c, http.StatusInternalServerError, "failed to update unit_pengusul")
 		return
 	}
 
@@ -181,6 +212,9 @@ func (h *Handler) Update(c *gin.Context) {
 
 func (h *Handler) Delete(c *gin.Context) {
 	if !h.ensureReady(c) {
+		return
+	}
+	if !allowedToMutateUnitPengusul(c) {
 		return
 	}
 
@@ -211,6 +245,22 @@ func (h *Handler) ensureReady(c *gin.Context) bool {
 	}
 	response.Error(c, http.StatusServiceUnavailable, h.reason)
 	return false
+}
+
+var unitPengusulAllowedRoles = map[string]bool{
+	"ADMIN":     true,
+	"OPERATOR":  true,
+	"PERENCANA": true,
+}
+
+func allowedToMutateUnitPengusul(c *gin.Context) bool {
+	rawRole, _ := c.Get("auth.role")
+	role := strings.ToUpper(strings.TrimSpace(fmt.Sprintf("%v", rawRole)))
+	if !unitPengusulAllowedRoles[role] {
+		response.Error(c, http.StatusForbidden, "anda tidak memiliki hak akses untuk mengubah data unit pengusul")
+		return false
+	}
+	return true
 }
 
 func parseID(c *gin.Context) (uint64, bool) {

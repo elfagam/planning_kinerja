@@ -679,7 +679,7 @@ func (h *Handler) create(rc resourceConfig) gin.HandlerFunc {
 			return
 		}
 
-		if rc.path == "rencana_kerja" && !allowedToMutateRencanaKerja(c) {
+		if !allowedToMutatePlanningData(c, rc.path) {
 			return
 		}
 
@@ -856,7 +856,7 @@ func (h *Handler) update(rc resourceConfig) gin.HandlerFunc {
 			return
 		}
 
-		if rc.path == "rencana_kerja" && !allowedToMutateRencanaKerja(c) {
+		if !allowedToMutatePlanningData(c, rc.path) {
 			return
 		}
 
@@ -1022,7 +1022,7 @@ func (h *Handler) delete(rc resourceConfig) gin.HandlerFunc {
 			return
 		}
 
-		if rc.path == "rencana_kerja" && !allowedToMutateRencanaKerja(c) {
+		if !allowedToMutatePlanningData(c, rc.path) {
 			return
 		}
 
@@ -1060,20 +1060,28 @@ func (h *Handler) ensureReady(c *gin.Context) bool {
 	return false
 }
 
-// rencanaKerjaAllowedRoles are the roles permitted to mutate rencana_kerja records.
-var rencanaKerjaAllowedRoles = map[string]bool{
+// planningMutationAllowedRoles are the roles permitted to mutate any planning resource.
+var planningMutationAllowedRoles = map[string]bool{
 	"ADMIN":     true,
 	"OPERATOR":  true,
 	"PERENCANA": true,
 }
 
-// allowedToMutateRencanaKerja returns false and writes a 403 response when the
-// caller's role is not in rencanaKerjaAllowedRoles. Returns true when allowed.
-func allowedToMutateRencanaKerja(c *gin.Context) bool {
+// allowedToMutatePlanningData returns false (with 403) when the caller's role
+// is not in planningMutationAllowedRoles. For the "users" resource, only ADMIN
+// is allowed.
+func allowedToMutatePlanningData(c *gin.Context, resourcePath string) bool {
 	rawRole, _ := c.Get("auth.role")
 	role := strings.ToUpper(strings.TrimSpace(fmt.Sprintf("%v", rawRole)))
-	if !rencanaKerjaAllowedRoles[role] {
-		response.Error(c, http.StatusForbidden, "anda tidak memiliki hak akses untuk melakukan perubahan rencana kerja")
+	if resourcePath == "users" {
+		if role != "ADMIN" {
+			response.Error(c, http.StatusForbidden, "hanya ADMIN yang dapat mengelola data pengguna")
+			return false
+		}
+		return true
+	}
+	if !planningMutationAllowedRoles[role] {
+		response.Error(c, http.StatusForbidden, "anda tidak memiliki hak akses untuk melakukan perubahan data perencanaan")
 		return false
 	}
 	return true
