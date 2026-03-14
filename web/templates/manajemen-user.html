@@ -522,6 +522,7 @@
         const selectedIDs = new Set();
         let onConfirm = null;
         let currentUserRole = "";
+        let roleResolved = false;
 
         function normalizeRole(raw) {
           return String(raw || "")
@@ -534,7 +535,17 @@
         }
 
         function applyRoleAccess() {
-          if (canMutateByRole(currentUserRole)) {
+          if (!roleResolved || canMutateByRole(currentUserRole)) {
+            btnNewUser.disabled = false;
+            btnBulkActivate.disabled = false;
+            btnBulkDeactivate.disabled = false;
+            userForm
+              .querySelectorAll(
+                "input, select, textarea, button[type='submit']",
+              )
+              .forEach((el) => {
+                el.disabled = false;
+              });
             return;
           }
 
@@ -623,8 +634,13 @@
         }
 
         async function loadCurrentUser() {
-          const me = await fetchJSON("/api/v1/auth/me");
-          currentUserRole = normalizeRole(me?.role ?? me?.Role ?? "");
+          try {
+            const me = await fetchJSON("/api/v1/auth/me");
+            currentUserRole = normalizeRole(me?.role ?? me?.Role ?? "");
+            roleResolved = currentUserRole !== "";
+          } catch (error) {
+            roleResolved = false;
+          }
         }
 
         function statusBadge(status) {
@@ -720,7 +736,7 @@
         }
 
         function renderTable() {
-          const canMutate = canMutateByRole(currentUserRole);
+          const canMutate = !roleResolved || canMutateByRole(currentUserRole);
           tableBody.innerHTML = "";
 
           if (users.length === 0) {
@@ -868,7 +884,7 @@
         });
 
         btnNewUser.addEventListener("click", () => {
-          if (!canMutateByRole(currentUserRole)) {
+          if (roleResolved && !canMutateByRole(currentUserRole)) {
             setStatus(
               "Anda tidak memiliki hak akses untuk menambah user",
               true,
@@ -880,7 +896,7 @@
 
         userForm.addEventListener("submit", async (event) => {
           event.preventDefault();
-          if (!canMutateByRole(currentUserRole)) {
+          if (roleResolved && !canMutateByRole(currentUserRole)) {
             setStatus(
               "Anda tidak memiliki hak akses untuk menyimpan perubahan",
               true,
@@ -949,7 +965,7 @@
         });
 
         btnBulkActivate.addEventListener("click", () => {
-          if (!canMutateByRole(currentUserRole)) {
+          if (roleResolved && !canMutateByRole(currentUserRole)) {
             setStatus(
               "Anda tidak memiliki hak akses untuk bulk update user",
               true,
@@ -992,7 +1008,7 @@
         });
 
         btnBulkDeactivate.addEventListener("click", () => {
-          if (!canMutateByRole(currentUserRole)) {
+          if (roleResolved && !canMutateByRole(currentUserRole)) {
             setStatus(
               "Anda tidak memiliki hak akses untuk bulk update user",
               true,
