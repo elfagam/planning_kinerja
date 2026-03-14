@@ -611,6 +611,11 @@
           window.location.href = `/ui/login?next=${next}`;
         }
 
+        function redirectNonAdmin() {
+          // Keep this page admin-only to avoid confusing read-only behavior.
+          window.location.href = "/ui/dashboard";
+        }
+
         function authHeader() {
           const token = getAccessToken();
           return token ? { Authorization: `Bearer ${token}` } : {};
@@ -1106,6 +1111,10 @@
           .then(() => {
             if (!roleResolved) {
               resolveRoleFromToken();
+            }
+            if (roleResolved && !canMutateByRole(currentUserRole)) {
+              redirectNonAdmin();
+              return;
             }
             applyRoleAccess();
             renderTable();
