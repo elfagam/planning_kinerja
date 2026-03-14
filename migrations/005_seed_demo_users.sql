@@ -98,7 +98,7 @@ WHERE u.code = 'UNIT-ADM'
 INSERT INTO user_roles (user_id, role_id)
 SELECT u.id, r.id
 FROM users u
-JOIN roles r ON r.code = 'SUPER_ADMIN'
+JOIN roles r ON r.code = 'ADMIN'
 WHERE u.email = 'superadmin@rsudcontoh.go.id'
   AND NOT EXISTS (
     SELECT 1 FROM user_roles ur

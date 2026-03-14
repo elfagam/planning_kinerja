@@ -712,21 +712,22 @@ func (h *Handler) create(rc resourceConfig) gin.HandlerFunc {
 				return
 			}
 
-			user := database.User{
-				UnitPengusulID:  userPayload.UnitPengusulID,
-				UnitPelaksanaID: userPayload.UnitPelaksanaID,
-				NamaLengkap:     userPayload.NamaLengkap,
-				Email:           userPayload.Email,
-				PasswordHash:    userPayload.PasswordHash,
-				Role:            userPayload.Role,
-				Aktif:           userPayload.Aktif,
+			now := time.Now()
+			insertPayload := map[string]any{
+				"unit_pengusul_id":  userPayload.UnitPengusulID,
+				"unit_pelaksana_id": userPayload.UnitPelaksanaID,
+				"nama_lengkap":      userPayload.NamaLengkap,
+				"full_name":         userPayload.NamaLengkap,
+				"email":             userPayload.Email,
+				"password_hash":     userPayload.PasswordHash,
+				"role":              userPayload.Role,
+				"aktif":             userPayload.Aktif,
+				"is_active":         userPayload.Aktif,
+				"created_at":        now,
+				"updated_at":        now,
 			}
 
-			now := time.Now()
-			user.CreatedAt = now
-			user.UpdatedAt = now
-
-			if err := h.db.WithContext(c.Request.Context()).Create(&user).Error; err != nil {
+			if err := h.db.WithContext(c.Request.Context()).Table("users").Create(insertPayload).Error; err != nil {
 				response.Error(c, http.StatusBadRequest, mapWriteError(rc, "create", err))
 				return
 			}
@@ -747,7 +748,8 @@ func (h *Handler) create(rc resourceConfig) gin.HandlerFunc {
 					"u.updated_at",
 				}, ", ")).
 				Joins("LEFT JOIN unit_pengusul up ON up.id = u.unit_pengusul_id").
-				Where("u.id = ?", user.ID).
+				Where("u.email = ?", userPayload.Email).
+				Order("u.id DESC").
 				First(&created).Error; err != nil {
 				response.Error(c, http.StatusInternalServerError, mapReadError(rc, "get", err))
 				return
@@ -883,6 +885,7 @@ func (h *Handler) update(rc resourceConfig) gin.HandlerFunc {
 			updates := map[string]any{}
 			if userPayload.NamaLengkap != "" {
 				updates["nama_lengkap"] = userPayload.NamaLengkap
+				updates["full_name"] = userPayload.NamaLengkap
 			}
 			if userPayload.Email != "" {
 				updates["email"] = userPayload.Email
@@ -891,6 +894,7 @@ func (h *Handler) update(rc resourceConfig) gin.HandlerFunc {
 				updates["role"] = userPayload.Role
 			}
 			updates["aktif"] = userPayload.Aktif
+			updates["is_active"] = userPayload.Aktif
 			updates["unit_pengusul_id"] = userPayload.UnitPengusulID
 			updates["unit_pelaksana_id"] = userPayload.UnitPelaksanaID
 			if userPayload.PasswordHash != "" {
@@ -904,7 +908,7 @@ func (h *Handler) update(rc resourceConfig) gin.HandlerFunc {
 
 			updates["updated_at"] = time.Now()
 
-			res := h.db.WithContext(c.Request.Context()).Model(&database.User{}).Where("id = ?", id).Updates(updates)
+			res := h.db.WithContext(c.Request.Context()).Table("users").Where("id = ?", id).Updates(updates)
 			if res.Error != nil {
 				response.Error(c, http.StatusBadRequest, mapWriteError(rc, "update", res.Error))
 				return
@@ -1062,10 +1066,9 @@ func (h *Handler) ensureReady(c *gin.Context) bool {
 
 // planningMutationAllowedRoles are the roles permitted to mutate any planning resource.
 var planningMutationAllowedRoles = map[string]bool{
-	"ADMIN":       true,
-	"SUPER_ADMIN": true,
-	"OPERATOR":    true,
-	"PERENCANA":   true,
+	"ADMIN":     true,
+	"OPERATOR":  true,
+	"PERENCANA": true,
 }
 
 // allowedToMutatePlanningData returns false (with 403) when the caller's role
@@ -1075,8 +1078,8 @@ func allowedToMutatePlanningData(c *gin.Context, resourcePath string) bool {
 	rawRole, _ := c.Get("auth.role")
 	role := strings.ToUpper(strings.TrimSpace(fmt.Sprintf("%v", rawRole)))
 	if resourcePath == "users" {
-		if role != "ADMIN" && role != "SUPER_ADMIN" {
-			response.Error(c, http.StatusForbidden, "hanya ADMIN/SUPER_ADMIN yang dapat mengelola data pengguna")
+		if role != "ADMIN" {
+			response.Error(c, http.StatusForbidden, "hanya ADMIN yang dapat mengelola data pengguna")
 			return false
 		}
 		return true

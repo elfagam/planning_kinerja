@@ -124,7 +124,7 @@ func (s *Service) transition(ctx context.Context, action string, clientID uint64
 func normalizeActorRole(raw string) string {
 	role := strings.ToUpper(strings.TrimSpace(raw))
 	switch role {
-	case "SUPER_ADMIN":
+	case "ADMIN":
 		return RoleAdmin
 	case "PLANNER":
 		return RolePerencana

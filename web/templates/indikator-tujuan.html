@@ -184,6 +184,7 @@
 
         const MUTATION_ROLES = new Set(["ADMIN", "OPERATOR", "PERENCANA"]);
         let currentUserRole = "";
+        let roleResolved = false;
 
         function normalizeRole(raw) {
           return String(raw || "")
@@ -196,23 +197,75 @@
         }
 
         function applyRoleAccess() {
-          if (canMutateByRole(currentUserRole)) return;
-          form
-            .querySelectorAll("input, textarea, select, button[type='submit']")
-            .forEach((el) => {
-              el.disabled = true;
+          const controls = form.querySelectorAll(
+            "input, textarea, select, button[type='submit']",
+          );
+          const existingInfo = form.querySelector(
+            '[data-role-readonly-msg="1"]',
+          );
+
+          if (!roleResolved || canMutateByRole(currentUserRole)) {
+            controls.forEach((el) => {
+              el.disabled = false;
             });
-          const info = document.createElement("p");
-          info.className = "text-warning small mt-2 mb-0";
-          info.textContent =
-            "Mode baca saja — role Anda tidak memiliki hak untuk mengubah data.";
-          form.appendChild(info);
+            if (existingInfo) {
+              existingInfo.remove();
+            }
+            return;
+          }
+
+          controls.forEach((el) => {
+            el.disabled = true;
+          });
+
+          if (!existingInfo) {
+            const info = document.createElement("p");
+            info.className = "text-warning small mt-2 mb-0";
+            info.setAttribute("data-role-readonly-msg", "1");
+            info.textContent =
+              "Mode baca saja — role Anda tidak memiliki hak untuk mengubah data form indikator tujuan.";
+            form.appendChild(info);
+          }
         }
+
+        function decodeJwtPayload(token) {
+          if (!token || token.split(".").length < 2) {
+            return null;
+          }
+          try {
+            const base64 = token
+              .split(".")[1]
+              .replace(/-/g, "+")
+              .replace(/_/g, "/");
+            const padded =
+              base64 + "=".repeat((4 - (base64.length % 4 || 4)) % 4);
+            return JSON.parse(atob(padded));
+          } catch (_) {
+            return null;
+          }
+        }
+
+        function pickFreshestToken() {
+          const keys = ["AUTH_TOKEN", "authToken"];
+          let chosen = "";
+          let chosenIat = -1;
+
+          keys.forEach((key) => {
+            const token = localStorage.getItem(key) || "";
+            if (!token) return;
+            const payload = decodeJwtPayload(token);
+            const iat = Number(payload?.iat || 0);
+            if (!chosen || iat > chosenIat) {
+              chosen = token;
+              chosenIat = iat;
+            }
+          });
+
+          return chosen;
+        }
+
         function authHeader() {
-          const token =
-            localStorage.getItem("AUTH_TOKEN") ||
-            localStorage.getItem("authToken") ||
-            "";
+          const token = pickFreshestToken();
           return token ? { Authorization: `Bearer ${token}` } : {};
         }
 
@@ -266,6 +319,7 @@
 
         function rowTemplate(item) {
           const tr = document.createElement("tr");
+          const canMutate = !roleResolved || canMutateByRole(currentUserRole);
           tr.innerHTML = `
             <td>${item.id}</td>
             <td>${tujuanLabel(item.tujuanId)}</td>
@@ -275,7 +329,7 @@
             <td>${Number(item.baseline || 0).toLocaleString("id-ID")}</td>
             <td>${item.formula || "-"}</td>
             <td class="text-nowrap">
-              ${canMutateByRole(currentUserRole) ? '<button class="btn btn-sm btn-outline-primary me-1" data-action="edit">Edit</button><button class="btn btn-sm btn-outline-danger" data-action="delete">Hapus</button>' : '<span class="text-muted small">Read-only</span>'}
+              ${canMutate ? '<button class="btn btn-sm btn-outline-primary me-1" data-action="edit">Edit</button><button class="btn btn-sm btn-outline-danger" data-action="delete">Hapus</button>' : '<span class="text-muted small">Read-only</span>'}
             </td>
           `;
 
@@ -394,7 +448,7 @@
         form.addEventListener("submit", async (event) => {
           event.preventDefault();
 
-          if (!canMutateByRole(currentUserRole)) {
+          if (roleResolved && !canMutateByRole(currentUserRole)) {
             setStatus(
               "Anda tidak memiliki hak akses untuk menyimpan perubahan",
               true,
@@ -456,19 +510,29 @@
 
         async function loadCurrentUser() {
           try {
-            const token =
-              localStorage.getItem("AUTH_TOKEN") ||
-              localStorage.getItem("authToken") ||
-              "";
-            if (!token) return;
+            const token = pickFreshestToken();
+            if (!token) {
+              roleResolved = false;
+              return;
+            }
             const res = await fetch("/api/v1/auth/me", {
               headers: { Authorization: `Bearer ${token}` },
             });
-            if (!res.ok) return;
+            if (!res.ok) {
+              const payload = decodeJwtPayload(token);
+              currentUserRole = normalizeRole(payload?.role ?? "");
+              roleResolved = currentUserRole !== "";
+              return;
+            }
             const body = await res.json();
-            currentUserRole = normalizeRole(body?.data?.role ?? "");
+            currentUserRole = normalizeRole(
+              body?.data?.role ?? body?.data?.Role ?? "",
+            );
+            roleResolved = currentUserRole !== "";
           } catch (_) {
-            // non-fatal
+            const payload = decodeJwtPayload(pickFreshestToken());
+            currentUserRole = normalizeRole(payload?.role ?? "");
+            roleResolved = currentUserRole !== "";
           }
         }
 

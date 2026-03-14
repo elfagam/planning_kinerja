@@ -5,8 +5,8 @@
 -- Default Roles
 -- ------------------------------
 INSERT INTO roles (code, name)
-SELECT 'SUPER_ADMIN', 'Super Administrator'
-WHERE NOT EXISTS (SELECT 1 FROM roles WHERE code = 'SUPER_ADMIN');
+SELECT 'ADMIN', 'Administrator'
+WHERE NOT EXISTS (SELECT 1 FROM roles WHERE code = 'ADMIN');
 
 INSERT INTO roles (code, name)
 SELECT 'PLANNER', 'Perencana Unit'
