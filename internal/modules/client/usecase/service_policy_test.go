@@ -3,6 +3,7 @@ package usecase
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"testing"
 	"time"
 
@@ -85,5 +86,52 @@ func TestDelete_OperatorNonOwner_Forbidden(t *testing.T) {
 	}
 	if err != domain.ErrForbiddenOperation {
 		t.Fatalf("expected ErrForbiddenOperation, got %v", err)
+	}
+}
+
+func TestListAuditLogs_AdminAllowed(t *testing.T) {
+	repo := &fakeRepo{
+		auditLogs: []AuditLog{{ID: 11, Action: "CLIENT_CREATE", ResourceType: "CLIENT", CreatedAt: time.Now().Format(time.RFC3339)}},
+	}
+	svc := NewService(fakeTxManager{}, repo)
+
+	items, total, err := svc.ListAuditLogs(context.Background(), Actor{ID: 1, Role: RoleAdmin}, AuditListFilter{Page: 1, Limit: 10})
+	if err != nil {
+		t.Fatalf("expected nil error, got %v", err)
+	}
+	if total != 1 {
+		t.Fatalf("expected total 1, got %d", total)
+	}
+	if len(items) != 1 {
+		t.Fatalf("expected 1 item, got %d", len(items))
+	}
+	if items[0].Action != "CLIENT_CREATE" {
+		t.Fatalf("expected action CLIENT_CREATE, got %s", items[0].Action)
+	}
+}
+
+func TestListAuditLogs_OperatorForbidden(t *testing.T) {
+	repo := &fakeRepo{}
+	svc := NewService(fakeTxManager{}, repo)
+
+	_, _, err := svc.ListAuditLogs(context.Background(), Actor{ID: 10, Role: RoleOperator}, AuditListFilter{Page: 1, Limit: 10})
+	if err == nil {
+		t.Fatalf("expected error, got nil")
+	}
+	if err != domain.ErrForbiddenOperation {
+		t.Fatalf("expected ErrForbiddenOperation, got %v", err)
+	}
+}
+
+func TestListAuditLogs_InvalidActionValidation(t *testing.T) {
+	repo := &fakeRepo{}
+	svc := NewService(fakeTxManager{}, repo)
+
+	_, _, err := svc.ListAuditLogs(context.Background(), Actor{ID: 1, Role: RoleAdmin}, AuditListFilter{Action: "DELETE", Page: 1, Limit: 10})
+	if err == nil {
+		t.Fatalf("expected error, got nil")
+	}
+	if !errors.Is(err, domain.ErrValidation) {
+		t.Fatalf("expected ErrValidation, got %v", err)
 	}
 }

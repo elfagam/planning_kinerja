@@ -24,6 +24,8 @@ type GormTxManager struct {
 	db *gorm.DB
 }
 
+const clientAuditResourceType = "CLIENT"
+
 type clientRow struct {
 	ID             uint64     `gorm:"column:id"`
 	Kode           string     `gorm:"column:kode"`
@@ -56,7 +58,9 @@ type historyRow struct {
 }
 
 type auditLogRow struct {
+	ID             uint64    `gorm:"column:id"`
 	UserID         *uint64   `gorm:"column:user_id"`
+	UserName       *string   `gorm:"column:user_name"`
 	Action         string    `gorm:"column:action"`
 	ResourceType   string    `gorm:"column:resource_type"`
 	ResourceID     *uint64   `gorm:"column:resource_id"`
@@ -124,6 +128,53 @@ func (r *GormRepository) List(ctx context.Context, filter usecase.ListFilter) ([
 	for _, row := range rows {
 		items = append(items, row.toDomain())
 	}
+	return items, total, nil
+}
+
+func (r *GormRepository) ListAuditLogs(ctx context.Context, filter usecase.AuditListFilter) ([]usecase.AuditLog, int64, error) {
+	if r == nil || r.db == nil {
+		return nil, 0, fmt.Errorf("nil client repository db")
+	}
+
+	query := r.dbFromContext(ctx).
+		Table("audit_logs al").
+		Select("al.id, al.user_id, u.nama_lengkap AS user_name, al.action, al.resource_type, al.resource_id, al.request_payload, al.ip_address, al.user_agent, al.created_at").
+		Joins("LEFT JOIN users u ON u.id = al.user_id").
+		Where("al.resource_type = ?", clientAuditResourceType)
+
+	if filter.Action != "" {
+		query = query.Where("al.action = ?", filter.Action)
+	}
+	if filter.UserID != nil {
+		query = query.Where("al.user_id = ?", *filter.UserID)
+	}
+	if filter.ResourceID != nil {
+		query = query.Where("al.resource_id = ?", *filter.ResourceID)
+	}
+
+	var total int64
+	if err := query.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+
+	if filter.Page <= 0 {
+		filter.Page = 1
+	}
+	if filter.Limit <= 0 {
+		filter.Limit = 10
+	}
+	offset := (filter.Page - 1) * filter.Limit
+
+	var rows []auditLogRow
+	if err := query.Order("al.created_at DESC, al.id DESC").Offset(offset).Limit(filter.Limit).Find(&rows).Error; err != nil {
+		return nil, 0, err
+	}
+
+	items := make([]usecase.AuditLog, 0, len(rows))
+	for _, row := range rows {
+		items = append(items, row.toAuditLog())
+	}
+
 	return items, total, nil
 }
 
@@ -355,5 +406,20 @@ func (r historyRow) toDomain() domain.StatusHistory {
 		ActorID:    r.ActorID,
 		ActorName:  r.ActorName,
 		CreatedAt:  r.CreatedAt,
+	}
+}
+
+func (r auditLogRow) toAuditLog() usecase.AuditLog {
+	return usecase.AuditLog{
+		ID:             r.ID,
+		UserID:         r.UserID,
+		UserName:       r.UserName,
+		Action:         r.Action,
+		ResourceType:   r.ResourceType,
+		ResourceID:     r.ResourceID,
+		RequestPayload: r.RequestPayload,
+		IPAddress:      r.IPAddress,
+		UserAgent:      r.UserAgent,
+		CreatedAt:      r.CreatedAt.Format(time.RFC3339),
 	}
 }

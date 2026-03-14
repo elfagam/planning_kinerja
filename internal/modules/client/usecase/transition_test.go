@@ -20,10 +20,15 @@ type fakeRepo struct {
 	updated   bool
 	histories []domain.StatusHistory
 	audits    []AuditLogEntry
+	auditLogs []AuditLog
 }
 
 func (f *fakeRepo) List(ctx context.Context, filter ListFilter) ([]domain.Client, int64, error) {
 	return []domain.Client{f.client}, 1, nil
+}
+
+func (f *fakeRepo) ListAuditLogs(ctx context.Context, filter AuditListFilter) ([]AuditLog, int64, error) {
+	return f.auditLogs, int64(len(f.auditLogs)), nil
 }
 
 func (f *fakeRepo) GetByID(ctx context.Context, id uint64) (domain.Client, error) {

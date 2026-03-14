@@ -16,6 +16,7 @@ type ListFilter struct {
 
 type Repository interface {
 	List(ctx context.Context, filter ListFilter) ([]domain.Client, int64, error)
+	ListAuditLogs(ctx context.Context, filter AuditListFilter) ([]AuditLog, int64, error)
 	GetByID(ctx context.Context, id uint64) (domain.Client, error)
 	GetByIDForUpdate(ctx context.Context, id uint64) (domain.Client, error)
 	Create(ctx context.Context, client domain.Client) (domain.Client, error)
@@ -46,6 +47,27 @@ type AuditLogEntry struct {
 	RequestPayload *string
 	IPAddress      *string
 	UserAgent      *string
+}
+
+type AuditListFilter struct {
+	Action     string
+	UserID     *uint64
+	ResourceID *uint64
+	Page       int
+	Limit      int
+}
+
+type AuditLog struct {
+	ID             uint64
+	UserID         *uint64
+	UserName       *string
+	Action         string
+	ResourceType   string
+	ResourceID     *uint64
+	RequestPayload *string
+	IPAddress      *string
+	UserAgent      *string
+	CreatedAt      string
 }
 
 const (

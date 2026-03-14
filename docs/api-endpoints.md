@@ -144,8 +144,11 @@ Query params untuk endpoint list CRUD:
 - `POST /clients/:id/re-evaluate`
 - `POST /clients/:id/approve`
 - `GET /clients/:id/status-history`
+- `GET /clients/audit-logs`
 
 Catatan: endpoint mutasi Client mengambil actor dari JWT auth context (`auth.user_id`, `auth.role`, `auth.full_name`), bukan dari payload JSON.
+
+Catatan: endpoint `GET /clients/audit-logs` hanya untuk role Admin. Query opsional: `action`, `user_id`, `resource_id`, `page`, `limit`.
 
 ## Indikator Kinerja
 

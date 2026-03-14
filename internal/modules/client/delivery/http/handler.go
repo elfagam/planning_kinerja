@@ -40,6 +40,7 @@ func NewHandler(cfg config.Config) *Handler {
 func (h *Handler) RegisterRoutes(v1 *gin.RouterGroup) {
 	g := v1.Group("/clients")
 	g.GET("", h.List)
+	g.GET("/audit-logs", h.AuditLogs)
 	g.POST("", h.Create)
 	g.GET("/:id", h.Get)
 	g.PUT("/:id", h.Update)
@@ -51,6 +52,59 @@ func (h *Handler) RegisterRoutes(v1 *gin.RouterGroup) {
 	g.POST("/:id/re-evaluate", h.ReEvaluate)
 	g.POST("/:id/approve", h.Approve)
 	g.GET("/:id/status-history", h.StatusHistory)
+}
+
+func (h *Handler) AuditLogs(c *gin.Context) {
+	if h.service == nil {
+		response.Error(c, http.StatusServiceUnavailable, "client service unavailable")
+		return
+	}
+
+	actor, ok := actorFromContext(c)
+	if !ok {
+		return
+	}
+
+	filter := usecase.AuditListFilter{
+		Action: strings.TrimSpace(c.Query("action")),
+		Page:   parsePositiveInt(c.Query("page"), 1),
+		Limit:  parsePositiveInt(c.Query("limit"), 10),
+	}
+
+	if userRaw := strings.TrimSpace(c.Query("user_id")); userRaw != "" {
+		userID, err := strconv.ParseUint(userRaw, 10, 64)
+		if err != nil || userID == 0 {
+			response.Error(c, http.StatusBadRequest, "user_id harus berupa angka > 0")
+			return
+		}
+		v := uint64(userID)
+		filter.UserID = &v
+	}
+
+	if resourceRaw := strings.TrimSpace(c.Query("resource_id")); resourceRaw != "" {
+		resourceID, err := strconv.ParseUint(resourceRaw, 10, 64)
+		if err != nil || resourceID == 0 {
+			response.Error(c, http.StatusBadRequest, "resource_id harus berupa angka > 0")
+			return
+		}
+		v := uint64(resourceID)
+		filter.ResourceID = &v
+	}
+
+	items, total, err := h.service.ListAuditLogs(c.Request.Context(), actor, filter)
+	if err != nil {
+		h.handleError(c, err)
+		return
+	}
+
+	response.Success(c, gin.H{
+		"items": items,
+		"meta": gin.H{
+			"page":  filter.Page,
+			"limit": filter.Limit,
+			"total": total,
+		},
+	})
 }
 
 func (h *Handler) List(c *gin.Context) {
