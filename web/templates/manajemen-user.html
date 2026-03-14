@@ -546,6 +546,9 @@
               .forEach((el) => {
                 el.disabled = false;
               });
+            if (roleResolved) {
+              setStatus(`Login sebagai role ${currentUserRole}.`, false);
+            }
             return;
           }
 
@@ -559,7 +562,7 @@
             });
 
           setStatus(
-            "Mode baca saja — hanya ADMIN yang dapat mengubah data user.",
+            `Mode baca saja — login sebagai role ${currentUserRole || "UNKNOWN"}. Hanya ADMIN yang dapat mengubah data user.`,
           );
         }
 
