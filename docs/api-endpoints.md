@@ -131,6 +131,22 @@ Query params untuk endpoint list CRUD:
 - `POST /renja/:id/approve`
 - `POST /renja/:id/reject`
 
+## Clients
+
+- `GET /clients`
+- `POST /clients`
+- `GET /clients/:id`
+- `PUT /clients/:id`
+- `DELETE /clients/:id`
+- `POST /clients/:id/submit`
+- `POST /clients/:id/unsubmit`
+- `POST /clients/:id/reject`
+- `POST /clients/:id/re-evaluate`
+- `POST /clients/:id/approve`
+- `GET /clients/:id/status-history`
+
+Catatan: endpoint mutasi Client mengambil actor dari JWT auth context (`auth.user_id`, `auth.role`, `auth.full_name`), bukan dari payload JSON.
+
 ## Indikator Kinerja
 
 - `GET /indikator-kinerja`
@@ -142,6 +158,11 @@ Query params untuk endpoint list CRUD:
 ## Target dan Realisasi
 
 - `GET /performance/target-realisasi`
+- `GET /performance/dashboard-summary`
+- `GET /performance/statistics`
+- `GET /performance/chart-target-vs-realisasi`
+- `GET /performance/yearly-summary`
+- `GET /performance/program-ranking`
 - `GET /target-realisasi`
 - `POST /target-realisasi`
 - `GET /target-realisasi/:id`
