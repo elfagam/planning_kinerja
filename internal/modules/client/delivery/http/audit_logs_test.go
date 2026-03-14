@@ -116,3 +116,43 @@ func TestAuditLogs_NonAdmin_Forbidden403(t *testing.T) {
 		t.Fatalf("expected 403, got %d", r.Code)
 	}
 }
+
+func TestAuditLogs_InvalidUserID_BadRequest400(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	repo := &auditTestRepo{}
+	h := &Handler{service: usecase.NewService(auditTestTxManager{}, repo)}
+
+	r := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(r)
+	c.Request = httptest.NewRequest("GET", "/api/v1/clients/audit-logs?user_id=abc", nil)
+	c.Set("auth.user_id", uint64(1))
+	c.Set("auth.role", "ADMIN")
+	c.Set("auth.full_name", "Admin")
+
+	h.AuditLogs(c)
+
+	if r.Code != 400 {
+		t.Fatalf("expected 400, got %d", r.Code)
+	}
+}
+
+func TestAuditLogs_InvalidResourceID_BadRequest400(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	repo := &auditTestRepo{}
+	h := &Handler{service: usecase.NewService(auditTestTxManager{}, repo)}
+
+	r := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(r)
+	c.Request = httptest.NewRequest("GET", "/api/v1/clients/audit-logs?resource_id=0", nil)
+	c.Set("auth.user_id", uint64(1))
+	c.Set("auth.role", "ADMIN")
+	c.Set("auth.full_name", "Admin")
+
+	h.AuditLogs(c)
+
+	if r.Code != 400 {
+		t.Fatalf("expected 400, got %d", r.Code)
+	}
+}
