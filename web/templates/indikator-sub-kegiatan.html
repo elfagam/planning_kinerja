@@ -19,7 +19,9 @@
       <header
         class="mb-4 p-4 card shadow-sm border-0 header-gradient text-white"
       >
-        <h1 class="h3 mb-1" id="module-title">CRUD</h1>
+        <h1 class="h3 mb-1" id="module-title">
+          CRUD SUB KEGIATAN DAN INDIKATOR
+        </h1>
         <p class="mb-0 opacity-75">
           Kelola data Indikator Sub Kegiatan secara terpisah
         </p>
@@ -33,12 +35,38 @@
               <form id="crud-form" class="vstack gap-2" autocomplete="off">
                 <input type="hidden" id="entity-id" />
 
+                <label class="form-label mb-0" for="kegiatanId">Kegiatan</label>
+                <textarea
+                  id="kegiatanId"
+                  class="form-control"
+                  placeholder="(otomatis dari indikator kegiatan)"
+                  disabled
+                ></textarea>
+
+                <label class="form-label mb-0" for="indikatorKegiatanId"
+                  >Indikator Kegiatan</label
+                >
+                <select id="indikatorKegiatanId" class="form-select" required>
+                  <option value="">Pilih indikator kegiatan</option>
+                </select>
+
                 <label class="form-label mb-0" for="subKegiatanId"
                   >Sub Kegiatan</label
                 >
+                <div class="mb-1">
+                  <span
+                    id="sub-kegiatan-status-badge"
+                    class="badge rounded-pill text-bg-secondary"
+                    >Menunggu indikator</span
+                  >
+                </div>
                 <select id="subKegiatanId" class="form-select" required>
                   <option value="">Pilih sub kegiatan</option>
                 </select>
+                <small id="sub-kegiatan-hint" class="text-muted"
+                  >Pilih indikator kegiatan terlebih dahulu untuk memfilter sub
+                  kegiatan.</small
+                >
 
                 <label class="form-label mb-0" for="kode">Kode</label>
                 <input
@@ -49,12 +77,12 @@
                 />
 
                 <label class="form-label mb-0" for="nama">Nama</label>
-                <input
+                <textarea
                   id="nama"
                   class="form-control"
                   placeholder="Nama indikator sub kegiatan"
                   required
-                />
+                ></textarea>
 
                 <label class="form-label mb-0" for="formula">Formula</label>
                 <textarea
@@ -70,28 +98,6 @@
                 <label class="form-label mb-0" for="baseline">Baseline</label>
                 <input
                   id="baseline"
-                  type="number"
-                  step="0.01"
-                  class="form-control"
-                  value="0"
-                />
-
-                <label class="form-label mb-0" for="anggaranN1"
-                  >Anggaran Tahun Sebelumnya (N-1)</label
-                >
-                <input
-                  id="anggaranN1"
-                  type="number"
-                  step="0.01"
-                  class="form-control"
-                  value="0"
-                />
-
-                <label class="form-label mb-0" for="anggaranN"
-                  >Jumlah Anggaran Tahun Ini</label
-                >
-                <input
-                  id="anggaranN"
                   type="number"
                   step="0.01"
                   class="form-control"
@@ -154,15 +160,19 @@
                   </caption>
                   <thead>
                     <tr>
-                      <th scope="col">ID</th>
-                      <th scope="col">Sub Kegiatan</th>
-                      <th scope="col">Kode</th>
-                      <th scope="col">Nama</th>
+                      <th scope="col" data-sort-key="id">ID</th>
+                      <th scope="col" data-sort-key="indikator_kegiatan_id">
+                        Indikator Kegiatan
+                      </th>
+                      <th scope="col" data-sort-key="sub_kegiatan_id">
+                        Sub Kegiatan
+                      </th>
+                      <th scope="col" data-sort-key="kode">Kode</th>
+                      <th scope="col" data-sort-key="nama">Nama</th>
                       <th scope="col">Formula</th>
                       <th scope="col">Satuan</th>
-                      <th scope="col">Baseline</th>
-                      <th scope="col">Anggaran N-1</th>
-                      <th scope="col">Anggaran N</th>
+                      <th scope="col" data-sort-key="baseline">Baseline</th>
+
                       <th scope="col">Aksi</th>
                     </tr>
                   </thead>
@@ -173,6 +183,28 @@
                 class="d-flex justify-content-between align-items-center mt-2"
               >
                 <small id="meta-text" class="text-muted">Total 0 data</small>
+                <div class="d-flex align-items-center gap-2">
+                  <select id="limit-select" class="form-select form-select-sm">
+                    <option value="10">10 / halaman</option>
+                    <option value="25">25 / halaman</option>
+                    <option value="50">50 / halaman</option>
+                  </select>
+                  <button
+                    id="page-prev"
+                    type="button"
+                    class="btn btn-sm btn-outline-secondary"
+                  >
+                    Prev
+                  </button>
+                  <small id="page-text" class="text-muted">Page 1/1</small>
+                  <button
+                    id="page-next"
+                    type="button"
+                    class="btn btn-sm btn-outline-secondary"
+                  >
+                    Next
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -184,26 +216,89 @@
       (() => {
         const endpoint = document.body.dataset.apiEndpoint;
         const subKegiatanEndpoint = "/api/v1/sub_kegiatan";
-
+        const indikatorKegiatanEndpoint = "/api/v1/indikator_kegiatan";
+        const kegiatanEndpoint = "/api/v1/kegiatan";
         const form = document.getElementById("crud-form");
         const idInput = document.getElementById("entity-id");
+        const kegiatanIdInput = document.getElementById("kegiatanId");
+        const indikatorKegiatanIdInput = document.getElementById(
+          "indikatorKegiatanId",
+        );
         const subKegiatanIdInput = document.getElementById("subKegiatanId");
         const kodeInput = document.getElementById("kode");
         const namaInput = document.getElementById("nama");
         const formulaInput = document.getElementById("formula");
         const satuanInput = document.getElementById("satuan");
         const baselineInput = document.getElementById("baseline");
-        const anggaranN1Input = document.getElementById("anggaranN1");
-        const anggaranNInput = document.getElementById("anggaranN");
+
+        const subKegiatanHint = document.getElementById("sub-kegiatan-hint");
+        const subKegiatanStatusBadge = document.getElementById(
+          "sub-kegiatan-status-badge",
+        );
         const statusText = document.getElementById("status-text");
         const queryInput = document.getElementById("query");
         const btnSearch = document.getElementById("btn-search");
         const btnReset = document.getElementById("btn-reset");
         const tableBody = document.getElementById("table-body");
         const metaText = document.getElementById("meta-text");
+        const limitSelect = document.getElementById("limit-select");
+        const pagePrevBtn = document.getElementById("page-prev");
+        const pageNextBtn = document.getElementById("page-next");
+        const pageText = document.getElementById("page-text");
+        const sortHeaders = Array.from(
+          document.querySelectorAll("th[data-sort-key]"),
+        );
 
         const subKegiatanMap = new Map();
+        const indikatorKegiatanMap = new Map();
+        const kegiatanMap = new Map();
+        const DEFAULT_SORT_BY = "id";
+        const DEFAULT_ORDER = "desc";
+        const DEFAULT_PAGE = 1;
+        const DEFAULT_LIMIT = 5;
+        const FILTER_DEBOUNCE_MS = 300;
+        const sortableFields = new Set([
+          "id",
+          "indikator_kegiatan_id",
+          "sub_kegiatan_id",
+          "kode",
+          "nama",
+          "baseline",
+        ]);
 
+        const state = {
+          q: "",
+          sortBy: DEFAULT_SORT_BY,
+          order: DEFAULT_ORDER,
+          page: DEFAULT_PAGE,
+          limit: DEFAULT_LIMIT,
+        };
+        const allSubKegiatanItems = [];
+        let currentListItems = [];
+
+        let searchDebounceTimer = null;
+
+        const MUTATION_ROLES = new Set(["ADMIN", "OPERATOR", "PERENCANA"]);
+        let currentUserRole = "";
+
+        function normalizeRole(raw) {
+          return String(raw || "").trim().toUpperCase();
+        }
+
+        function canMutateByRole(role) {
+          return MUTATION_ROLES.has(normalizeRole(role));
+        }
+
+        function applyRoleAccess() {
+          if (canMutateByRole(currentUserRole)) return;
+          form.querySelectorAll("input, textarea, select, button[type='submit']").forEach((el) => {
+            el.disabled = true;
+          });
+          const info = document.createElement("p");
+          info.className = "text-warning small mt-2 mb-0";
+          info.textContent = "Mode baca saja — role Anda tidak memiliki hak untuk mengubah data.";
+          form.appendChild(info);
+        }
         function authHeader() {
           const token =
             localStorage.getItem("AUTH_TOKEN") ||
@@ -222,6 +317,17 @@
         function normalizeSubKegiatan(raw) {
           return {
             id: Number(raw.id ?? raw.ID ?? 0),
+            kegiatanId: Number(raw.kegiatan_id ?? raw.KegiatanID ?? 0),
+            kode: raw.kode ?? raw.Kode ?? "",
+            nama: raw.nama ?? raw.Nama ?? "",
+          };
+        }
+
+        function normalizeIndikatorKegiatan(raw) {
+          return {
+            id: Number(raw.id ?? raw.ID ?? 0),
+            kegiatanId: Number(raw.kegiatan_id ?? raw.KegiatanID ?? 0),
+            kegiatanNama: raw.kegiatan_nama ?? raw.KegiatanNama ?? "",
             kode: raw.kode ?? raw.Kode ?? "",
             nama: raw.nama ?? raw.Nama ?? "",
           };
@@ -230,6 +336,9 @@
         function normalizeItem(raw) {
           return {
             id: Number(raw.id ?? raw.ID ?? 0),
+            indikator_kegiatan_id: Number(
+              raw.indikator_kegiatan_id ?? raw.IndikatorKegiatanID ?? 0,
+            ),
             subKegiatanId: Number(
               raw.sub_kegiatan_id ?? raw.SubKegiatanID ?? 0,
             ),
@@ -238,10 +347,14 @@
             formula: raw.formula ?? raw.Formula ?? "",
             satuan: raw.satuan ?? raw.Satuan ?? "",
             baseline: Number(raw.baseline ?? raw.Baseline ?? 0),
-            anggaranN1: Number(
-              raw.anggaran_tahun_sebelumnya ?? raw.AnggaranN1 ?? 0,
-            ),
-            anggaranN: Number(raw.anggaran_tahun_ini ?? raw.AnggaranN ?? 0),
+          };
+        }
+
+        function normalizeKegiatan(raw) {
+          return {
+            id: Number(raw.id ?? raw.ID ?? 0),
+            kode: raw.kode ?? raw.Kode ?? "",
+            nama: raw.nama ?? raw.Nama ?? "",
           };
         }
 
@@ -264,14 +377,16 @@
 
         function resetForm() {
           idInput.value = "";
+          kegiatanIdInput.value = "";
+          indikatorKegiatanIdInput.value = "";
           subKegiatanIdInput.value = "";
-          kodeInput.value = "";
+          kodeInput.value = suggestNextKode();
           namaInput.value = "";
           formulaInput.value = "";
           satuanInput.value = "";
           baselineInput.value = "0";
-          anggaranN1Input.value = "0";
-          anggaranNInput.value = "0";
+
+          renderSubKegiatanOptions();
         }
 
         function subKegiatanLabel(subKegiatanId) {
@@ -281,41 +396,285 @@
           );
         }
 
+        function indikatorKegiatanLabel(id) {
+          const meta = indikatorKegiatanMap.get(Number(id));
+          return meta?.label || `Indikator Kegiatan #${id}`;
+        }
+
+        function syncKegiatanFromIndikatorKegiatan() {
+          const indikatorKegiatanId = Number(indikatorKegiatanIdInput.value);
+          const meta = indikatorKegiatanMap.get(indikatorKegiatanId);
+
+          if (!meta) {
+            kegiatanIdInput.value = "";
+            return;
+          }
+
+          if (meta.kegiatanNama && meta.kegiatanId > 0) {
+            kegiatanIdInput.value = `${meta.kegiatanId} - ${meta.kegiatanNama}`;
+            return;
+          }
+
+          if (meta.kegiatanNama) {
+            kegiatanIdInput.value = meta.kegiatanNama;
+            return;
+          }
+
+          if (meta.kegiatanId > 0) {
+            kegiatanIdInput.value =
+              kegiatanMap.get(meta.kegiatanId) ||
+              `Kegiatan #${meta.kegiatanId}`;
+            return;
+          }
+
+          kegiatanIdInput.value = "";
+        }
+
+        function setSubKegiatanStatusBadge(label, styleClass) {
+          subKegiatanStatusBadge.textContent = label;
+          subKegiatanStatusBadge.className = `badge rounded-pill ${styleClass}`;
+        }
+
+        function renderSubKegiatanOptions() {
+          const currentValue = subKegiatanIdInput.value;
+          const indikatorKegiatanId = Number(indikatorKegiatanIdInput.value);
+          const selectedIndikator =
+            indikatorKegiatanMap.get(indikatorKegiatanId);
+          const selectedKegiatanId = selectedIndikator?.kegiatanId || 0;
+
+          const filteredItems =
+            selectedKegiatanId > 0
+              ? allSubKegiatanItems.filter(
+                  (item) => item.kegiatanId === selectedKegiatanId,
+                )
+              : [];
+
+          subKegiatanIdInput.innerHTML = selectedKegiatanId
+            ? '<option value="">Pilih sub kegiatan (sesuai kegiatan)</option>'
+            : '<option value="">Pilih indikator kegiatan terlebih dahulu</option>';
+
+          const appendOption = (item, suffix = "") => {
+            const option = document.createElement("option");
+            option.value = String(item.id);
+            option.textContent = `${item.kode} - ${item.nama}${suffix}`;
+            subKegiatanIdInput.appendChild(option);
+          };
+
+          filteredItems.forEach((item) => appendOption(item));
+
+          if (currentValue) {
+            subKegiatanIdInput.value = currentValue;
+
+            // Keep legacy edit value selectable when existing data is out-of-sync
+            // with selected kegiatan, so user can still review/adjust safely.
+            if (!subKegiatanIdInput.value) {
+              const currentItem = allSubKegiatanItems.find(
+                (item) => String(item.id) === currentValue,
+              );
+              if (currentItem) {
+                appendOption(currentItem, " (Di luar kegiatan terpilih)");
+                subKegiatanIdInput.value = currentValue;
+              }
+            }
+          }
+
+          if (!selectedKegiatanId) {
+            subKegiatanHint.textContent =
+              "Pilih indikator kegiatan terlebih dahulu untuk memfilter sub kegiatan.";
+            subKegiatanIdInput.disabled = true;
+            setSubKegiatanStatusBadge(
+              "Menunggu indikator",
+              "text-bg-secondary",
+            );
+            return;
+          }
+
+          if (filteredItems.length === 0) {
+            subKegiatanHint.textContent =
+              "Belum ada sub kegiatan yang terkait dengan kegiatan ini.";
+            subKegiatanIdInput.disabled = true;
+            setSubKegiatanStatusBadge("Tidak ada data", "text-bg-warning");
+            return;
+          }
+
+          subKegiatanHint.textContent = `${filteredItems.length} sub kegiatan tersedia untuk kegiatan yang dipilih.`;
+          subKegiatanIdInput.disabled = false;
+          setSubKegiatanStatusBadge("Tersedia", "text-bg-success");
+        }
+
+        function parseStateFromURL() {
+          const params = new URLSearchParams(window.location.search);
+          const q = params.get("q") || "";
+          const sortBy = params.get("sort_by") || DEFAULT_SORT_BY;
+          const orderRaw = (params.get("order") || DEFAULT_ORDER).toLowerCase();
+          const pageRaw = Number(params.get("page") || DEFAULT_PAGE);
+          const limitRaw = Number(params.get("limit") || DEFAULT_LIMIT);
+
+          state.q = q;
+          state.sortBy = sortableFields.has(sortBy) ? sortBy : DEFAULT_SORT_BY;
+          state.order = orderRaw === "asc" ? "asc" : "desc";
+          state.page =
+            Number.isFinite(pageRaw) && pageRaw > 0 ? pageRaw : DEFAULT_PAGE;
+          state.limit =
+            Number.isFinite(limitRaw) && limitRaw > 0
+              ? limitRaw
+              : DEFAULT_LIMIT;
+          queryInput.value = state.q;
+          limitSelect.value = String(state.limit);
+        }
+
+        function writeStateToURL() {
+          const params = new URLSearchParams(window.location.search);
+
+          if (state.q) {
+            params.set("q", state.q);
+          } else {
+            params.delete("q");
+          }
+
+          params.set("sort_by", state.sortBy);
+          params.set("order", state.order);
+          params.set("page", String(state.page));
+          params.set("limit", String(state.limit));
+
+          const next = `${window.location.pathname}?${params.toString()}`;
+          window.history.replaceState(null, "", next);
+        }
+
+        function updatePaginationUI(page, totalPages) {
+          pageText.textContent = `Page ${page}/${totalPages}`;
+          pagePrevBtn.disabled = page <= 1;
+          pageNextBtn.disabled = page >= totalPages;
+        }
+
+        function sortIndicator(order) {
+          return order === "asc" ? "↑" : "↓";
+        }
+
+        function updateSortHeaderUI() {
+          sortHeaders.forEach((th) => {
+            const key = th.dataset.sortKey;
+            const base = th.dataset.baseLabel || th.textContent.trim();
+
+            th.dataset.baseLabel = base;
+            th.style.cursor = "pointer";
+
+            if (key === state.sortBy) {
+              th.textContent = `${base} ${sortIndicator(state.order)}`;
+            } else {
+              th.textContent = base;
+            }
+          });
+        }
+
+        function readSortValue(item, key) {
+          if (key === "sub_kegiatan_id") {
+            return item.subKegiatanId;
+          }
+
+          return item[key];
+        }
+
+        function applyClientSort(items) {
+          const direction = state.order === "asc" ? 1 : -1;
+          return [...items].sort((a, b) => {
+            const left = readSortValue(a, state.sortBy);
+            const right = readSortValue(b, state.sortBy);
+
+            if (typeof left === "string" || typeof right === "string") {
+              return (
+                String(left || "").localeCompare(String(right || ""), "id", {
+                  sensitivity: "base",
+                }) * direction
+              );
+            }
+
+            return (Number(left || 0) - Number(right || 0)) * direction;
+          });
+        }
+
+        function isDuplicateKode(kode, editingID) {
+          const normalizedKode = String(kode || "")
+            .trim()
+            .toLowerCase();
+          if (!normalizedKode) {
+            return false;
+          }
+
+          return currentListItems.some((item) => {
+            const itemID = Number(item.id || 0);
+            if (editingID > 0 && itemID === editingID) {
+              return false;
+            }
+            return (
+              String(item.kode || "")
+                .trim()
+                .toLowerCase() === normalizedKode
+            );
+          });
+        }
+
+        function suggestNextKode() {
+          let maxNumber = 0;
+          let padWidth = 3;
+
+          currentListItems.forEach((item) => {
+            const kode = String(item.kode || "").trim();
+            const match = /^ISK-(\d+)$/i.exec(kode);
+            if (!match) {
+              return;
+            }
+
+            const numberPart = match[1];
+            const parsed = Number(numberPart);
+            if (Number.isFinite(parsed) && parsed > maxNumber) {
+              maxNumber = parsed;
+              padWidth = Math.max(padWidth, numberPart.length);
+            }
+          });
+
+          const nextNumber = maxNumber + 1;
+          return `ISK-${String(nextNumber).padStart(padWidth, "0")}`;
+        }
+
         function rowTemplate(item) {
           const tr = document.createElement("tr");
           tr.innerHTML = `
             <td>${item.id}</td>
+            <td>${indikatorKegiatanLabel(item.indikator_kegiatan_id)}</td>
             <td>${subKegiatanLabel(item.subKegiatanId)}</td>
             <td>${item.kode}</td>
             <td>${item.nama}</td>
             <td>${item.formula || "-"}</td>
             <td>${item.satuan || "-"}</td>
             <td>${item.baseline.toFixed(2)}</td>
-            <td>${item.anggaranN1.toFixed(2)}</td>
-            <td>${item.anggaranN.toFixed(2)}</td>
+            
             <td class="text-nowrap">
-              <button class="btn btn-sm btn-outline-primary me-1" data-action="edit">Edit</button>
-              <button class="btn btn-sm btn-outline-danger" data-action="delete">Hapus</button>
+              ${canMutateByRole(currentUserRole) ? '<button class="btn btn-sm btn-outline-primary me-1" data-action="edit">Edit</button><button class="btn btn-sm btn-outline-danger" data-action="delete">Hapus</button>' : '<span class="text-muted small">Read-only</span>'}
             </td>
           `;
 
-          tr.querySelector('[data-action="edit"]').addEventListener(
+          tr.querySelector('[data-action="edit"]')?.addEventListener(
             "click",
             () => {
               idInput.value = item.id;
+              indikatorKegiatanIdInput.value = String(
+                item.indikator_kegiatan_id,
+              );
+              syncKegiatanFromIndikatorKegiatan();
+              renderSubKegiatanOptions();
               subKegiatanIdInput.value = String(item.subKegiatanId);
               kodeInput.value = item.kode;
               namaInput.value = item.nama;
               formulaInput.value = item.formula;
               satuanInput.value = item.satuan;
               baselineInput.value = String(item.baseline);
-              anggaranN1Input.value = String(item.anggaranN1);
-              anggaranNInput.value = String(item.anggaranN);
+
               setStatus(`Mode edit ID ${item.id}`);
             },
           );
 
-          tr.querySelector('[data-action="delete"]').addEventListener(
+          tr.querySelector('[data-action="delete"]')?.addEventListener(
             "click",
             async () => {
               if (!confirm(`Hapus indikator sub kegiatan ${item.nama}?`)) {
@@ -338,6 +697,45 @@
           return tr;
         }
 
+        async function loadIndikatorKegiatanOptions() {
+          try {
+            const data = await fetchJSON(indikatorKegiatanEndpoint);
+            const indikatorKegiatanItems = (
+              Array.isArray(data?.items) ? data.items : []
+            )
+              .map(normalizeIndikatorKegiatan)
+              .sort((a, b) => a.id - b.id);
+
+            indikatorKegiatanMap.clear();
+            indikatorKegiatanIdInput.innerHTML =
+              '<option value="">Pilih indikator kegiatan</option>';
+
+            indikatorKegiatanItems.forEach((item) => {
+              const label = `${item.kode} - ${item.nama}`;
+              indikatorKegiatanMap.set(item.id, {
+                label,
+                kegiatanId: item.kegiatanId,
+                kegiatanNama: item.kegiatanNama,
+              });
+
+              const option = document.createElement("option");
+              option.value = String(item.id);
+              option.textContent = label;
+              indikatorKegiatanIdInput.appendChild(option);
+            });
+
+            syncKegiatanFromIndikatorKegiatan();
+            renderSubKegiatanOptions();
+          } catch (error) {
+            indikatorKegiatanIdInput.innerHTML =
+              '<option value="">(Gagal memuat data)</option>';
+            setStatus(
+              `Pilihan indikator kegiatan tidak ditemukan: ${error.message}`,
+              true,
+            );
+          }
+        }
+
         async function loadSubKegiatanOptions() {
           try {
             const data = await fetchJSON(subKegiatanEndpoint);
@@ -346,18 +744,15 @@
               .sort((a, b) => a.id - b.id);
 
             subKegiatanMap.clear();
-            subKegiatanIdInput.innerHTML =
-              '<option value="">Pilih sub kegiatan</option>';
+            allSubKegiatanItems.length = 0;
 
             items.forEach((item) => {
               const label = `${item.kode} - ${item.nama}`;
               subKegiatanMap.set(item.id, label);
-
-              const option = document.createElement("option");
-              option.value = String(item.id);
-              option.textContent = label;
-              subKegiatanIdInput.appendChild(option);
+              allSubKegiatanItems.push(item);
             });
+
+            renderSubKegiatanOptions();
           } catch (error) {
             setStatus(
               `Pilihan sub kegiatan tidak ditemukan: ${error.message}`,
@@ -366,16 +761,40 @@
           }
         }
 
+        async function loadKegiatanLookup() {
+          try {
+            const data = await fetchJSON(kegiatanEndpoint);
+            const kegiatanItems = (Array.isArray(data?.items) ? data.items : [])
+              .map(normalizeKegiatan)
+              .sort((a, b) => a.id - b.id);
+
+            kegiatanMap.clear();
+            kegiatanItems.forEach((item) => {
+              const label = item.kode
+                ? `${item.kode} - ${item.nama}`
+                : item.nama || `Kegiatan #${item.id}`;
+              kegiatanMap.set(item.id, label);
+            });
+
+            syncKegiatanFromIndikatorKegiatan();
+          } catch (error) {
+            // Keep fallback label when lookup endpoint is unavailable.
+          }
+        }
+
         async function loadList() {
           tableBody.innerHTML =
-            '<tr><td colspan="10" class="text-center text-muted py-4">Memuat...</td></tr>';
+            '<tr><td colspan="9" class="text-center text-muted py-4">Memuat...</td></tr>';
 
           try {
             const params = new URLSearchParams();
-            const q = queryInput.value.trim();
-            if (q) {
-              params.set("q", q);
+            if (state.q) {
+              params.set("q", state.q);
             }
+            params.set("sort_by", state.sortBy);
+            params.set("order", state.order);
+            params.set("page", String(state.page));
+            params.set("limit", String(state.limit));
 
             const url = params.size
               ? `${endpoint}?${params.toString()}`
@@ -384,41 +803,165 @@
             const items = (Array.isArray(data?.items) ? data.items : []).map(
               normalizeItem,
             );
+            currentListItems = items;
 
             tableBody.innerHTML = "";
-            metaText.textContent = `Total ${items.length} data`;
+            const sortedItems = applyClientSort(items);
+            const hasServerPaginationMeta =
+              data?.page != null ||
+              data?.total_pages != null ||
+              data?.limit != null;
 
-            if (items.length === 0) {
-              tableBody.innerHTML =
-                '<tr><td colspan="10" class="text-center text-muted py-4">Belum ada data</td></tr>';
+            let renderedItems = sortedItems;
+            let totalItems = Number(data?.total ?? sortedItems.length);
+            let totalPages = 1;
+
+            if (hasServerPaginationMeta) {
+              const serverPage = Number(data?.page ?? state.page);
+              const serverLimit = Number(
+                data?.limit ?? state.limit ?? DEFAULT_LIMIT,
+              );
+              const serverTotalPages = Number(
+                data?.total_pages ??
+                  Math.ceil(totalItems / Math.max(1, serverLimit)),
+              );
+
+              state.page =
+                Number.isFinite(serverPage) && serverPage > 0
+                  ? serverPage
+                  : DEFAULT_PAGE;
+              state.limit =
+                Number.isFinite(serverLimit) && serverLimit > 0
+                  ? serverLimit
+                  : DEFAULT_LIMIT;
+              totalPages =
+                Number.isFinite(serverTotalPages) && serverTotalPages > 0
+                  ? serverTotalPages
+                  : 1;
+            } else {
+              totalItems = sortedItems.length;
+              totalPages = Math.max(1, Math.ceil(totalItems / state.limit));
+              if (state.page > totalPages) {
+                state.page = totalPages;
+              }
+              const start = (state.page - 1) * state.limit;
+              const end = start + state.limit;
+              renderedItems = sortedItems.slice(start, end);
+            }
+
+            limitSelect.value = String(state.limit);
+            metaText.textContent = `Total ${totalItems} data`;
+
+            if (totalItems > 0 && state.page > totalPages) {
+              state.page = totalPages;
+              writeStateToURL();
+              await loadList();
               return;
             }
 
-            items
-              .sort((a, b) => a.id - b.id)
-              .forEach((item) => tableBody.appendChild(rowTemplate(item)));
+            updatePaginationUI(state.page, totalPages);
+            writeStateToURL();
+
+            if (renderedItems.length === 0) {
+              tableBody.innerHTML =
+                '<tr><td colspan="9" class="text-center text-muted py-4">Belum ada data</td></tr>';
+              return;
+            }
+
+            renderedItems.forEach((item) =>
+              tableBody.appendChild(rowTemplate(item)),
+            );
           } catch (error) {
             tableBody.innerHTML =
-              '<tr><td colspan="10" class="text-center text-danger py-4">Gagal memuat data</td></tr>';
+              '<tr><td colspan="9" class="text-center text-danger py-4">Gagal memuat data</td></tr>';
+            updatePaginationUI(1, 1);
             setStatus(error.message, true);
           }
+        }
+
+        function syncStateFromInputs() {
+          state.q = queryInput.value.trim();
+        }
+
+        function queueRealtimeSearch() {
+          syncStateFromInputs();
+          state.page = DEFAULT_PAGE;
+          writeStateToURL();
+
+          if (searchDebounceTimer) {
+            window.clearTimeout(searchDebounceTimer);
+          }
+
+          searchDebounceTimer = window.setTimeout(() => {
+            loadList();
+          }, FILTER_DEBOUNCE_MS);
         }
 
         form.addEventListener("submit", async (event) => {
           event.preventDefault();
 
+          if (!canMutateByRole(currentUserRole)) {
+            setStatus("Anda tidak memiliki hak akses untuk menyimpan perubahan", true);
+            return;
+          }
+
+          const indikatorKegiatanId = indikatorKegiatanIdInput.value;
+          if (!indikatorKegiatanId || isNaN(Number(indikatorKegiatanId))) {
+            setStatus(
+              "Indikator kegiatan harus dipilih dan berupa angka",
+              true,
+            );
+            indikatorKegiatanIdInput.focus();
+            return;
+          }
+
+          const subKegiatanId = Number(subKegiatanIdInput.value);
+          if (!subKegiatanId || Number.isNaN(subKegiatanId)) {
+            setStatus(
+              "Sub kegiatan harus dipilih dari daftar sesuai kegiatan",
+              true,
+            );
+            subKegiatanIdInput.focus();
+            return;
+          }
+
+          const kode = kodeInput.value.trim();
+          if (!kode) {
+            setStatus("Kode wajib diisi", true);
+            kodeInput.focus();
+            return;
+          }
+
+          const nama = namaInput.value.trim();
+          if (!nama) {
+            setStatus("Nama wajib diisi", true);
+            namaInput.focus();
+            return;
+          }
+
+          const id = idInput.value.trim();
+          const editingID = id ? Number(id) : 0;
+          if (isDuplicateKode(kode, editingID)) {
+            const suggestedKode = suggestNextKode();
+            kodeInput.value = suggestedKode;
+            setStatus(
+              `Kode indikator sub kegiatan sudah digunakan. Saran kode: ${suggestedKode}`,
+              true,
+            );
+            kodeInput.focus();
+            return;
+          }
+
           const payload = {
-            sub_kegiatan_id: Number(subKegiatanIdInput.value),
-            kode: kodeInput.value.trim(),
-            nama: namaInput.value.trim(),
+            indikator_kegiatan_id: Number(indikatorKegiatanId),
+            sub_kegiatan_id: subKegiatanId,
+            kode,
+            nama,
             formula: formulaInput.value.trim(),
             satuan: satuanInput.value.trim(),
             baseline: Number(baselineInput.value || 0),
-            anggaran_tahun_sebelumnya: Number(anggaranN1Input.value || 0),
-            anggaran_tahun_ini: Number(anggaranNInput.value || 0),
           };
 
-          const id = idInput.value.trim();
           const isEdit = id !== "";
           const url = isEdit ? `${endpoint}/${id}` : endpoint;
           const method = isEdit ? "PUT" : "POST";
@@ -438,8 +981,28 @@
             resetForm();
             await loadList();
           } catch (error) {
+            if (
+              String(error.message || "")
+                .toLowerCase()
+                .includes("kode indikator_sub_kegiatan sudah digunakan")
+            ) {
+              const suggestedKode = suggestNextKode();
+              kodeInput.value = suggestedKode;
+              setStatus(
+                `Kode sudah dipakai. Saran kode baru: ${suggestedKode}`,
+                true,
+              );
+              kodeInput.focus();
+              return;
+            }
             setStatus(error.message, true);
           }
+        });
+
+        indikatorKegiatanIdInput.addEventListener("change", () => {
+          syncKegiatanFromIndikatorKegiatan();
+          renderSubKegiatanOptions();
+          setStatus("Siap", false);
         });
 
         btnReset.addEventListener("click", () => {
@@ -448,12 +1011,97 @@
         });
 
         btnSearch.addEventListener("click", () => {
+          syncStateFromInputs();
+          state.page = DEFAULT_PAGE;
+          writeStateToURL();
           loadList();
         });
 
+        limitSelect.addEventListener("change", () => {
+          const limit = Number(limitSelect.value || DEFAULT_LIMIT);
+          state.limit =
+            Number.isFinite(limit) && limit > 0 ? limit : DEFAULT_LIMIT;
+          state.page = DEFAULT_PAGE;
+          writeStateToURL();
+          loadList();
+        });
+
+        pagePrevBtn.addEventListener("click", () => {
+          if (state.page <= 1) {
+            return;
+          }
+          state.page -= 1;
+          writeStateToURL();
+          loadList();
+        });
+
+        pageNextBtn.addEventListener("click", () => {
+          state.page += 1;
+          writeStateToURL();
+          loadList();
+        });
+
+        queryInput.addEventListener("input", queueRealtimeSearch);
+
+        sortHeaders.forEach((th) => {
+          th.addEventListener("click", () => {
+            const nextSortBy = th.dataset.sortKey;
+
+            if (!sortableFields.has(nextSortBy)) {
+              return;
+            }
+
+            if (state.sortBy === nextSortBy) {
+              state.order = state.order === "asc" ? "desc" : "asc";
+            } else {
+              state.sortBy = nextSortBy;
+              state.order = "asc";
+            }
+            state.page = DEFAULT_PAGE;
+
+            updateSortHeaderUI();
+            writeStateToURL();
+            loadList();
+          });
+        });
+
+        window.addEventListener("popstate", () => {
+          parseStateFromURL();
+          updateSortHeaderUI();
+          loadList();
+        });
+
+        parseStateFromURL();
+        updateSortHeaderUI();
+        writeStateToURL();
+
         loadSubKegiatanOptions();
-        loadList();
+        loadKegiatanLookup();
+        loadIndikatorKegiatanOptions();
+        async function loadCurrentUser() {
+          try {
+            const token =
+              localStorage.getItem("AUTH_TOKEN") ||
+              localStorage.getItem("authToken") ||
+              "";
+            if (!token) return;
+            const res = await fetch("/api/v1/auth/me", {
+              headers: { Authorization: `Bearer ${token}` },
+            });
+            if (!res.ok) return;
+            const body = await res.json();
+            currentUserRole = normalizeRole(body?.data?.role ?? "");
+          } catch (_) {
+            // non-fatal: fallback to read-only
+          }
+        }
+
+        loadCurrentUser().then(() => {
+          applyRoleAccess();
+          loadList();
+        });
       })();
     </script>
+    <script src="/assets/js/auth-client.js"></script>
   </body>
 </html>

@@ -19,7 +19,7 @@
       <header
         class="mb-4 p-4 card shadow-sm border-0 header-gradient text-white"
       >
-        <h1 class="h3 mb-1" id="module-title">CRUD</h1>
+        <h1 class="h3 mb-1" id="module-title">CRUD SUB KEGIATAN</h1>
         <p class="mb-0 opacity-75">Kelola data Sub Kegiatan secara terpisah</p>
       </header>
 
@@ -116,10 +116,10 @@
                   </caption>
                   <thead>
                     <tr>
-                      <th scope="col">ID</th>
-                      <th scope="col">Kegiatan</th>
-                      <th scope="col">Kode</th>
-                      <th scope="col">Nama</th>
+                      <th scope="col" data-sort-key="id">ID</th>
+                      <th scope="col" data-sort-key="kegiatan_id">Kegiatan</th>
+                      <th scope="col" data-sort-key="kode">Kode</th>
+                      <th scope="col" data-sort-key="nama">Nama</th>
                       <th scope="col">Deskripsi</th>
                       <th scope="col">Aksi</th>
                     </tr>
@@ -131,6 +131,28 @@
                 class="d-flex justify-content-between align-items-center mt-2"
               >
                 <small id="meta-text" class="text-muted">Total 0 data</small>
+                <div class="d-flex align-items-center gap-2">
+                  <select id="limit-select" class="form-select form-select-sm">
+                    <option value="10">10 / halaman</option>
+                    <option value="25">25 / halaman</option>
+                    <option value="50">50 / halaman</option>
+                  </select>
+                  <button
+                    id="page-prev"
+                    type="button"
+                    class="btn btn-sm btn-outline-secondary"
+                  >
+                    Prev
+                  </button>
+                  <small id="page-text" class="text-muted">Page 1/1</small>
+                  <button
+                    id="page-next"
+                    type="button"
+                    class="btn btn-sm btn-outline-secondary"
+                  >
+                    Next
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -140,8 +162,28 @@
 
     <script>
       (() => {
-        const endpoint = document.body.dataset.apiEndpoint;
-        const kegiatanEndpoint = "/api/v1/kegiatan";
+        const apiBaseRaw = localStorage.getItem("API_BASE_URL") || "";
+        const API_BASE_URL = apiBaseRaw.replace(/\/$/, "");
+        const isUsingCustomApiBase = API_BASE_URL !== "";
+        const apiOrigin = isUsingCustomApiBase
+          ? new URL(API_BASE_URL, window.location.origin).origin
+          : window.location.origin;
+        const isCrossOriginAPI =
+          isUsingCustomApiBase && apiOrigin !== window.location.origin;
+
+        function withApiBase(path) {
+          if (/^https?:\/\//i.test(path)) {
+            return path;
+          }
+          const normalizedPath = path.startsWith("/") ? path : `/${path}`;
+          if (!isUsingCustomApiBase) {
+            return normalizedPath;
+          }
+          return `${API_BASE_URL}${normalizedPath}`;
+        }
+
+        const endpoint = withApiBase(document.body.dataset.apiEndpoint);
+        const kegiatanEndpoint = withApiBase("/api/v1/kegiatan");
         const form = document.getElementById("crud-form");
         const idInput = document.getElementById("entity-id");
         const kegiatanIdInput = document.getElementById("kegiatanId");
@@ -154,15 +196,79 @@
         const btnReset = document.getElementById("btn-reset");
         const tableBody = document.getElementById("table-body");
         const metaText = document.getElementById("meta-text");
+        const limitSelect = document.getElementById("limit-select");
+        const pagePrevBtn = document.getElementById("page-prev");
+        const pageNextBtn = document.getElementById("page-next");
+        const pageText = document.getElementById("page-text");
+        const sortHeaders = Array.from(
+          document.querySelectorAll("th[data-sort-key]"),
+        );
 
         const kegiatanMap = new Map();
+        const DEFAULT_SORT_BY = "id";
+        const DEFAULT_ORDER = "desc";
+        const DEFAULT_PAGE = 1;
+        const DEFAULT_LIMIT = 10;
+        const FILTER_DEBOUNCE_MS = 300;
+        const sortableFields = new Set(["id", "kegiatan_id", "kode", "nama"]);
 
+        const state = {
+          q: "",
+          sortBy: DEFAULT_SORT_BY,
+          order: DEFAULT_ORDER,
+          page: DEFAULT_PAGE,
+          limit: DEFAULT_LIMIT,
+        };
+
+        let searchDebounceTimer = null;
+
+        const MUTATION_ROLES = new Set(["ADMIN", "OPERATOR", "PERENCANA"]);
+        let currentUserRole = "";
+
+        function normalizeRole(raw) {
+          return String(raw || "").trim().toUpperCase();
+        }
+
+        function canMutateByRole(role) {
+          return MUTATION_ROLES.has(normalizeRole(role));
+        }
+
+        function applyRoleAccess() {
+          if (canMutateByRole(currentUserRole)) return;
+          form.querySelectorAll("input, textarea, select, button[type='submit']").forEach((el) => {
+            el.disabled = true;
+          });
+          const info = document.createElement("p");
+          info.className = "text-warning small mt-2 mb-0";
+          info.textContent = "Mode baca saja — role Anda tidak memiliki hak untuk mengubah data.";
+          form.appendChild(info);
+        }
         function authHeader() {
+          const includeAuthOverride = localStorage.getItem(
+            "API_INCLUDE_AUTH_HEADER",
+          );
+
+          // Default: avoid Authorization on cross-origin requests to prevent
+          // preflight/CORS mismatch in local multi-port setup.
+          if (includeAuthOverride === "0") {
+            return {};
+          }
+          if (includeAuthOverride !== "1" && isCrossOriginAPI) {
+            return {};
+          }
+
           const token =
             localStorage.getItem("AUTH_TOKEN") ||
             localStorage.getItem("authToken") ||
             "";
           return token ? { Authorization: `Bearer ${token}` } : {};
+        }
+
+        function redirectToLogin() {
+          const next = encodeURIComponent(
+            window.location.pathname + window.location.search,
+          );
+          window.location.href = `/ui/login?next=${next}`;
         }
 
         function setStatus(message, isError = false) {
@@ -190,6 +296,98 @@
           };
         }
 
+        function parseStateFromURL() {
+          const params = new URLSearchParams(window.location.search);
+          const q = params.get("q") || "";
+          const sortBy = params.get("sort_by") || DEFAULT_SORT_BY;
+          const orderRaw = (params.get("order") || DEFAULT_ORDER).toLowerCase();
+          const pageRaw = Number(params.get("page") || DEFAULT_PAGE);
+          const limitRaw = Number(params.get("limit") || DEFAULT_LIMIT);
+
+          state.q = q;
+          state.sortBy = sortableFields.has(sortBy) ? sortBy : DEFAULT_SORT_BY;
+          state.order = orderRaw === "asc" ? "asc" : "desc";
+          state.page =
+            Number.isFinite(pageRaw) && pageRaw > 0 ? pageRaw : DEFAULT_PAGE;
+          state.limit =
+            Number.isFinite(limitRaw) && limitRaw > 0
+              ? limitRaw
+              : DEFAULT_LIMIT;
+          queryInput.value = state.q;
+          limitSelect.value = String(state.limit);
+        }
+
+        function writeStateToURL() {
+          const params = new URLSearchParams(window.location.search);
+
+          if (state.q) {
+            params.set("q", state.q);
+          } else {
+            params.delete("q");
+          }
+
+          params.set("sort_by", state.sortBy);
+          params.set("order", state.order);
+          params.set("page", String(state.page));
+          params.set("limit", String(state.limit));
+
+          const next = `${window.location.pathname}?${params.toString()}`;
+          window.history.replaceState(null, "", next);
+        }
+
+        function updatePaginationUI(page, totalPages) {
+          pageText.textContent = `Page ${page}/${totalPages}`;
+          pagePrevBtn.disabled = page <= 1;
+          pageNextBtn.disabled = page >= totalPages;
+        }
+
+        function sortIndicator(order) {
+          return order === "asc" ? "↑" : "↓";
+        }
+
+        function updateSortHeaderUI() {
+          sortHeaders.forEach((th) => {
+            const key = th.dataset.sortKey;
+            const base = th.dataset.baseLabel || th.textContent.trim();
+
+            th.dataset.baseLabel = base;
+            th.style.cursor = "pointer";
+
+            if (key === state.sortBy) {
+              th.textContent = `${base} ${sortIndicator(state.order)}`;
+            } else {
+              th.textContent = base;
+            }
+          });
+        }
+
+        function readSortValue(item, key) {
+          if (key === "kegiatan_id") {
+            return item.kegiatanId;
+          }
+
+          return item[key];
+        }
+
+        function applyClientSort(items) {
+          const direction = state.order === "asc" ? 1 : -1;
+
+          return [...items].sort((a, b) => {
+            const left = readSortValue(a, state.sortBy);
+            const right = readSortValue(b, state.sortBy);
+
+            if (typeof left === "string" || typeof right === "string") {
+              return (
+                String(left || "").localeCompare(String(right || ""), "id", {
+                  sensitivity: "base",
+                }) * direction
+              );
+            }
+
+            return (Number(left || 0) - Number(right || 0)) * direction;
+          });
+        }
+
         async function fetchJSON(url, options = {}) {
           const res = await fetch(url, {
             ...options,
@@ -201,10 +399,39 @@
 
           const body = await res.json();
           if (!res.ok || !body.success) {
+            if (res.status === 401) {
+              const authError = String(body?.error || "").toLowerCase();
+              if (
+                authError.includes("authorization") ||
+                authError.includes("token")
+              ) {
+                redirectToLogin();
+                throw new Error("Sesi login berakhir, silakan login ulang");
+              }
+            }
             throw new Error(body.error || `HTTP ${res.status}`);
           }
 
           return body.data;
+        }
+
+        function extractItems(data) {
+          if (Array.isArray(data)) {
+            return data;
+          }
+          if (Array.isArray(data?.items)) {
+            return data.items;
+          }
+          if (Array.isArray(data?.data)) {
+            return data.data;
+          }
+          if (Array.isArray(data?.records)) {
+            return data.records;
+          }
+          if (Array.isArray(data?.results)) {
+            return data.results;
+          }
+          return [];
         }
 
         function resetForm() {
@@ -230,12 +457,11 @@
             <td>${item.nama}</td>
             <td>${item.deskripsi || "-"}</td>
             <td class="text-nowrap">
-              <button class="btn btn-sm btn-outline-primary me-1" data-action="edit">Edit</button>
-              <button class="btn btn-sm btn-outline-danger" data-action="delete">Hapus</button>
+              ${canMutateByRole(currentUserRole) ? '<button class="btn btn-sm btn-outline-primary me-1" data-action="edit">Edit</button><button class="btn btn-sm btn-outline-danger" data-action="delete">Hapus</button>' : '<span class="text-muted small">Read-only</span>'}
             </td>
           `;
 
-          tr.querySelector('[data-action="edit"]').addEventListener(
+          tr.querySelector('[data-action="edit"]')?.addEventListener(
             "click",
             () => {
               idInput.value = item.id;
@@ -247,7 +473,7 @@
             },
           );
 
-          tr.querySelector('[data-action="delete"]').addEventListener(
+          tr.querySelector('[data-action="delete"]')?.addEventListener(
             "click",
             async () => {
               if (!confirm(`Hapus sub kegiatan ${item.nama}?`)) {
@@ -272,9 +498,21 @@
 
         async function loadKegiatanOptions() {
           try {
-            const data = await fetchJSON(kegiatanEndpoint);
-            const kegiatanItems = (Array.isArray(data?.items) ? data.items : [])
+            let data;
+
+            try {
+              data = await fetchJSON(kegiatanEndpoint);
+            } catch (primaryError) {
+              const fallbackEndpoint = "/api/v1/kegiatan";
+              if (kegiatanEndpoint === fallbackEndpoint) {
+                throw primaryError;
+              }
+              data = await fetchJSON(fallbackEndpoint);
+            }
+
+            const kegiatanItems = extractItems(data)
               .map(normalizeKegiatan)
+              .filter((item) => item.id > 0)
               .sort((a, b) => a.id - b.id);
 
             kegiatanMap.clear();
@@ -304,40 +542,120 @@
 
           try {
             const params = new URLSearchParams();
-            const q = queryInput.value.trim();
-            if (q) {
-              params.set("q", q);
+            if (state.q) {
+              params.set("q", state.q);
             }
+            params.set("sort_by", state.sortBy);
+            params.set("order", state.order);
+            params.set("page", String(state.page));
+            params.set("limit", String(state.limit));
 
             const url = params.size
               ? `${endpoint}?${params.toString()}`
               : endpoint;
             const data = await fetchJSON(url);
-            const items = (Array.isArray(data?.items) ? data.items : []).map(
-              normalizeItem,
-            );
+            const items = extractItems(data).map(normalizeItem);
 
             tableBody.innerHTML = "";
-            metaText.textContent = `Total ${items.length} data`;
+            const sortedItems = applyClientSort(items);
+            const hasServerPaginationMeta =
+              data?.page != null ||
+              data?.total_pages != null ||
+              data?.limit != null;
 
-            if (items.length === 0) {
+            let renderedItems = sortedItems;
+            let totalItems = Number(data?.total ?? sortedItems.length);
+            let totalPages = 1;
+
+            if (hasServerPaginationMeta) {
+              const serverPage = Number(data?.page ?? state.page);
+              const serverLimit = Number(
+                (data?.limit ?? state.limit) || DEFAULT_LIMIT,
+              );
+              const serverTotalPages = Number(
+                data?.total_pages ??
+                  Math.ceil(totalItems / Math.max(1, serverLimit)),
+              );
+
+              state.page =
+                Number.isFinite(serverPage) && serverPage > 0
+                  ? serverPage
+                  : DEFAULT_PAGE;
+              state.limit =
+                Number.isFinite(serverLimit) && serverLimit > 0
+                  ? serverLimit
+                  : DEFAULT_LIMIT;
+              totalPages =
+                Number.isFinite(serverTotalPages) && serverTotalPages > 0
+                  ? serverTotalPages
+                  : 1;
+            } else {
+              totalItems = sortedItems.length;
+              totalPages = Math.max(1, Math.ceil(totalItems / state.limit));
+              if (state.page > totalPages) {
+                state.page = totalPages;
+              }
+              const start = (state.page - 1) * state.limit;
+              const end = start + state.limit;
+              renderedItems = sortedItems.slice(start, end);
+            }
+
+            limitSelect.value = String(state.limit);
+            metaText.textContent = `Total ${totalItems} data`;
+
+            // If page is out of range, clamp and reload once so rows are visible again.
+            if (totalItems > 0 && state.page > totalPages) {
+              state.page = totalPages;
+              writeStateToURL();
+              await loadList();
+              return;
+            }
+
+            updatePaginationUI(state.page, totalPages);
+            writeStateToURL();
+
+            if (renderedItems.length === 0) {
               tableBody.innerHTML =
                 '<tr><td colspan="6" class="text-center text-muted py-4">Belum ada data</td></tr>';
               return;
             }
 
-            items
-              .sort((a, b) => a.id - b.id)
-              .forEach((item) => tableBody.appendChild(rowTemplate(item)));
+            renderedItems.forEach((item) =>
+              tableBody.appendChild(rowTemplate(item)),
+            );
           } catch (error) {
             tableBody.innerHTML =
               '<tr><td colspan="6" class="text-center text-danger py-4">Gagal memuat data</td></tr>';
+            updatePaginationUI(1, 1);
             setStatus(error.message, true);
           }
         }
 
+        function syncStateFromInputs() {
+          state.q = queryInput.value.trim();
+        }
+
+        function queueRealtimeSearch() {
+          syncStateFromInputs();
+          state.page = DEFAULT_PAGE;
+          writeStateToURL();
+
+          if (searchDebounceTimer) {
+            window.clearTimeout(searchDebounceTimer);
+          }
+
+          searchDebounceTimer = window.setTimeout(() => {
+            loadList();
+          }, FILTER_DEBOUNCE_MS);
+        }
+
         form.addEventListener("submit", async (event) => {
           event.preventDefault();
+
+          if (!canMutateByRole(currentUserRole)) {
+            setStatus("Anda tidak memiliki hak akses untuk menyimpan perubahan", true);
+            return;
+          }
 
           const payload = {
             kegiatan_id: Number(kegiatanIdInput.value),
@@ -376,12 +694,100 @@
         });
 
         btnSearch.addEventListener("click", () => {
+          syncStateFromInputs();
+          state.page = DEFAULT_PAGE;
+          writeStateToURL();
           loadList();
         });
 
+        limitSelect.addEventListener("change", () => {
+          const limit = Number(limitSelect.value || DEFAULT_LIMIT);
+          state.limit =
+            Number.isFinite(limit) && limit > 0 ? limit : DEFAULT_LIMIT;
+          state.page = DEFAULT_PAGE;
+          writeStateToURL();
+          loadList();
+        });
+
+        pagePrevBtn.addEventListener("click", () => {
+          if (state.page <= 1) {
+            return;
+          }
+          state.page -= 1;
+          writeStateToURL();
+          loadList();
+        });
+
+        pageNextBtn.addEventListener("click", () => {
+          state.page += 1;
+          writeStateToURL();
+          loadList();
+        });
+
+        queryInput.addEventListener("input", queueRealtimeSearch);
+
+        sortHeaders.forEach((th) => {
+          th.addEventListener("click", () => {
+            const nextSortBy = th.dataset.sortKey;
+
+            if (!sortableFields.has(nextSortBy)) {
+              return;
+            }
+
+            if (state.sortBy === nextSortBy) {
+              state.order = state.order === "asc" ? "desc" : "asc";
+            } else {
+              state.sortBy = nextSortBy;
+              state.order = "asc";
+            }
+            state.page = DEFAULT_PAGE;
+
+            updateSortHeaderUI();
+            writeStateToURL();
+            loadList();
+          });
+        });
+
+        window.addEventListener("popstate", () => {
+          parseStateFromURL();
+          updateSortHeaderUI();
+          loadList();
+        });
+
+        parseStateFromURL();
+        updateSortHeaderUI();
+        writeStateToURL();
+
+        if (!authHeader().Authorization) {
+          redirectToLogin();
+          return;
+        }
+
         loadKegiatanOptions();
-        loadList();
+        async function loadCurrentUser() {
+          try {
+            const token =
+              localStorage.getItem("AUTH_TOKEN") ||
+              localStorage.getItem("authToken") ||
+              "";
+            if (!token) return;
+            const res = await fetch("/api/v1/auth/me", {
+              headers: { Authorization: `Bearer ${token}` },
+            });
+            if (!res.ok) return;
+            const body = await res.json();
+            currentUserRole = normalizeRole(body?.data?.role ?? "");
+          } catch (_) {
+            // non-fatal: fallback to read-only
+          }
+        }
+
+        loadCurrentUser().then(() => {
+          applyRoleAccess();
+          loadList();
+        });
       })();
     </script>
+    <script src="/assets/js/auth-client.js"></script>
   </body>
 </html>

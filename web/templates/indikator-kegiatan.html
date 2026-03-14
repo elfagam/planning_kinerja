@@ -33,6 +33,21 @@
               <form id="crud-form" class="vstack gap-2" autocomplete="off">
                 <input type="hidden" id="entity-id" />
 
+                <label class="form-label mb-0" for="programId">Program</label>
+                <textarea
+                  id="programId"
+                  class="form-control"
+                  placeholder="(otomatis dari indikator program)"
+                  disabled
+                ></textarea>
+
+                <label class="form-label mb-0" for="indikatorProgramId"
+                  >Indikator Program</label
+                >
+                <select id="indikatorProgramId" class="form-select" required>
+                  <option value="">Pilih indikator program</option>
+                </select>
+
                 <label class="form-label mb-0" for="kegiatanId">Kegiatan</label>
                 <select id="kegiatanId" class="form-select" required>
                   <option value="">Pilih kegiatan</option>
@@ -47,12 +62,13 @@
                 />
 
                 <label class="form-label mb-0" for="nama">Nama</label>
-                <input
+                <textarea
                   id="nama"
                   class="form-control"
+                  rows="3"
                   placeholder="Nama indikator kegiatan"
                   required
-                />
+                ></textarea>
 
                 <label class="form-label mb-0" for="formula">Formula</label>
                 <textarea
@@ -130,13 +146,16 @@
                   </caption>
                   <thead>
                     <tr>
-                      <th scope="col">ID</th>
-                      <th scope="col">Kegiatan</th>
-                      <th scope="col">Kode</th>
-                      <th scope="col">Nama</th>
+                      <th scope="col" data-sort-key="id">ID</th>
+                      <th scope="col" data-sort-key="indikator_program_id">
+                        Indikator Program
+                      </th>
+                      <th scope="col" data-sort-key="kegiatan_id">Kegiatan</th>
+                      <th scope="col" data-sort-key="kode">Kode</th>
+                      <th scope="col" data-sort-key="nama">Nama</th>
                       <th scope="col">Formula</th>
                       <th scope="col">Satuan</th>
-                      <th scope="col">Baseline</th>
+                      <th scope="col" data-sort-key="baseline">Baseline</th>
                       <th scope="col">Aksi</th>
                     </tr>
                   </thead>
@@ -147,6 +166,28 @@
                 class="d-flex justify-content-between align-items-center mt-2"
               >
                 <small id="meta-text" class="text-muted">Total 0 data</small>
+                <div class="d-flex align-items-center gap-2">
+                  <select id="limit-select" class="form-select form-select-sm">
+                    <option value="10">10 / halaman</option>
+                    <option value="25">25 / halaman</option>
+                    <option value="50">50 / halaman</option>
+                  </select>
+                  <button
+                    id="page-prev"
+                    type="button"
+                    class="btn btn-sm btn-outline-secondary"
+                  >
+                    Prev
+                  </button>
+                  <small id="page-text" class="text-muted">Page 1/1</small>
+                  <button
+                    id="page-next"
+                    type="button"
+                    class="btn btn-sm btn-outline-secondary"
+                  >
+                    Next
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -160,6 +201,7 @@
         const kegiatanEndpoint = "/api/v1/kegiatan";
         const form = document.getElementById("crud-form");
         const idInput = document.getElementById("entity-id");
+        const programIdInput = document.getElementById("programId");
         const kegiatanIdInput = document.getElementById("kegiatanId");
         const kodeInput = document.getElementById("kode");
         const namaInput = document.getElementById("nama");
@@ -172,9 +214,66 @@
         const btnReset = document.getElementById("btn-reset");
         const tableBody = document.getElementById("table-body");
         const metaText = document.getElementById("meta-text");
+        const limitSelect = document.getElementById("limit-select");
+        const pagePrevBtn = document.getElementById("page-prev");
+        const pageNextBtn = document.getElementById("page-next");
+        const pageText = document.getElementById("page-text");
+        const sortHeaders = Array.from(
+          document.querySelectorAll("th[data-sort-key]"),
+        );
 
         const kegiatanMap = new Map();
+        const indikatorProgramEndpoint = "/api/v1/indikator_program";
+        const indikatorProgramIdInput =
+          document.getElementById("indikatorProgramId");
+        const indikatorProgramMap = new Map();
+        const DEFAULT_SORT_BY = "id";
+        const DEFAULT_ORDER = "desc";
+        const DEFAULT_PAGE = 1;
+        const DEFAULT_LIMIT = 10;
+        const FILTER_DEBOUNCE_MS = 300;
+        const sortableFields = new Set([
+          "id",
+          "indikator_program_id",
+          "kegiatan_id",
+          "kode",
+          "nama",
+          "baseline",
+        ]);
 
+        const state = {
+          q: "",
+          sortBy: DEFAULT_SORT_BY,
+          order: DEFAULT_ORDER,
+          page: DEFAULT_PAGE,
+          limit: DEFAULT_LIMIT,
+        };
+
+        let searchDebounceTimer = null;
+        let currentListItems = [];
+        let kegiatanItems = [];
+
+        const MUTATION_ROLES = new Set(["ADMIN", "OPERATOR", "PERENCANA"]);
+        let currentUserRole = "";
+
+        function normalizeRole(raw) {
+          return String(raw || "").trim().toUpperCase();
+        }
+
+        function canMutateByRole(role) {
+          return MUTATION_ROLES.has(normalizeRole(role));
+        }
+
+        function applyRoleAccess() {
+          if (canMutateByRole(currentUserRole)) return;
+          form.querySelectorAll("input, textarea, select, button[type='submit']").forEach((el) => {
+            el.disabled = true;
+          });
+          const info = document.createElement("p");
+          info.className = "text-warning small mt-2 mb-0";
+          info.textContent = "Mode baca saja — role Anda tidak memiliki hak untuk mengubah data.";
+          form.appendChild(info);
+        }
         function authHeader() {
           const token =
             localStorage.getItem("AUTH_TOKEN") ||
@@ -193,15 +292,30 @@
         function normalizeKegiatan(raw) {
           return {
             id: Number(raw.id ?? raw.ID ?? 0),
+            programId: Number(raw.program_id ?? raw.ProgramID ?? 0),
             kode: raw.kode ?? raw.Kode ?? "",
             nama: raw.nama ?? raw.Nama ?? "",
+          };
+        }
+
+        function normalizeIndikatorProgram(raw) {
+          return {
+            id: Number(raw.id ?? raw.ID ?? 0),
+            kode: raw.kode ?? raw.Kode ?? "",
+            nama: raw.nama ?? raw.Nama ?? "",
+            programId: Number(raw.program_id ?? raw.ProgramID ?? 0),
+            programNama: raw.program_nama ?? raw.ProgramNama ?? "",
           };
         }
 
         function normalizeItem(raw) {
           return {
             id: Number(raw.id ?? raw.ID ?? 0),
+            indikator_program_id: Number(
+              raw.indikator_program_id ?? raw.IndikatorProgramID ?? 0,
+            ),
             kegiatanId: Number(raw.kegiatan_id ?? raw.KegiatanID ?? 0),
+            programId: Number(raw.program_id ?? raw.ProgramID ?? 0),
             kode: raw.kode ?? raw.Kode ?? "",
             nama: raw.nama ?? raw.Nama ?? "",
             formula: raw.formula ?? raw.Formula ?? "",
@@ -227,14 +341,57 @@
           return body.data;
         }
 
+        function isDuplicateKode(kode, editingID) {
+          const normalizedKode = String(kode || "")
+            .trim()
+            .toLowerCase();
+          if (!normalizedKode) {
+            return false;
+          }
+          return currentListItems.some((item) => {
+            const itemID = Number(item.id || 0);
+            if (editingID > 0 && itemID === editingID) {
+              return false;
+            }
+            return (
+              String(item.kode || "")
+                .trim()
+                .toLowerCase() === normalizedKode
+            );
+          });
+        }
+
+        function suggestNextKode() {
+          let maxNumber = 0;
+          let padWidth = 3;
+          currentListItems.forEach((item) => {
+            const kode = String(item.kode || "").trim();
+            const match = /^IK-(\d+)$/i.exec(kode);
+            if (!match) {
+              return;
+            }
+            const numberPart = match[1];
+            const parsed = Number(numberPart);
+            if (Number.isFinite(parsed) && parsed > maxNumber) {
+              maxNumber = parsed;
+              padWidth = Math.max(padWidth, numberPart.length);
+            }
+          });
+          const nextNumber = maxNumber + 1;
+          return `IK-${String(nextNumber).padStart(padWidth, "0")}`;
+        }
+
         function resetForm() {
           idInput.value = "";
+          programIdInput.value = "";
+          indikatorProgramIdInput.value = "";
           kegiatanIdInput.value = "";
-          kodeInput.value = "";
+          kodeInput.value = suggestNextKode();
           namaInput.value = "";
           formulaInput.value = "";
           satuanInput.value = "";
           baselineInput.value = "0";
+          renderKegiatanOptionsByProgram(0);
         }
 
         function kegiatanLabel(kegiatanId) {
@@ -243,27 +400,207 @@
           );
         }
 
+        function indikatorProgramLabel(id) {
+          const meta = indikatorProgramMap.get(Number(id));
+          return meta?.label || `Indikator Program #${id}`;
+        }
+
+        function renderKegiatanOptionsByProgram(
+          programId,
+          selectedKegiatanId = "",
+        ) {
+          const normalizedProgramId = Number(programId || 0);
+          const desiredSelection = String(selectedKegiatanId || "");
+
+          kegiatanMap.clear();
+          kegiatanIdInput.innerHTML = "";
+
+          const defaultOption = document.createElement("option");
+          defaultOption.value = "";
+
+          if (normalizedProgramId <= 0) {
+            defaultOption.textContent = "Pilih indikator program dahulu";
+            kegiatanIdInput.appendChild(defaultOption);
+            kegiatanIdInput.value = "";
+            kegiatanIdInput.disabled = true;
+            return;
+          }
+
+          defaultOption.textContent = "Pilih kegiatan";
+          kegiatanIdInput.appendChild(defaultOption);
+
+          const filtered = kegiatanItems.filter(
+            (item) => item.programId === normalizedProgramId,
+          );
+
+          filtered.forEach((item) => {
+            const label = `${item.kode} - ${item.nama}`;
+            kegiatanMap.set(item.id, label);
+
+            const option = document.createElement("option");
+            option.value = String(item.id);
+            option.textContent = label;
+            kegiatanIdInput.appendChild(option);
+          });
+
+          kegiatanIdInput.disabled = false;
+
+          if (
+            desiredSelection &&
+            filtered.some((item) => String(item.id) === desiredSelection)
+          ) {
+            kegiatanIdInput.value = desiredSelection;
+          } else {
+            kegiatanIdInput.value = "";
+          }
+        }
+
+        function syncProgramFromIndikatorProgram() {
+          const indikatorProgramId = Number(indikatorProgramIdInput.value);
+          const meta = indikatorProgramMap.get(indikatorProgramId);
+
+          if (!meta) {
+            programIdInput.value = "";
+            return 0;
+          }
+
+          if (meta.programNama && meta.programId > 0) {
+            programIdInput.value = `${meta.programId} - ${meta.programNama}`;
+            return meta.programId;
+          }
+
+          if (meta.programNama) {
+            programIdInput.value = meta.programNama;
+            return meta.programId;
+          }
+
+          if (meta.programId > 0) {
+            programIdInput.value = `Program #${meta.programId}`;
+            return meta.programId;
+          }
+
+          programIdInput.value = "";
+          return 0;
+        }
+
+        function parseStateFromURL() {
+          const params = new URLSearchParams(window.location.search);
+          const q = params.get("q") || "";
+          const sortBy = params.get("sort_by") || DEFAULT_SORT_BY;
+          const orderRaw = (params.get("order") || DEFAULT_ORDER).toLowerCase();
+          const pageRaw = Number(params.get("page") || DEFAULT_PAGE);
+          const limitRaw = Number(params.get("limit") || DEFAULT_LIMIT);
+
+          state.q = q;
+          state.sortBy = sortableFields.has(sortBy) ? sortBy : DEFAULT_SORT_BY;
+          state.order = orderRaw === "asc" ? "asc" : "desc";
+          state.page =
+            Number.isFinite(pageRaw) && pageRaw > 0 ? pageRaw : DEFAULT_PAGE;
+          state.limit =
+            Number.isFinite(limitRaw) && limitRaw > 0
+              ? limitRaw
+              : DEFAULT_LIMIT;
+          queryInput.value = state.q;
+          limitSelect.value = String(state.limit);
+        }
+
+        function writeStateToURL() {
+          const params = new URLSearchParams(window.location.search);
+
+          if (state.q) {
+            params.set("q", state.q);
+          } else {
+            params.delete("q");
+          }
+
+          params.set("sort_by", state.sortBy);
+          params.set("order", state.order);
+          params.set("page", String(state.page));
+          params.set("limit", String(state.limit));
+
+          const next = `${window.location.pathname}?${params.toString()}`;
+          window.history.replaceState(null, "", next);
+        }
+
+        function updatePaginationUI(page, totalPages) {
+          pageText.textContent = `Page ${page}/${totalPages}`;
+          pagePrevBtn.disabled = page <= 1;
+          pageNextBtn.disabled = page >= totalPages;
+        }
+
+        function sortIndicator(order) {
+          return order === "asc" ? "↑" : "↓";
+        }
+
+        function updateSortHeaderUI() {
+          sortHeaders.forEach((th) => {
+            const key = th.dataset.sortKey;
+            const base = th.dataset.baseLabel || th.textContent.trim();
+
+            th.dataset.baseLabel = base;
+            th.style.cursor = "pointer";
+
+            if (key === state.sortBy) {
+              th.textContent = `${base} ${sortIndicator(state.order)}`;
+            } else {
+              th.textContent = base;
+            }
+          });
+        }
+
+        function readSortValue(item, key) {
+          if (key === "kegiatan_id") {
+            return item.kegiatanId;
+          }
+
+          return item[key];
+        }
+
+        function applyClientSort(items) {
+          const direction = state.order === "asc" ? 1 : -1;
+          return [...items].sort((a, b) => {
+            const left = readSortValue(a, state.sortBy);
+            const right = readSortValue(b, state.sortBy);
+
+            if (typeof left === "string" || typeof right === "string") {
+              return (
+                String(left || "").localeCompare(String(right || ""), "id", {
+                  sensitivity: "base",
+                }) * direction
+              );
+            }
+
+            return (Number(left || 0) - Number(right || 0)) * direction;
+          });
+        }
+
         function rowTemplate(item) {
           const tr = document.createElement("tr");
           tr.innerHTML = `
             <td>${item.id}</td>
+            <td>${indikatorProgramLabel(item.indikator_program_id)}</td>
             <td>${kegiatanLabel(item.kegiatanId)}</td>
             <td>${item.kode}</td>
             <td>${item.nama}</td>
             <td>${item.formula || "-"}</td>
             <td>${item.satuan || "-"}</td>
             <td>${item.baseline.toFixed(2)}</td>
+
             <td class="text-nowrap">
-              <button class="btn btn-sm btn-outline-primary me-1" data-action="edit">Edit</button>
-              <button class="btn btn-sm btn-outline-danger" data-action="delete">Hapus</button>
+              ${canMutateByRole(currentUserRole) ? '<button class="btn btn-sm btn-outline-primary me-1" data-action="edit">Edit</button><button class="btn btn-sm btn-outline-danger" data-action="delete">Hapus</button>' : '<span class="text-muted small">Read-only</span>'}
             </td>
           `;
 
-          tr.querySelector('[data-action="edit"]').addEventListener(
+          tr.querySelector('[data-action="edit"]')?.addEventListener(
             "click",
             () => {
               idInput.value = item.id;
-              kegiatanIdInput.value = String(item.kegiatanId);
+              indikatorProgramIdInput.value = String(item.indikator_program_id);
+              const selectedProgramId = syncProgramFromIndikatorProgram();
+              renderKegiatanOptionsByProgram(
+                selectedProgramId,
+                String(item.kegiatanId),
+              );
               kodeInput.value = item.kode;
               namaInput.value = item.nama;
               formulaInput.value = item.formula;
@@ -273,7 +610,7 @@
             },
           );
 
-          tr.querySelector('[data-action="delete"]').addEventListener(
+          tr.querySelector('[data-action="delete"]')?.addEventListener(
             "click",
             async () => {
               if (!confirm(`Hapus indikator kegiatan ${item.nama}?`)) {
@@ -299,23 +636,20 @@
         async function loadKegiatanOptions() {
           try {
             const data = await fetchJSON(kegiatanEndpoint);
-            const kegiatanItems = (Array.isArray(data?.items) ? data.items : [])
+            kegiatanItems = (Array.isArray(data?.items) ? data.items : [])
               .map(normalizeKegiatan)
               .sort((a, b) => a.id - b.id);
 
-            kegiatanMap.clear();
-            kegiatanIdInput.innerHTML =
-              '<option value="">Pilih kegiatan</option>';
-
-            kegiatanItems.forEach((item) => {
-              const label = `${item.kode} - ${item.nama}`;
-              kegiatanMap.set(item.id, label);
-
-              const option = document.createElement("option");
-              option.value = String(item.id);
-              option.textContent = label;
-              kegiatanIdInput.appendChild(option);
-            });
+            const selectedProgramId = syncProgramFromIndikatorProgram();
+            renderKegiatanOptionsByProgram(
+              selectedProgramId,
+              kegiatanIdInput.value,
+            );
+            {
+              {
+                /* console.log("Indikator Kegiatan items:", kegiatanItems); */
+              }
+            }
           } catch (error) {
             setStatus(
               `Pilihan kegiatan tidak ditemukan: ${error.message}`,
@@ -324,16 +658,66 @@
           }
         }
 
+        async function loadIndikatorProgramOptions() {
+          try {
+            const data = await fetchJSON(indikatorProgramEndpoint);
+            const indikatorProgramItems = (
+              Array.isArray(data?.items) ? data.items : []
+            )
+
+              .map(normalizeIndikatorProgram)
+              .sort((a, b) => a.id - b.id);
+
+            indikatorProgramMap.clear();
+            indikatorProgramIdInput.innerHTML =
+              '<option value="">Pilih indikator program</option>';
+
+            indikatorProgramItems.forEach((item) => {
+              const label = `${item.kode} - ${item.nama}`;
+              indikatorProgramMap.set(item.id, {
+                label,
+                programId: item.programId,
+                programNama: item.programNama,
+              });
+
+              const option = document.createElement("option");
+              option.value = String(item.id);
+              option.textContent = label;
+              indikatorProgramIdInput.appendChild(option);
+            });
+
+            syncProgramFromIndikatorProgram();
+
+            {
+              {
+                /* console.log("Indikator Program items:", indikatorProgramItems); */
+              }
+            }
+          } catch (error) {
+            indikatorProgramIdInput.innerHTML =
+              '<option value="">(Gagal memuat data)</option>';
+          }
+        }
+
+        indikatorProgramIdInput.addEventListener("change", () => {
+          const selectedProgramId = syncProgramFromIndikatorProgram();
+          renderKegiatanOptionsByProgram(selectedProgramId);
+          setStatus(`Siap`, false);
+        });
+
         async function loadList() {
           tableBody.innerHTML =
-            '<tr><td colspan="8" class="text-center text-muted py-4">Memuat...</td></tr>';
+            '<tr><td colspan="9" class="text-center text-muted py-4">Memuat...</td></tr>';
 
           try {
             const params = new URLSearchParams();
-            const q = queryInput.value.trim();
-            if (q) {
-              params.set("q", q);
+            if (state.q) {
+              params.set("q", state.q);
             }
+            params.set("sort_by", state.sortBy);
+            params.set("order", state.order);
+            params.set("page", String(state.page));
+            params.set("limit", String(state.limit));
 
             const url = params.size
               ? `${endpoint}?${params.toString()}`
@@ -342,39 +726,169 @@
             const items = (Array.isArray(data?.items) ? data.items : []).map(
               normalizeItem,
             );
+            currentListItems = items;
 
             tableBody.innerHTML = "";
-            metaText.textContent = `Total ${items.length} data`;
+            const sortedItems = applyClientSort(items);
+            const hasServerPaginationMeta =
+              data?.page != null ||
+              data?.total_pages != null ||
+              data?.limit != null;
 
-            if (items.length === 0) {
-              tableBody.innerHTML =
-                '<tr><td colspan="8" class="text-center text-muted py-4">Belum ada data</td></tr>';
+            let renderedItems = sortedItems;
+            let totalItems = Number(data?.total ?? sortedItems.length);
+            let totalPages = 1;
+
+            if (hasServerPaginationMeta) {
+              const serverPage = Number(data?.page ?? state.page);
+              const serverLimit = Number(
+                data?.limit ?? state.limit ?? DEFAULT_LIMIT,
+              );
+              const serverTotalPages = Number(
+                data?.total_pages ??
+                  Math.ceil(totalItems / Math.max(1, serverLimit)),
+              );
+
+              state.page =
+                Number.isFinite(serverPage) && serverPage > 0
+                  ? serverPage
+                  : DEFAULT_PAGE;
+              state.limit =
+                Number.isFinite(serverLimit) && serverLimit > 0
+                  ? serverLimit
+                  : DEFAULT_LIMIT;
+              totalPages =
+                Number.isFinite(serverTotalPages) && serverTotalPages > 0
+                  ? serverTotalPages
+                  : 1;
+            } else {
+              totalItems = sortedItems.length;
+              totalPages = Math.max(1, Math.ceil(totalItems / state.limit));
+              if (state.page > totalPages) {
+                state.page = totalPages;
+              }
+              const start = (state.page - 1) * state.limit;
+              const end = start + state.limit;
+              renderedItems = sortedItems.slice(start, end);
+            }
+
+            limitSelect.value = String(state.limit);
+            metaText.textContent = `Total ${totalItems} data`;
+
+            if (totalItems > 0 && state.page > totalPages) {
+              state.page = totalPages;
+              writeStateToURL();
+              await loadList();
               return;
             }
 
-            items
-              .sort((a, b) => a.id - b.id)
-              .forEach((item) => tableBody.appendChild(rowTemplate(item)));
+            updatePaginationUI(state.page, totalPages);
+            writeStateToURL();
+
+            if (renderedItems.length === 0) {
+              tableBody.innerHTML =
+                '<tr><td colspan="9" class="text-center text-muted py-4">Belum ada data</td></tr>';
+              return;
+            }
+
+            renderedItems.forEach((item) =>
+              tableBody.appendChild(rowTemplate(item)),
+            );
           } catch (error) {
             tableBody.innerHTML =
-              '<tr><td colspan="8" class="text-center text-danger py-4">Gagal memuat data</td></tr>';
+              '<tr><td colspan="9" class="text-center text-danger py-4">Gagal memuat data</td></tr>';
+            updatePaginationUI(1, 1);
             setStatus(error.message, true);
           }
+        }
+
+        function syncStateFromInputs() {
+          state.q = queryInput.value.trim();
+        }
+
+        function queueRealtimeSearch() {
+          syncStateFromInputs();
+          state.page = DEFAULT_PAGE;
+          writeStateToURL();
+
+          if (searchDebounceTimer) {
+            window.clearTimeout(searchDebounceTimer);
+          }
+
+          searchDebounceTimer = window.setTimeout(() => {
+            loadList();
+          }, FILTER_DEBOUNCE_MS);
         }
 
         form.addEventListener("submit", async (event) => {
           event.preventDefault();
 
+          if (!canMutateByRole(currentUserRole)) {
+            setStatus("Anda tidak memiliki hak akses untuk menyimpan perubahan", true);
+            return;
+          }
+
+          const indikatorProgramId = indikatorProgramIdInput.value;
+          // Validasi: indikatorProgramId harus angka
+          if (!indikatorProgramId || isNaN(Number(indikatorProgramId))) {
+            setStatus(
+              "Indikator Program wajib dipilih dan harus berupa angka",
+              true,
+            );
+            indikatorProgramIdInput.focus();
+            return;
+          }
+
+          const kegiatanId = kegiatanIdInput.value;
+          if (!kegiatanId || isNaN(Number(kegiatanId))) {
+            setStatus("Kegiatan wajib dipilih dan harus berupa angka", true);
+            kegiatanIdInput.focus();
+            return;
+          }
+
+          const kode = kodeInput.value.trim();
+          if (!kode) {
+            setStatus("Kode wajib diisi", true);
+            kodeInput.focus();
+            return;
+          }
+
+          const nama = namaInput.value.trim();
+          if (!nama) {
+            setStatus("Nama wajib diisi", true);
+            namaInput.focus();
+            return;
+          }
+
+          const id = idInput.value.trim();
+          const editingID = id ? Number(id) : 0;
+          if (isDuplicateKode(kode, editingID)) {
+            const suggestedKode = suggestNextKode();
+            kodeInput.value = suggestedKode;
+            setStatus(
+              `Kode indikator kegiatan sudah digunakan. Saran kode: ${suggestedKode}`,
+              true,
+            );
+            kodeInput.focus();
+            return;
+          }
+
           const payload = {
-            kegiatan_id: Number(kegiatanIdInput.value),
-            kode: kodeInput.value.trim(),
-            nama: namaInput.value.trim(),
+            indikator_program_id: Number(indikatorProgramId),
+            kegiatan_id: Number(kegiatanId),
+            kode,
+            nama,
             formula: formulaInput.value.trim(),
             satuan: satuanInput.value.trim(),
             baseline: Number(baselineInput.value || 0),
           };
 
-          const id = idInput.value.trim();
+          {
+            {
+              /* console.log(payload); */
+            }
+          }
+
           const isEdit = id !== "";
           const url = isEdit ? `${endpoint}/${id}` : endpoint;
           const method = isEdit ? "PUT" : "POST";
@@ -394,6 +908,20 @@
             resetForm();
             await loadList();
           } catch (error) {
+            if (
+              String(error.message || "")
+                .toLowerCase()
+                .includes("kode indikator_kegiatan sudah digunakan")
+            ) {
+              const suggestedKode = suggestNextKode();
+              kodeInput.value = suggestedKode;
+              setStatus(
+                `Kode sudah dipakai. Saran kode baru: ${suggestedKode}`,
+                true,
+              );
+              kodeInput.focus();
+              return;
+            }
             setStatus(error.message, true);
           }
         });
@@ -404,12 +932,98 @@
         });
 
         btnSearch.addEventListener("click", () => {
+          syncStateFromInputs();
+          state.page = DEFAULT_PAGE;
+          writeStateToURL();
           loadList();
         });
 
+        limitSelect.addEventListener("change", () => {
+          const limit = Number(limitSelect.value || DEFAULT_LIMIT);
+          state.limit =
+            Number.isFinite(limit) && limit > 0 ? limit : DEFAULT_LIMIT;
+          state.page = DEFAULT_PAGE;
+          writeStateToURL();
+          loadList();
+        });
+
+        pagePrevBtn.addEventListener("click", () => {
+          if (state.page <= 1) {
+            return;
+          }
+          state.page -= 1;
+          writeStateToURL();
+          loadList();
+        });
+
+        pageNextBtn.addEventListener("click", () => {
+          state.page += 1;
+          writeStateToURL();
+          loadList();
+        });
+
+        queryInput.addEventListener("input", queueRealtimeSearch);
+
+        sortHeaders.forEach((th) => {
+          th.addEventListener("click", () => {
+            const nextSortBy = th.dataset.sortKey;
+
+            if (!sortableFields.has(nextSortBy)) {
+              return;
+            }
+
+            if (state.sortBy === nextSortBy) {
+              state.order = state.order === "asc" ? "desc" : "asc";
+            } else {
+              state.sortBy = nextSortBy;
+              state.order = "asc";
+            }
+            state.page = DEFAULT_PAGE;
+
+            updateSortHeaderUI();
+            writeStateToURL();
+            loadList();
+          });
+        });
+
+        window.addEventListener("popstate", () => {
+          parseStateFromURL();
+          updateSortHeaderUI();
+          loadList();
+        });
+
+        parseStateFromURL();
+        updateSortHeaderUI();
+        writeStateToURL();
+
+        renderKegiatanOptionsByProgram(0);
+
         loadKegiatanOptions();
-        loadList();
+        loadIndikatorProgramOptions();
+        async function loadCurrentUser() {
+          try {
+            const token =
+              localStorage.getItem("AUTH_TOKEN") ||
+              localStorage.getItem("authToken") ||
+              "";
+            if (!token) return;
+            const res = await fetch("/api/v1/auth/me", {
+              headers: { Authorization: `Bearer ${token}` },
+            });
+            if (!res.ok) return;
+            const body = await res.json();
+            currentUserRole = normalizeRole(body?.data?.role ?? "");
+          } catch (_) {
+            // non-fatal: fallback to read-only
+          }
+        }
+
+        loadCurrentUser().then(() => {
+          applyRoleAccess();
+          loadList();
+        });
       })();
     </script>
+    <script src="/assets/js/auth-client.js"></script>
   </body>
 </html>

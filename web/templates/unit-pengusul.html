@@ -3,69 +3,97 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Tujuan - E-Planning RSUD</title>
+    <title>Unit Pengusul - E-Planning RSUD</title>
     <link
       href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
       rel="stylesheet"
     />
     <link href="/assets/css/app.css" rel="stylesheet" />
-    <style>
-      .panel-soft {
-        background: rgba(255, 255, 255, 0.9);
-        border: 1px solid rgba(16, 74, 101, 0.1);
-      }
-
-      .muted-label {
-        font-size: 0.78rem;
-        text-transform: uppercase;
-        letter-spacing: 0.06em;
-        color: #5d7380;
-      }
-    </style>
   </head>
-  <body class="bg-soft-pattern" data-api-endpoint="/api/v1/tujuan">
-    <div class="container py-4">
+  <body
+    class="bg-soft-pattern"
+    data-module-name="Unit Pengusul"
+    data-api-endpoint="/api/v1/unit_pengusul"
+  >
+    <main class="container py-4">
       <header
         class="mb-4 p-4 card shadow-sm border-0 header-gradient text-white"
       >
-        <h1 class="h3 mb-1">Manajemen Tujuan</h1>
-        <p class="mb-0 opacity-75">
-          Kelola data tujuan dan keterkaitannya dengan misi
-        </p>
+        <h1 class="h3 mb-1">CRUD</h1>
+        <p class="mb-0 opacity-75">Kelola data Unit Pengusul</p>
       </header>
 
       <div class="row g-4">
-        <div class="col-lg-4">
-          <div class="card border-0 shadow-sm panel-soft">
+        <section class="col-lg-4" aria-label="Form Unit Pengusul">
+          <div class="card border-0 shadow-sm">
             <div class="card-body">
-              <h2 class="h6 mb-3">Form Tujuan</h2>
-              <form id="tujuan-form" class="vstack gap-2">
+              <h2 class="h6 text-uppercase text-muted">Form Data</h2>
+              <form id="crud-form" class="vstack gap-2" autocomplete="off">
                 <input type="hidden" id="entity-id" />
-                <label class="form-label mb-0 muted-label">Misi</label>
-                <select id="misiId" class="form-select" required>
-                  <option value="">Pilih misi</option>
-                </select>
-                <label class="form-label mb-0 muted-label">Kode</label>
+
+                <label class="form-label mb-0" for="kode">Kode</label>
                 <input
                   id="kode"
                   class="form-control"
-                  placeholder="TJN-001"
+                  placeholder="UP-001"
                   required
                 />
-                <label class="form-label mb-0 muted-label">Nama Tujuan</label>
+
+                <label class="form-label mb-0" for="nama">Nama</label>
                 <input
                   id="nama"
                   class="form-control"
-                  placeholder="Meningkatkan keselamatan pasien"
+                  placeholder="Nama unit pengusul"
                   required
                 />
-                <label class="form-label mb-0 muted-label">Deskripsi</label>
+
+                <label class="form-label mb-0" for="namaPenanggungjawab"
+                  >Nama Penanggung Jawab</label
+                >
+                <input
+                  id="namaPenanggungjawab"
+                  class="form-control"
+                  placeholder="Nama lengkap penanggung jawab"
+                />
+
+                <label class="form-label mb-0" for="nipPenanggungjawab"
+                  >NIP Penanggung Jawab</label
+                >
+                <input
+                  id="nipPenanggungjawab"
+                  class="form-control"
+                  placeholder="NIP"
+                />
+
+                <label class="form-label mb-0" for="jabatanPenanggungjawab"
+                  >Jabatan Penanggung Jawab</label
+                >
+                <input
+                  id="jabatanPenanggungjawab"
+                  class="form-control"
+                  placeholder="Jabatan"
+                />
+
+                <label class="form-label mb-0" for="keterangan"
+                  >Keterangan</label
+                >
                 <textarea
-                  id="deskripsi"
+                  id="keterangan"
                   class="form-control"
                   rows="3"
-                  placeholder="Deskripsi tujuan"
+                  placeholder="Keterangan tambahan"
                 ></textarea>
+
+                <div class="form-check mt-1">
+                  <input
+                    id="aktif"
+                    class="form-check-input"
+                    type="checkbox"
+                    checked
+                  />
+                  <label class="form-check-label" for="aktif">Aktif</label>
+                </div>
+
                 <div class="d-flex gap-2 mt-2">
                   <button type="submit" class="btn btn-primary">Simpan</button>
                   <button
@@ -76,32 +104,36 @@
                     Reset
                   </button>
                 </div>
-                <small id="status-text" class="text-muted">Siap</small>
+                <small id="status-text" class="text-muted" aria-live="polite"
+                  >Siap</small
+                >
               </form>
             </div>
           </div>
-        </div>
+        </section>
 
-        <div class="col-lg-8">
-          <div class="card border-0 shadow-sm panel-soft">
+        <section class="col-lg-8" aria-label="Daftar Unit Pengusul">
+          <div class="card border-0 shadow-sm">
             <div class="card-body">
               <div
                 class="d-flex justify-content-between align-items-center mb-3"
               >
-                <h2 class="h6 text-uppercase text-muted mb-0">Daftar Tujuan</h2>
+                <h2 class="h6 text-uppercase text-muted mb-0">Daftar Data</h2>
                 <a href="/ui/dashboard" class="btn btn-sm btn-outline-dark"
                   >Kembali ke Dashboard</a
                 >
               </div>
+
               <div class="row g-2 mb-3">
-                <div class="col-md-5">
+                <div class="col-md-8">
                   <input
                     id="query"
                     class="form-control"
-                    placeholder="Cari nama atau kode"
+                    placeholder="Cari kode atau nama"
+                    aria-label="Cari kode atau nama"
                   />
                 </div>
-                <div class="col-md-7 d-grid">
+                <div class="col-md-4 d-grid">
                   <button
                     id="btn-search"
                     type="button"
@@ -111,21 +143,29 @@
                   </button>
                 </div>
               </div>
+
               <div class="table-responsive">
                 <table class="table table-striped table-hover align-middle">
+                  <caption class="visually-hidden">
+                    Tabel data Unit Pengusul
+                  </caption>
                   <thead>
                     <tr>
-                      <th>ID</th>
-                      <th>Misi</th>
-                      <th>Kode</th>
-                      <th>Nama Tujuan</th>
-                      <th>Deskripsi</th>
-                      <th>Aksi</th>
+                      <th scope="col">ID</th>
+                      <th scope="col">Kode</th>
+                      <th scope="col">Nama</th>
+                      <th scope="col">Penanggung Jawab</th>
+                      <th scope="col">NIP</th>
+                      <th scope="col">Jabatan</th>
+                      <th scope="col">Keterangan</th>
+                      <th scope="col">Aktif</th>
+                      <th scope="col">Aksi</th>
                     </tr>
                   </thead>
                   <tbody id="table-body"></tbody>
                 </table>
               </div>
+
               <div
                 class="d-flex justify-content-between align-items-center mt-2"
               >
@@ -133,20 +173,28 @@
               </div>
             </div>
           </div>
-        </div>
+        </section>
       </div>
-    </div>
+    </main>
 
     <script>
       (() => {
         const endpoint = document.body.dataset.apiEndpoint;
-        const misiEndpoint = "/api/v1/misi";
-        const form = document.getElementById("tujuan-form");
+
+        const form = document.getElementById("crud-form");
         const idInput = document.getElementById("entity-id");
-        const misiIdInput = document.getElementById("misiId");
         const kodeInput = document.getElementById("kode");
         const namaInput = document.getElementById("nama");
-        const deskripsiInput = document.getElementById("deskripsi");
+        const namaPenanggungjawabInput = document.getElementById(
+          "namaPenanggungjawab",
+        );
+        const nipPenanggungjawabInput =
+          document.getElementById("nipPenanggungjawab");
+        const jabatanPenanggungjawabInput = document.getElementById(
+          "jabatanPenanggungjawab",
+        );
+        const keteranganInput = document.getElementById("keterangan");
+        const aktifInput = document.getElementById("aktif");
         const statusText = document.getElementById("status-text");
         const queryInput = document.getElementById("query");
         const btnSearch = document.getElementById("btn-search");
@@ -154,15 +202,26 @@
         const tableBody = document.getElementById("table-body");
         const metaText = document.getElementById("meta-text");
 
-        const misiMap = new Map();
+        function getAccessToken() {
+          return (
+            localStorage.getItem("AUTH_TOKEN") ||
+            localStorage.getItem("authToken") ||
+            ""
+          );
+        }
+
+        function redirectToLogin() {
+          const next = encodeURIComponent(
+            window.location.pathname + window.location.search,
+          );
+          window.location.href = `/ui/login?next=${next}`;
+        }
 
         const MUTATION_ROLES = new Set(["ADMIN", "OPERATOR", "PERENCANA"]);
         let currentUserRole = "";
 
         function normalizeRole(raw) {
-          return String(raw || "")
-            .trim()
-            .toUpperCase();
+          return String(raw || "").trim().toUpperCase();
         }
 
         function canMutateByRole(role) {
@@ -171,22 +230,16 @@
 
         function applyRoleAccess() {
           if (canMutateByRole(currentUserRole)) return;
-          form
-            .querySelectorAll("input, textarea, select, button[type='submit']")
-            .forEach((el) => {
-              el.disabled = true;
-            });
+          form.querySelectorAll("input, textarea, select, button[type='submit']").forEach((el) => {
+            el.disabled = true;
+          });
           const info = document.createElement("p");
           info.className = "text-warning small mt-2 mb-0";
-          info.textContent =
-            "Mode baca saja — role Anda tidak memiliki hak untuk mengubah data.";
+          info.textContent = "Mode baca saja — role Anda tidak memiliki hak untuk mengubah data.";
           form.appendChild(info);
         }
         function authHeader() {
-          const token =
-            localStorage.getItem("AUTH_TOKEN") ||
-            localStorage.getItem("authToken") ||
-            "";
+          const token = getAccessToken();
           return token ? { Authorization: `Bearer ${token}` } : {};
         }
 
@@ -197,13 +250,19 @@
             : "text-success small";
         }
 
-        function normalizeItem(item) {
+        function normalizeItem(raw) {
           return {
-            id: item.id ?? item.ID,
-            misiId: item.misi_id ?? item.MisiID,
-            kode: item.kode ?? item.Kode,
-            nama: item.nama ?? item.Nama,
-            deskripsi: item.deskripsi ?? item.Deskripsi,
+            id: Number(raw.id ?? raw.ID ?? 0),
+            kode: raw.kode ?? raw.Kode ?? "",
+            nama: raw.nama ?? raw.Nama ?? "",
+            namaPenanggungjawab:
+              raw.nama_penanggungjawab ?? raw.NamaPenanggungjawab ?? "",
+            nipPenanggungjawab:
+              raw.nip_penanggungjawab ?? raw.NipPenanggungjawab ?? "",
+            jabatanPenanggungjawab:
+              raw.jabatan_penanggungjawab ?? raw.JabatanPenanggungjawab ?? "",
+            keterangan: raw.keterangan ?? raw.Keterangan ?? "",
+            aktif: Boolean(raw.aktif ?? raw.Aktif ?? false),
           };
         }
 
@@ -215,33 +274,51 @@
               ...authHeader(),
             },
           });
+
           const body = await res.json();
           if (!res.ok || !body.success) {
+            if (res.status === 401) {
+              const authError = String(body?.error || "").toLowerCase();
+              if (
+                authError.includes("authorization") ||
+                authError.includes("token")
+              ) {
+                redirectToLogin();
+                throw new Error("Sesi login berakhir, silakan login ulang");
+              }
+            }
             throw new Error(body.error || `HTTP ${res.status}`);
           }
+
           return body.data;
         }
 
         function resetForm() {
           idInput.value = "";
-          misiIdInput.value = "";
           kodeInput.value = "";
           namaInput.value = "";
-          deskripsiInput.value = "";
-        }
-
-        function misiLabel(misiId) {
-          return misiMap.get(Number(misiId)) || `Misi #${misiId}`;
+          namaPenanggungjawabInput.value = "";
+          nipPenanggungjawabInput.value = "";
+          jabatanPenanggungjawabInput.value = "";
+          keteranganInput.value = "";
+          aktifInput.checked = true;
         }
 
         function rowTemplate(item) {
           const tr = document.createElement("tr");
           tr.innerHTML = `
             <td>${item.id}</td>
-            <td>${misiLabel(item.misiId)}</td>
             <td>${item.kode}</td>
             <td>${item.nama}</td>
-            <td>${item.deskripsi || "-"}</td>
+            <td>${item.namaPenanggungjawab || "-"}</td>
+            <td>${item.nipPenanggungjawab || "-"}</td>
+            <td>${item.jabatanPenanggungjawab || "-"}</td>
+            <td>${item.keterangan || "-"}</td>
+            <td>
+              <span class="badge ${item.aktif ? "text-bg-success" : "text-bg-secondary"}">
+                ${item.aktif ? "Aktif" : "Nonaktif"}
+              </span>
+            </td>
             <td class="text-nowrap">
               ${canMutateByRole(currentUserRole) ? '<button class="btn btn-sm btn-outline-primary me-1" data-action="edit">Edit</button><button class="btn btn-sm btn-outline-danger" data-action="delete">Hapus</button>' : '<span class="text-muted small">Read-only</span>'}
             </td>
@@ -251,10 +328,14 @@
             "click",
             () => {
               idInput.value = item.id;
-              misiIdInput.value = item.misiId;
               kodeInput.value = item.kode;
               namaInput.value = item.nama;
-              deskripsiInput.value = item.deskripsi || "";
+              namaPenanggungjawabInput.value = item.namaPenanggungjawab || "";
+              nipPenanggungjawabInput.value = item.nipPenanggungjawab || "";
+              jabatanPenanggungjawabInput.value =
+                item.jabatanPenanggungjawab || "";
+              keteranganInput.value = item.keterangan || "";
+              aktifInput.checked = item.aktif;
               setStatus(`Mode edit ID ${item.id}`);
             },
           );
@@ -262,9 +343,10 @@
           tr.querySelector('[data-action="delete"]')?.addEventListener(
             "click",
             async () => {
-              if (!confirm(`Hapus tujuan ${item.nama}?`)) {
+              if (!confirm(`Hapus unit pengusul ${item.nama}?`)) {
                 return;
               }
+
               try {
                 await fetchJSON(`${endpoint}/${item.id}`, { method: "DELETE" });
                 setStatus("Data berhasil dihapus");
@@ -281,60 +363,40 @@
           return tr;
         }
 
-        async function loadMisiOptions() {
-          try {
-            const data = await fetchJSON(misiEndpoint);
-            const items = Array.isArray(data?.items) ? data.items : [];
-
-            misiIdInput.innerHTML = '<option value="">Pilih misi</option>';
-            misiMap.clear();
-
-            items.forEach((raw) => {
-              const item = {
-                id: raw.id ?? raw.ID,
-                kode: raw.kode ?? raw.Kode,
-                nama: raw.nama ?? raw.Nama,
-              };
-              misiMap.set(Number(item.id), `${item.kode} - ${item.nama}`);
-
-              const option = document.createElement("option");
-              option.value = String(item.id);
-              option.textContent = `${item.kode} - ${item.nama}`;
-              misiIdInput.appendChild(option);
-            });
-          } catch (error) {
-            setStatus(`Gagal memuat daftar misi: ${error.message}`, true);
-          }
-        }
-
         async function loadList() {
           tableBody.innerHTML =
-            '<tr><td colspan="6" class="text-center text-muted py-4">Memuat...</td></tr>';
+            '<tr><td colspan="9" class="text-center text-muted py-4">Memuat...</td></tr>';
+
           try {
             const params = new URLSearchParams();
             const q = queryInput.value.trim();
             if (q) {
               params.set("q", q);
             }
-            const url = params.toString()
+
+            const url = params.size
               ? `${endpoint}?${params.toString()}`
               : endpoint;
             const data = await fetchJSON(url);
-            const items = Array.isArray(data?.items)
-              ? data.items.map(normalizeItem)
-              : [];
+            const items = (Array.isArray(data?.items) ? data.items : []).map(
+              normalizeItem,
+            );
 
             tableBody.innerHTML = "";
+            metaText.textContent = `Total ${items.length} data`;
+
             if (items.length === 0) {
               tableBody.innerHTML =
-                '<tr><td colspan="6" class="text-center text-muted py-4">Belum ada data</td></tr>';
-            } else {
-              items.forEach((item) => tableBody.appendChild(rowTemplate(item)));
+                '<tr><td colspan="9" class="text-center text-muted py-4">Belum ada data</td></tr>';
+              return;
             }
-            metaText.textContent = `Total ${items.length} data`;
+
+            items
+              .sort((a, b) => a.id - b.id)
+              .forEach((item) => tableBody.appendChild(rowTemplate(item)));
           } catch (error) {
             tableBody.innerHTML =
-              '<tr><td colspan="6" class="text-center text-danger py-4">Gagal memuat data</td></tr>';
+              '<tr><td colspan="9" class="text-center text-danger py-4">Gagal memuat data</td></tr>';
             setStatus(error.message, true);
           }
         }
@@ -343,27 +405,22 @@
           event.preventDefault();
 
           if (!canMutateByRole(currentUserRole)) {
-            setStatus(
-              "Anda tidak memiliki hak akses untuk menyimpan perubahan",
-              true,
-            );
+            setStatus("Anda tidak memiliki hak akses untuk menyimpan perubahan", true);
             return;
           }
 
           const payload = {
-            misi_id: Number(misiIdInput.value),
             kode: kodeInput.value.trim(),
             nama: namaInput.value.trim(),
-            deskripsi: deskripsiInput.value.trim(),
+            nama_penanggungjawab: namaPenanggungjawabInput.value.trim(),
+            nip_penanggungjawab: nipPenanggungjawabInput.value.trim(),
+            jabatan_penanggungjawab: jabatanPenanggungjawabInput.value.trim(),
+            keterangan: keteranganInput.value.trim(),
+            aktif: Boolean(aktifInput.checked),
           };
 
-          if (!payload.misi_id || !payload.kode || !payload.nama) {
-            setStatus("Misi, kode, dan nama wajib diisi", true);
-            return;
-          }
-
           const id = idInput.value.trim();
-          const isEdit = Boolean(id);
+          const isEdit = id !== "";
           const url = isEdit ? `${endpoint}/${id}` : endpoint;
           const method = isEdit ? "PUT" : "POST";
 
@@ -375,13 +432,20 @@
             });
 
             setStatus(
-              isEdit ? "Data berhasil diperbarui" : "Data berhasil disimpan",
+              isEdit
+                ? `Data ID ${id} diperbarui`
+                : "Data baru berhasil disimpan",
             );
             resetForm();
             await loadList();
           } catch (error) {
             setStatus(error.message, true);
           }
+        });
+
+        btnReset.addEventListener("click", () => {
+          resetForm();
+          setStatus("Form direset");
         });
 
         btnSearch.addEventListener("click", () => {
@@ -395,10 +459,10 @@
           }
         });
 
-        btnReset.addEventListener("click", () => {
-          resetForm();
-          setStatus("Form direset");
-        });
+        if (!getAccessToken()) {
+          redirectToLogin();
+          return;
+        }
 
         async function loadCurrentUser() {
           try {
@@ -414,12 +478,12 @@
             const body = await res.json();
             currentUserRole = normalizeRole(body?.data?.role ?? "");
           } catch (_) {
-            // non-fatal
+            // non-fatal: fallback to read-only
           }
         }
 
-        loadMisiOptions().then(async () => {
-          await loadCurrentUser();
+        resetForm();
+        loadCurrentUser().then(() => {
           applyRoleAccess();
           loadList();
         });

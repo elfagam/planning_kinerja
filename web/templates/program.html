@@ -41,10 +41,6 @@
               <h2 class="h6 mb-3">Form Program</h2>
               <form id="program-form" class="vstack gap-2">
                 <input type="hidden" id="entity-id" />
-                <label class="form-label mb-0 muted-label">Sasaran</label>
-                <select id="sasaranId" class="form-select" required>
-                  <option value="">Pilih sasaran</option>
-                </select>
                 <label class="form-label mb-0 muted-label">Kode</label>
                 <input
                   id="kode"
@@ -118,10 +114,11 @@
                   <thead>
                     <tr>
                       <th>ID</th>
-                      <th>Sasaran</th>
                       <th>Kode</th>
                       <th>Nama Program</th>
                       <th>Deskripsi</th>
+                      <th>Dibuat</th>
+                      <th>Diupdate</th>
                       <th>Aksi</th>
                     </tr>
                   </thead>
@@ -142,11 +139,9 @@
     <script>
       (() => {
         const endpoint = document.body.dataset.apiEndpoint;
-        const sasaranEndpoint = "/api/v1/sasaran";
         const unitPengusulEndpoint = "/api/v1/unit_pengusul";
         const form = document.getElementById("program-form");
         const idInput = document.getElementById("entity-id");
-        const sasaranIdInput = document.getElementById("sasaranId");
         const kodeInput = document.getElementById("kode");
         const namaInput = document.getElementById("nama");
         const deskripsiInput = document.getElementById("deskripsi");
@@ -160,6 +155,27 @@
         const sasaranMap = new Map();
         let cachedDefaultUnitPengusulId = 0;
 
+        const MUTATION_ROLES = new Set(["ADMIN", "OPERATOR", "PERENCANA"]);
+        let currentUserRole = "";
+
+        function normalizeRole(raw) {
+          return String(raw || "").trim().toUpperCase();
+        }
+
+        function canMutateByRole(role) {
+          return MUTATION_ROLES.has(normalizeRole(role));
+        }
+
+        function applyRoleAccess() {
+          if (canMutateByRole(currentUserRole)) return;
+          form.querySelectorAll("input, textarea, select, button[type='submit']").forEach((el) => {
+            el.disabled = true;
+          });
+          const info = document.createElement("p");
+          info.className = "text-warning small mt-2 mb-0";
+          info.textContent = "Mode baca saja — role Anda tidak memiliki hak untuk mengubah data.";
+          form.appendChild(info);
+        }
         function authHeader() {
           const token =
             localStorage.getItem("AUTH_TOKEN") ||
@@ -178,10 +194,11 @@
         function normalizeItem(item) {
           return {
             id: item.id ?? item.ID,
-            sasaranId: item.sasaran_id ?? item.SasaranID,
             kode: item.kode ?? item.Kode,
             nama: item.nama ?? item.Nama,
             deskripsi: item.deskripsi ?? item.Deskripsi,
+            created_at: item.created_at ?? item.Created_at,
+            updated_at: item.updated_at ?? item.Updated_at,
           };
         }
 
@@ -223,35 +240,28 @@
 
         function resetForm() {
           idInput.value = "";
-          sasaranIdInput.value = "";
           kodeInput.value = "";
           namaInput.value = "";
           deskripsiInput.value = "";
-        }
-
-        function sasaranLabel(sasaranId) {
-          return sasaranMap.get(Number(sasaranId)) || `Sasaran #${sasaranId}`;
         }
 
         function rowTemplate(item) {
           const tr = document.createElement("tr");
           tr.innerHTML = `
             <td>${item.id}</td>
-            <td>${sasaranLabel(item.sasaranId)}</td>
             <td>${item.kode}</td>
             <td>${item.nama}</td>
             <td>${item.deskripsi || "-"}</td>
+            <td>${item.created_at ? new Date(item.created_at).toLocaleString() : "-"}</td>
+            <td>${item.updated_at ? new Date(item.updated_at).toLocaleString() : "-"}</td>
             <td class="text-nowrap">
-              <button class="btn btn-sm btn-outline-primary me-1" data-action="edit">Edit</button>
-              <button class="btn btn-sm btn-outline-danger" data-action="delete">Hapus</button>
+              ${canMutateByRole(currentUserRole) ? '<button class="btn btn-sm btn-outline-primary me-1" data-action="edit">Edit</button><button class="btn btn-sm btn-outline-danger" data-action="delete">Hapus</button>' : '<span class="text-muted small">Read-only</span>'}
             </td>
           `;
-
-          tr.querySelector('[data-action="edit"]').addEventListener(
+          tr.querySelector('[data-action="edit"]')?.addEventListener(
             "click",
             () => {
               idInput.value = item.id;
-              sasaranIdInput.value = item.sasaranId;
               kodeInput.value = item.kode;
               namaInput.value = item.nama;
               deskripsiInput.value = item.deskripsi || "";
@@ -259,7 +269,7 @@
             },
           );
 
-          tr.querySelector('[data-action="delete"]').addEventListener(
+          tr.querySelector('[data-action="delete"]')?.addEventListener(
             "click",
             async () => {
               if (!confirm(`Hapus program ${item.nama}?`)) {
@@ -279,34 +289,6 @@
           );
 
           return tr;
-        }
-
-        async function loadReferenceOptions() {
-          try {
-            const sasaranData = await fetchJSON(sasaranEndpoint);
-            const sasaranItems = Array.isArray(sasaranData?.items)
-              ? sasaranData.items
-              : [];
-
-            sasaranIdInput.innerHTML =
-              '<option value="">Pilih sasaran</option>';
-            sasaranMap.clear();
-            sasaranItems.forEach((raw) => {
-              const id = Number(raw.id ?? raw.ID);
-              const kode = raw.kode ?? raw.Kode;
-              const nama = raw.nama ?? raw.Nama;
-              const label = `${kode} - ${nama}`;
-
-              sasaranMap.set(id, label);
-
-              const option = document.createElement("option");
-              option.value = String(id);
-              option.textContent = label;
-              sasaranIdInput.appendChild(option);
-            });
-          } catch (error) {
-            setStatus(`Gagal memuat data referensi: ${error.message}`, true);
-          }
         }
 
         async function loadList() {
@@ -344,15 +326,19 @@
         form.addEventListener("submit", async (event) => {
           event.preventDefault();
 
+          if (!canMutateByRole(currentUserRole)) {
+            setStatus("Anda tidak memiliki hak akses untuk menyimpan perubahan", true);
+            return;
+          }
+
           const payload = {
-            sasaran_id: Number(sasaranIdInput.value),
             kode: kodeInput.value.trim(),
             nama: namaInput.value.trim(),
             deskripsi: deskripsiInput.value.trim(),
           };
 
-          if (!payload.sasaran_id || !payload.kode || !payload.nama) {
-            setStatus("Sasaran, kode, dan nama wajib diisi", true);
+          if (!payload.kode || !payload.nama) {
+            setStatus("Kode dan nama wajib diisi", true);
             return;
           }
 
@@ -422,8 +408,30 @@
           setStatus("Form direset");
         });
 
-        loadReferenceOptions().then(loadList);
+        async function loadCurrentUser() {
+          try {
+            const token =
+              localStorage.getItem("AUTH_TOKEN") ||
+              localStorage.getItem("authToken") ||
+              "";
+            if (!token) return;
+            const res = await fetch("/api/v1/auth/me", {
+              headers: { Authorization: `Bearer ${token}` },
+            });
+            if (!res.ok) return;
+            const body = await res.json();
+            currentUserRole = normalizeRole(body?.data?.role ?? "");
+          } catch (_) {
+            // non-fatal: fallback to read-only
+          }
+        }
+
+        loadCurrentUser().then(() => {
+          applyRoleAccess();
+          loadList();
+        });
       })();
     </script>
+    <script src="/assets/js/auth-client.js"></script>
   </body>
 </html>

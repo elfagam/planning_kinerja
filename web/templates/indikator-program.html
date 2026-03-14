@@ -19,7 +19,7 @@
       <header
         class="mb-4 p-4 card shadow-sm border-0 header-gradient text-white"
       >
-        <h1 class="h3 mb-1" id="module-title">CRUD</h1>
+        <h1 class="h3 mb-1" id="module-title">CRUD PROGRAM DAN INDIKATOR</h1>
         <p class="mb-0 opacity-75">
           Kelola data Indikator Program secara terpisah
         </p>
@@ -32,6 +32,11 @@
               <h2 class="h6 text-uppercase text-muted">Form Data</h2>
               <form id="crud-form" class="vstack gap-2" autocomplete="off">
                 <input type="hidden" id="entity-id" />
+
+                <label class="form-label mb-0" for="sasaranId">Sasaran</label>
+                <select id="sasaranId" class="form-select" required>
+                  <option value="">Pilih sasaran</option>
+                </select>
 
                 <label class="form-label mb-0" for="programId">Program</label>
                 <select id="programId" class="form-select" required>
@@ -47,12 +52,12 @@
                 />
 
                 <label class="form-label mb-0" for="nama">Nama</label>
-                <input
+                <textarea
                   id="nama"
                   class="form-control"
                   placeholder="Nama indikator program"
                   required
-                />
+                ></textarea>
 
                 <label class="form-label mb-0" for="formula">Formula</label>
                 <textarea
@@ -133,6 +138,7 @@
                   <thead>
                     <tr>
                       <th scope="col">ID</th>
+                      <th scope="col">Sasaran</th>
                       <th scope="col">Program</th>
                       <th scope="col">Kode</th>
                       <th scope="col">Nama</th>
@@ -169,6 +175,7 @@
         const formulaInput = document.getElementById("formula");
         const satuanInput = document.getElementById("satuan");
         const baselineInput = document.getElementById("baseline");
+        const sasaranIdInput = document.getElementById("sasaranId");
         const statusText = document.getElementById("status-text");
         const queryInput = document.getElementById("query");
         const btnSearch = document.getElementById("btn-search");
@@ -177,7 +184,29 @@
         const metaText = document.getElementById("meta-text");
 
         const programMap = new Map();
+        const sasaranMap = new Map();
 
+        const MUTATION_ROLES = new Set(["ADMIN", "OPERATOR", "PERENCANA"]);
+        let currentUserRole = "";
+
+        function normalizeRole(raw) {
+          return String(raw || "").trim().toUpperCase();
+        }
+
+        function canMutateByRole(role) {
+          return MUTATION_ROLES.has(normalizeRole(role));
+        }
+
+        function applyRoleAccess() {
+          if (canMutateByRole(currentUserRole)) return;
+          form.querySelectorAll("input, textarea, select, button[type='submit']").forEach((el) => {
+            el.disabled = true;
+          });
+          const info = document.createElement("p");
+          info.className = "text-warning small mt-2 mb-0";
+          info.textContent = "Mode baca saja — role Anda tidak memiliki hak untuk mengubah data.";
+          form.appendChild(info);
+        }
         function authHeader() {
           const token =
             localStorage.getItem("AUTH_TOKEN") ||
@@ -210,6 +239,7 @@
             formula: raw.formula ?? raw.Formula ?? "",
             satuan: raw.satuan ?? raw.Satuan ?? "",
             baseline: Number(raw.baseline ?? raw.Baseline ?? 0),
+            sasaranId: Number(raw.sasaran_id ?? raw.SasaranID ?? 0),
           };
         }
 
@@ -238,6 +268,7 @@
           formulaInput.value = "";
           satuanInput.value = "";
           baselineInput.value = "0";
+          sasaranIdInput.value = "";
         }
 
         function programLabel(programId) {
@@ -246,21 +277,27 @@
 
         function rowTemplate(item) {
           const tr = document.createElement("tr");
+          const sasaranNama =
+            sasaranMap.get(Number(item.sasaranId)) ||
+            `Sasaran #${item.sasaranId}`;
+          const programNama =
+            programMap.get(Number(item.programId)) ||
+            `Program #${item.programId}`;
           tr.innerHTML = `
             <td>${item.id}</td>
-            <td>${programLabel(item.programId)}</td>
+            <td>${sasaranNama}</td>
+            <td>${programNama}</td>
             <td>${item.kode}</td>
             <td>${item.nama}</td>
             <td>${item.formula || "-"}</td>
             <td>${item.satuan || "-"}</td>
-            <td>${item.baseline.toFixed(2)}</td>
+            <td>${item.baseline ?? 0}</td>
             <td class="text-nowrap">
-              <button class="btn btn-sm btn-outline-primary me-1" data-action="edit">Edit</button>
-              <button class="btn btn-sm btn-outline-danger" data-action="delete">Hapus</button>
+              ${canMutateByRole(currentUserRole) ? '<button class="btn btn-sm btn-outline-primary me-1" data-action="edit">Edit</button><button class="btn btn-sm btn-outline-danger" data-action="delete">Hapus</button>' : '<span class="text-muted small">Read-only</span>'}
             </td>
           `;
 
-          tr.querySelector('[data-action="edit"]').addEventListener(
+          tr.querySelector('[data-action="edit"]')?.addEventListener(
             "click",
             () => {
               idInput.value = item.id;
@@ -270,11 +307,12 @@
               formulaInput.value = item.formula;
               satuanInput.value = item.satuan;
               baselineInput.value = String(item.baseline);
+              sasaranIdInput.value = String(item.sasaranId);
               setStatus(`Mode edit ID ${item.id}`);
             },
           );
 
-          tr.querySelector('[data-action="delete"]').addEventListener(
+          tr.querySelector('[data-action="delete"]')?.addEventListener(
             "click",
             async () => {
               if (!confirm(`Hapus indikator program ${item.nama}?`)) {
@@ -326,6 +364,26 @@
           }
         }
 
+        const sasaranEndpoint = "http://localhost:8081/api/v1/sasaran";
+
+        async function loadSasaranOptions() {
+          try {
+            const data = await fetchJSON(sasaranEndpoint);
+            const items = Array.isArray(data?.items) ? data.items : [];
+            sasaranIdInput.innerHTML =
+              '<option value="">Pilih sasaran</option>';
+            sasaranMap.clear();
+            items.forEach((raw) => {
+              const id = Number(raw.id ?? raw.ID);
+              const nama = raw.nama ?? raw.Nama;
+              sasaranMap.set(id, nama);
+              sasaranIdInput.innerHTML += `<option value="${id}">${nama}</option>`;
+            });
+          } catch (error) {
+            setStatus("Gagal memuat data sasaran", true);
+          }
+        }
+
         async function loadList() {
           tableBody.innerHTML =
             '<tr><td colspan="8" class="text-center text-muted py-4">Memuat...</td></tr>';
@@ -366,6 +424,11 @@
         form.addEventListener("submit", async (event) => {
           event.preventDefault();
 
+          if (!canMutateByRole(currentUserRole)) {
+            setStatus("Anda tidak memiliki hak akses untuk menyimpan perubahan", true);
+            return;
+          }
+
           const payload = {
             program_id: Number(programIdInput.value),
             kode: kodeInput.value.trim(),
@@ -373,6 +436,7 @@
             formula: formulaInput.value.trim(),
             satuan: satuanInput.value.trim(),
             baseline: Number(baselineInput.value || 0),
+            sasaran_id: Number(sasaranIdInput.value),
           };
 
           const id = idInput.value.trim();
@@ -409,8 +473,31 @@
         });
 
         loadProgramOptions();
-        loadList();
+        loadSasaranOptions();
+        async function loadCurrentUser() {
+          try {
+            const token =
+              localStorage.getItem("AUTH_TOKEN") ||
+              localStorage.getItem("authToken") ||
+              "";
+            if (!token) return;
+            const res = await fetch("/api/v1/auth/me", {
+              headers: { Authorization: `Bearer ${token}` },
+            });
+            if (!res.ok) return;
+            const body = await res.json();
+            currentUserRole = normalizeRole(body?.data?.role ?? "");
+          } catch (_) {
+            // non-fatal: fallback to read-only
+          }
+        }
+
+        loadCurrentUser().then(() => {
+          applyRoleAccess();
+          loadList();
+        });
       })();
     </script>
+    <script src="/assets/js/auth-client.js"></script>
   </body>
 </html>

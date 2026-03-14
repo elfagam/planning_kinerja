@@ -156,6 +156,32 @@
 
         const visiMap = new Map();
 
+        const MUTATION_ROLES = new Set(["ADMIN", "OPERATOR", "PERENCANA"]);
+        let currentUserRole = "";
+
+        function normalizeRole(raw) {
+          return String(raw || "")
+            .trim()
+            .toUpperCase();
+        }
+
+        function canMutateByRole(role) {
+          return MUTATION_ROLES.has(normalizeRole(role));
+        }
+
+        function applyRoleAccess() {
+          if (canMutateByRole(currentUserRole)) return;
+          form
+            .querySelectorAll("input, textarea, select, button[type='submit']")
+            .forEach((el) => {
+              el.disabled = true;
+            });
+          const info = document.createElement("p");
+          info.className = "text-warning small mt-2 mb-0";
+          info.textContent =
+            "Mode baca saja — role Anda tidak memiliki hak untuk mengubah data.";
+          form.appendChild(info);
+        }
         function authHeader() {
           const token =
             localStorage.getItem("AUTH_TOKEN") ||
@@ -217,12 +243,11 @@
             <td>${item.nama}</td>
             <td>${item.deskripsi || "-"}</td>
             <td class="text-nowrap">
-              <button class="btn btn-sm btn-outline-primary me-1" data-action="edit">Edit</button>
-              <button class="btn btn-sm btn-outline-danger" data-action="delete">Hapus</button>
+              ${canMutateByRole(currentUserRole) ? '<button class="btn btn-sm btn-outline-primary me-1" data-action="edit">Edit</button><button class="btn btn-sm btn-outline-danger" data-action="delete">Hapus</button>' : '<span class="text-muted small">Read-only</span>'}
             </td>
           `;
 
-          tr.querySelector('[data-action="edit"]').addEventListener(
+          tr.querySelector('[data-action="edit"]')?.addEventListener(
             "click",
             () => {
               idInput.value = item.id;
@@ -234,7 +259,7 @@
             },
           );
 
-          tr.querySelector('[data-action="delete"]').addEventListener(
+          tr.querySelector('[data-action="delete"]')?.addEventListener(
             "click",
             async () => {
               if (!confirm(`Hapus misi ${item.nama}?`)) {
@@ -317,6 +342,14 @@
         form.addEventListener("submit", async (event) => {
           event.preventDefault();
 
+          if (!canMutateByRole(currentUserRole)) {
+            setStatus(
+              "Anda tidak memiliki hak akses untuk menyimpan perubahan",
+              true,
+            );
+            return;
+          }
+
           const payload = {
             visi_id: Number(visiIdInput.value),
             kode: kodeInput.value.trim(),
@@ -367,8 +400,31 @@
           setStatus("Form direset");
         });
 
-        loadVisiOptions().then(loadList);
+        async function loadCurrentUser() {
+          try {
+            const token =
+              localStorage.getItem("AUTH_TOKEN") ||
+              localStorage.getItem("authToken") ||
+              "";
+            if (!token) return;
+            const res = await fetch("/api/v1/auth/me", {
+              headers: { Authorization: `Bearer ${token}` },
+            });
+            if (!res.ok) return;
+            const body = await res.json();
+            currentUserRole = normalizeRole(body?.data?.role ?? "");
+          } catch (_) {
+            // non-fatal
+          }
+        }
+
+        loadVisiOptions().then(async () => {
+          await loadCurrentUser();
+          applyRoleAccess();
+          loadList();
+        });
       })();
     </script>
+    <script src="/assets/js/auth-client.js"></script>
   </body>
 </html>

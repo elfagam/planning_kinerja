@@ -1,0 +1,1069 @@
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Manajemen User - E-Planning RSUD</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&family=Source+Sans+3:wght@400;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <link href="/assets/css/app.css" rel="stylesheet" />
+    <style>
+      :root {
+        --usr-bg: #eef4f6;
+        --usr-card: #ffffff;
+        --usr-ink: #1e3139;
+        --usr-muted: #5f7780;
+        --usr-border: #d6e3e7;
+        --usr-accent: #0f6a78;
+        --usr-accent-soft: #e4f2f4;
+        --usr-warn: #a06b0f;
+        --usr-danger: #b23d35;
+      }
+
+      body {
+        font-family: "Source Sans 3", sans-serif;
+        color: var(--usr-ink);
+        background:
+          radial-gradient(
+            circle at 12% 12%,
+            rgba(15, 106, 120, 0.11),
+            transparent 28%
+          ),
+          radial-gradient(
+            circle at 88% 8%,
+            rgba(160, 107, 15, 0.1),
+            transparent 26%
+          ),
+          linear-gradient(140deg, #f7fbfc 0%, #eaf1f4 100%);
+      }
+
+      h1,
+      h2,
+      h3,
+      .btn,
+      .badge,
+      .table thead th {
+        font-family: "Sora", sans-serif;
+      }
+
+      .hero {
+        border: 0;
+        border-radius: 1.2rem;
+        background: linear-gradient(
+          135deg,
+          #0f6a78 0%,
+          #105e50 54%,
+          #2a6a88 100%
+        );
+        color: #f2fcff;
+        box-shadow: 0 18px 38px rgba(23, 56, 66, 0.2);
+      }
+
+      .hero .hero-eyebrow {
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        font-size: 0.74rem;
+        opacity: 0.84;
+      }
+
+      .kpi-grid {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 0.85rem;
+      }
+
+      .kpi-card {
+        border: 1px solid var(--usr-border);
+        border-radius: 0.95rem;
+        background: var(--usr-card);
+        padding: 0.8rem 0.9rem;
+        box-shadow: 0 8px 16px rgba(19, 46, 54, 0.05);
+      }
+
+      .kpi-label {
+        font-size: 0.72rem;
+        text-transform: uppercase;
+        color: var(--usr-muted);
+        letter-spacing: 0.07em;
+      }
+
+      .kpi-value {
+        font-size: clamp(1.15rem, 2.2vw, 1.65rem);
+        font-weight: 800;
+        margin-top: 0.2rem;
+      }
+
+      .panel {
+        border: 1px solid var(--usr-border);
+        border-radius: 1rem;
+        background: var(--usr-card);
+        box-shadow: 0 10px 24px rgba(16, 45, 54, 0.06);
+      }
+
+      .toolbar {
+        background: linear-gradient(180deg, #ffffff 0%, #f7fbfc 100%);
+      }
+
+      .table thead th {
+        font-size: 0.7rem;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: #5b7680;
+        white-space: nowrap;
+      }
+
+      .badge-role {
+        background: #e9f2ff;
+        color: #2b5f90;
+      }
+
+      .badge-status-active {
+        background: #dff7ea;
+        color: #1f7751;
+      }
+
+      .badge-status-inactive {
+        background: #ffe9da;
+        color: #9a5b10;
+      }
+
+      .badge-status-locked {
+        background: #fde6e6;
+        color: #9e2f36;
+      }
+
+      .table-hover > tbody > tr {
+        transition: background-color 140ms ease;
+      }
+
+      .fade-up {
+        opacity: 0;
+        transform: translateY(8px);
+        animation: fadeUp 450ms ease forwards;
+      }
+
+      .fade-up:nth-child(2) {
+        animation-delay: 60ms;
+      }
+
+      .fade-up:nth-child(3) {
+        animation-delay: 120ms;
+      }
+
+      @keyframes fadeUp {
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      @media (max-width: 991.98px) {
+        .kpi-grid {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+      }
+
+      @media (max-width: 575.98px) {
+        .kpi-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body data-module-name="Manajemen User" data-api-endpoint="/api/v1/users">
+    <main class="container py-4">
+      <header class="hero p-4 p-md-5 mb-4 fade-up">
+        <p class="hero-eyebrow mb-2">Admin Area</p>
+        <div
+          class="d-flex flex-column flex-md-row justify-content-between gap-3 align-items-md-center"
+        >
+          <div>
+            <h1 class="h3 mb-1">Manajemen User</h1>
+            <p class="mb-0 opacity-75">
+              Kelola akses akun, role, status, dan audit singkat pengguna
+              aplikasi.
+            </p>
+          </div>
+          <div class="d-flex gap-2">
+            <button
+              class="btn btn-light"
+              data-bs-toggle="modal"
+              data-bs-target="#userFormModal"
+              id="btn-new-user"
+            >
+              Tambah User
+            </button>
+            <a href="/ui/dashboard" class="btn btn-outline-light">Kembali</a>
+          </div>
+        </div>
+      </header>
+
+      <section class="kpi-grid mb-3 fade-up" aria-label="Ringkasan user">
+        <article class="kpi-card">
+          <div class="kpi-label">Total User</div>
+          <div class="kpi-value" id="kpi-total">0</div>
+        </article>
+        <article class="kpi-card">
+          <div class="kpi-label">Aktif</div>
+          <div class="kpi-value text-success" id="kpi-active">0</div>
+        </article>
+        <article class="kpi-card">
+          <div class="kpi-label">Nonaktif</div>
+          <div
+            class="kpi-value"
+            style="color: var(--usr-warn)"
+            id="kpi-inactive"
+          >
+            0
+          </div>
+        </article>
+        <article class="kpi-card">
+          <div class="kpi-label">Terkunci</div>
+          <div
+            class="kpi-value"
+            style="color: var(--usr-danger)"
+            id="kpi-locked"
+          >
+            0
+          </div>
+        </article>
+      </section>
+
+      <section
+        class="panel toolbar p-3 p-lg-4 mb-3 fade-up"
+        aria-label="Filter user"
+      >
+        <div class="row g-2 align-items-end">
+          <div class="col-lg-3">
+            <label class="form-label mb-1" for="q">Cari</label>
+            <input
+              id="q"
+              class="form-control"
+              placeholder="Nama, email, username"
+            />
+          </div>
+          <div class="col-lg-2 col-md-4">
+            <label class="form-label mb-1" for="filter-role">Role</label>
+            <select id="filter-role" class="form-select">
+              <option value="">Semua role</option>
+              <option value="ADMIN">ADMIN</option>
+              <option value="OPERATOR">OPERATOR</option>
+              <option value="PERENCANA">PERENCANA</option>
+              <option value="VERIFIKATOR">VERIFIKATOR</option>
+              <option value="PIMPINAN">PIMPINAN</option>
+            </select>
+          </div>
+          <div class="col-lg-2 col-md-4">
+            <label class="form-label mb-1" for="filter-status">Status</label>
+            <select id="filter-status" class="form-select">
+              <option value="">Semua status</option>
+              <option value="AKTIF">AKTIF</option>
+              <option value="NONAKTIF">NONAKTIF</option>
+            </select>
+          </div>
+          <div class="col-lg-3 col-md-4">
+            <label class="form-label mb-1" for="filter-unit">Unit</label>
+            <select id="filter-unit" class="form-select">
+              <option value="">Semua unit</option>
+            </select>
+          </div>
+          <div class="col-lg-2 d-grid">
+            <button
+              type="button"
+              id="btn-reset-filter"
+              class="btn btn-outline-secondary"
+            >
+              Reset Filter
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel p-3 p-lg-4 fade-up" aria-label="Daftar user">
+        <div
+          class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2"
+        >
+          <h2 class="h6 text-uppercase text-muted mb-0">Daftar Akun</h2>
+          <div class="d-flex gap-2">
+            <button
+              class="btn btn-outline-primary btn-sm"
+              id="btn-bulk-activate"
+            >
+              Aktifkan Terpilih
+            </button>
+            <button
+              class="btn btn-outline-danger btn-sm"
+              id="btn-bulk-deactivate"
+            >
+              Nonaktifkan Terpilih
+            </button>
+          </div>
+        </div>
+
+        <div class="table-responsive">
+          <table class="table table-hover align-middle">
+            <thead>
+              <tr>
+                <th><input type="checkbox" id="check-all" /></th>
+                <th>Nama</th>
+                <th>Email</th>
+                <th>Role</th>
+                <th>Unit</th>
+                <th>Status</th>
+                <th>Dibuat</th>
+                <th>Diupdate</th>
+                <th>Aksi</th>
+              </tr>
+            </thead>
+            <tbody id="table-body"></tbody>
+          </table>
+        </div>
+        <small class="text-muted" id="meta-text">0 user</small>
+        <small class="d-block text-muted mt-1" id="status-text">Siap</small>
+      </section>
+    </main>
+
+    <aside
+      class="offcanvas offcanvas-end"
+      tabindex="-1"
+      id="userDetailCanvas"
+      aria-labelledby="userDetailTitle"
+    >
+      <div class="offcanvas-header">
+        <h3 class="offcanvas-title h5" id="userDetailTitle">Detail User</h3>
+        <button
+          type="button"
+          class="btn-close"
+          data-bs-dismiss="offcanvas"
+        ></button>
+      </div>
+      <div class="offcanvas-body" id="detail-body"></div>
+    </aside>
+
+    <div class="modal fade" id="userFormModal" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <form class="modal-content" id="user-form" autocomplete="off">
+          <div class="modal-header">
+            <h3 class="modal-title h5" id="userFormTitle">Tambah User</h3>
+            <button
+              type="button"
+              class="btn-close"
+              data-bs-dismiss="modal"
+            ></button>
+          </div>
+          <div class="modal-body">
+            <input type="hidden" id="form-id" />
+            <div class="row g-2">
+              <div class="col-md-6">
+                <label class="form-label mb-1" for="form-name"
+                  >Nama lengkap</label
+                >
+                <input class="form-control" id="form-name" required />
+              </div>
+              <div class="col-md-6">
+                <label class="form-label mb-1" for="form-email">Email</label>
+                <input
+                  class="form-control"
+                  id="form-email"
+                  type="email"
+                  required
+                />
+              </div>
+              <div class="col-md-6">
+                <label class="form-label mb-1" for="form-role">Role</label>
+                <select class="form-select" id="form-role" required>
+                  <option value="ADMIN">ADMIN</option>
+                  <option value="OPERATOR">OPERATOR</option>
+                  <option value="PERENCANA">PERENCANA</option>
+                  <option value="VERIFIKATOR">VERIFIKATOR</option>
+                  <option value="PIMPINAN">PIMPINAN</option>
+                </select>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label mb-1" for="form-unit-pengusul-id"
+                  >Unit Pengusul</label
+                >
+                <select class="form-select" id="form-unit-pengusul-id">
+                  <option value="">Tanpa unit</option>
+                </select>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label mb-1" for="form-status">Status</label>
+                <select class="form-select" id="form-status" required>
+                  <option value="AKTIF">AKTIF</option>
+                  <option value="NONAKTIF">NONAKTIF</option>
+                </select>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label mb-1" for="form-password"
+                  >Password</label
+                >
+                <input
+                  class="form-control"
+                  id="form-password"
+                  type="password"
+                  minlength="8"
+                  placeholder="Minimal 8 karakter"
+                />
+                <small class="text-muted"
+                  >Wajib saat tambah, opsional saat edit</small
+                >
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <small class="me-auto text-muted" id="form-note"
+              >Terhubung ke API /api/v1/users.</small
+            >
+            <button
+              type="button"
+              class="btn btn-outline-secondary"
+              data-bs-dismiss="modal"
+            >
+              Batal
+            </button>
+            <button type="submit" class="btn btn-primary">Simpan</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <div class="modal fade" id="confirmModal" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h3 class="modal-title h6 mb-0">Konfirmasi Aksi</h3>
+            <button
+              type="button"
+              class="btn-close"
+              data-bs-dismiss="modal"
+            ></button>
+          </div>
+          <div class="modal-body" id="confirm-text"></div>
+          <div class="modal-footer">
+            <button
+              type="button"
+              class="btn btn-outline-secondary"
+              data-bs-dismiss="modal"
+            >
+              Batal
+            </button>
+            <button type="button" class="btn btn-danger" id="confirm-ok">
+              Ya, lanjutkan
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+      (() => {
+        const endpoint = document.body.dataset.apiEndpoint;
+        const unitEndpoint = "/api/v1/unit_pengusul";
+
+        const tableBody = document.getElementById("table-body");
+        const metaText = document.getElementById("meta-text");
+        const statusText = document.getElementById("status-text");
+        const qInput = document.getElementById("q");
+        const roleInput = document.getElementById("filter-role");
+        const statusInput = document.getElementById("filter-status");
+        const unitInput = document.getElementById("filter-unit");
+        const btnResetFilter = document.getElementById("btn-reset-filter");
+        const btnBulkActivate = document.getElementById("btn-bulk-activate");
+        const btnBulkDeactivate = document.getElementById(
+          "btn-bulk-deactivate",
+        );
+        const checkAll = document.getElementById("check-all");
+        const detailBody = document.getElementById("detail-body");
+
+        const kpiTotal = document.getElementById("kpi-total");
+        const kpiActive = document.getElementById("kpi-active");
+        const kpiInactive = document.getElementById("kpi-inactive");
+        const kpiLocked = document.getElementById("kpi-locked");
+
+        const userForm = document.getElementById("user-form");
+        const userFormTitle = document.getElementById("userFormTitle");
+        const formID = document.getElementById("form-id");
+        const formName = document.getElementById("form-name");
+        const formEmail = document.getElementById("form-email");
+        const formRole = document.getElementById("form-role");
+        const formUnitPengusulID = document.getElementById(
+          "form-unit-pengusul-id",
+        );
+        const formStatus = document.getElementById("form-status");
+        const formPassword = document.getElementById("form-password");
+        const btnNewUser = document.getElementById("btn-new-user");
+
+        const confirmText = document.getElementById("confirm-text");
+        const confirmOK = document.getElementById("confirm-ok");
+
+        const userFormModal = new bootstrap.Modal(
+          document.getElementById("userFormModal"),
+        );
+        const userFormModalEl = document.getElementById("userFormModal");
+        const userDetailCanvas = new bootstrap.Offcanvas(
+          document.getElementById("userDetailCanvas"),
+        );
+        const confirmModal = new bootstrap.Modal(
+          document.getElementById("confirmModal"),
+        );
+        const confirmModalEl = document.getElementById("confirmModal");
+
+        let users = [];
+        const selectedIDs = new Set();
+        let onConfirm = null;
+        let currentUserRole = "";
+
+        function normalizeRole(raw) {
+          return String(raw || "")
+            .trim()
+            .toUpperCase();
+        }
+
+        function canMutateByRole(role) {
+          return normalizeRole(role) === "ADMIN";
+        }
+
+        function applyRoleAccess() {
+          if (canMutateByRole(currentUserRole)) {
+            return;
+          }
+
+          btnNewUser.disabled = true;
+          btnBulkActivate.disabled = true;
+          btnBulkDeactivate.disabled = true;
+          userForm
+            .querySelectorAll("input, select, textarea, button[type='submit']")
+            .forEach((el) => {
+              el.disabled = true;
+            });
+
+          setStatus(
+            "Mode baca saja — hanya ADMIN yang dapat mengubah data user.",
+          );
+        }
+
+        function moveFocusOutOf(element) {
+          const active = document.activeElement;
+          if (active && element.contains(active)) {
+            active.blur();
+          }
+        }
+
+        function hideModalSafely(modal, modalElement, focusTarget) {
+          moveFocusOutOf(modalElement);
+          modal.hide();
+          if (focusTarget) {
+            setTimeout(() => focusTarget.focus(), 0);
+          }
+        }
+
+        userFormModalEl.addEventListener("hide.bs.modal", () => {
+          moveFocusOutOf(userFormModalEl);
+        });
+
+        confirmModalEl.addEventListener("hide.bs.modal", () => {
+          moveFocusOutOf(confirmModalEl);
+        });
+
+        function setStatus(message, isError = false) {
+          statusText.textContent = message;
+          statusText.className = isError
+            ? "d-block text-danger mt-1"
+            : "d-block text-muted mt-1";
+        }
+
+        function getAccessToken() {
+          return (
+            localStorage.getItem("AUTH_TOKEN") ||
+            localStorage.getItem("authToken") ||
+            ""
+          );
+        }
+
+        function redirectToLogin() {
+          const next = encodeURIComponent(
+            window.location.pathname + window.location.search,
+          );
+          window.location.href = `/ui/login?next=${next}`;
+        }
+
+        function authHeader() {
+          const token = getAccessToken();
+          return token ? { Authorization: `Bearer ${token}` } : {};
+        }
+
+        async function fetchJSON(url, options = {}) {
+          const res = await fetch(url, {
+            ...options,
+            headers: {
+              ...(options.headers || {}),
+              ...authHeader(),
+            },
+          });
+
+          const body = await res.json();
+          if (!res.ok || !body.success) {
+            if (res.status === 401) {
+              redirectToLogin();
+              throw new Error("Sesi login berakhir, silakan login ulang");
+            }
+            throw new Error(body.error || `HTTP ${res.status}`);
+          }
+          return body.data;
+        }
+
+        async function loadCurrentUser() {
+          const me = await fetchJSON("/api/v1/auth/me");
+          currentUserRole = normalizeRole(me?.role ?? me?.Role ?? "");
+        }
+
+        function statusBadge(status) {
+          if (status === "AKTIF") {
+            return '<span class="badge badge-status-active">AKTIF</span>';
+          }
+          return '<span class="badge badge-status-inactive">NONAKTIF</span>';
+        }
+
+        function escaped(text) {
+          return String(text)
+            .replaceAll("&", "&amp;")
+            .replaceAll("<", "&lt;")
+            .replaceAll(">", "&gt;")
+            .replaceAll('"', "&quot;")
+            .replaceAll("'", "&#39;");
+        }
+
+        function formatDate(dateText) {
+          const d = new Date(dateText);
+          if (Number.isNaN(d.getTime())) return "-";
+          return d.toLocaleString("id-ID");
+        }
+
+        function normalizeUser(raw) {
+          return {
+            id: Number(raw.id ?? raw.ID ?? 0),
+            namaLengkap: raw.nama_lengkap ?? raw.NamaLengkap ?? "",
+            email: raw.email ?? raw.Email ?? "",
+            role: raw.role ?? raw.Role ?? "PERENCANA",
+            status: raw.status ?? (raw.aktif ? "AKTIF" : "NONAKTIF"),
+            aktif: Boolean(raw.aktif ?? raw.Aktif ?? false),
+            unitPengusulID: Number(
+              raw.unit_pengusul_id ?? raw.UnitPengusulID ?? 0,
+            ),
+            unitPengusulNama:
+              raw.unit_pengusul_nama ?? raw.UnitPengusulNama ?? "-",
+            createdAt: raw.created_at ?? raw.CreatedAt ?? "",
+            updatedAt: raw.updated_at ?? raw.UpdatedAt ?? "",
+          };
+        }
+
+        function fillUnitOptions(items) {
+          const options = ['<option value="">Semua unit</option>'];
+          const formOptions = ['<option value="">Tanpa unit</option>'];
+
+          items.forEach((item) => {
+            const id = Number(item.id ?? item.ID ?? 0);
+            const nama = String(item.nama ?? item.Nama ?? "");
+            if (!id || !nama) return;
+
+            options.push(`<option value="${id}">${escaped(nama)}</option>`);
+            formOptions.push(`<option value="${id}">${escaped(nama)}</option>`);
+          });
+
+          unitInput.innerHTML = options.join("");
+          formUnitPengusulID.innerHTML = formOptions.join("");
+        }
+
+        async function loadUnits() {
+          const data = await fetchJSON(unitEndpoint);
+          const items = Array.isArray(data?.items) ? data.items : [];
+          fillUnitOptions(items);
+        }
+
+        async function loadUsers() {
+          const params = new URLSearchParams();
+          const q = qInput.value.trim();
+          if (q) params.set("q", q);
+          if (roleInput.value) params.set("role", roleInput.value);
+          if (statusInput.value) params.set("status", statusInput.value);
+          if (unitInput.value) params.set("unit_pengusul_id", unitInput.value);
+
+          const url = params.size
+            ? `${endpoint}?${params.toString()}`
+            : endpoint;
+          const data = await fetchJSON(url);
+          users = (Array.isArray(data?.items) ? data.items : []).map(
+            normalizeUser,
+          );
+          renderAll();
+        }
+
+        function renderKPI() {
+          const total = users.length;
+          const active = users.filter((u) => u.status === "AKTIF").length;
+          const inactive = users.filter((u) => u.status === "NONAKTIF").length;
+
+          kpiTotal.textContent = String(total);
+          kpiActive.textContent = String(active);
+          kpiInactive.textContent = String(inactive);
+          kpiLocked.textContent = "0";
+        }
+
+        function renderTable() {
+          const canMutate = canMutateByRole(currentUserRole);
+          tableBody.innerHTML = "";
+
+          if (users.length === 0) {
+            tableBody.innerHTML =
+              '<tr><td colspan="9" class="text-center text-muted py-4">Tidak ada user sesuai filter</td></tr>';
+            metaText.textContent = "0 user";
+            checkAll.checked = false;
+            return;
+          }
+
+          users.forEach((u) => {
+            const tr = document.createElement("tr");
+            tr.innerHTML = `
+              <td><input type="checkbox" class="row-check" data-id="${u.id}" ${selectedIDs.has(u.id) ? "checked" : ""}></td>
+              <td><div class="fw-semibold">${escaped(u.namaLengkap)}</div></td>
+              <td>${escaped(u.email)}</td>
+              <td><span class="badge badge-role">${escaped(u.role)}</span></td>
+              <td>${escaped(u.unitPengusulNama || "-")}</td>
+              <td>${statusBadge(u.status)}</td>
+              <td>${formatDate(u.createdAt)}</td>
+              <td>${formatDate(u.updatedAt)}</td>
+              <td class="text-nowrap">
+                <button class="btn btn-sm btn-outline-primary me-1" data-act="detail">Detail</button>
+                ${
+                  canMutate
+                    ? '<button class="btn btn-sm btn-outline-secondary me-1" data-act="edit">Edit</button><button class="btn btn-sm btn-outline-warning" data-act="toggle">Toggle</button>'
+                    : '<span class="text-muted small">Read-only</span>'
+                }
+              </td>
+            `;
+
+            tr.querySelector('[data-act="detail"]').addEventListener(
+              "click",
+              () => showDetail(u),
+            );
+            tr.querySelector('[data-act="edit"]')?.addEventListener(
+              "click",
+              () => openEdit(u),
+            );
+            tr.querySelector('[data-act="toggle"]')?.addEventListener(
+              "click",
+              () => {
+                askConfirm(
+                  `Ubah status user <strong>${escaped(u.namaLengkap)}</strong>?`,
+                  async () => {
+                    try {
+                      await fetchJSON(`${endpoint}/${u.id}`, {
+                        method: "PUT",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                          nama_lengkap: u.namaLengkap,
+                          email: u.email,
+                          role: u.role,
+                          unit_pengusul_id: u.unitPengusulID || null,
+                          status: u.status === "AKTIF" ? "NONAKTIF" : "AKTIF",
+                        }),
+                      });
+                      setStatus("Status user berhasil diperbarui");
+                      await loadUsers();
+                    } catch (error) {
+                      setStatus(error.message, true);
+                    }
+                  },
+                );
+              },
+            );
+
+            tr.querySelector(".row-check").addEventListener("change", (e) => {
+              if (e.target.checked) {
+                selectedIDs.add(u.id);
+              } else {
+                selectedIDs.delete(u.id);
+              }
+            });
+
+            tableBody.appendChild(tr);
+          });
+
+          metaText.textContent = `${users.length} user ditampilkan`;
+          checkAll.checked =
+            users.length > 0 && users.every((u) => selectedIDs.has(u.id));
+        }
+
+        function renderAll() {
+          renderKPI();
+          renderTable();
+        }
+
+        function showDetail(user) {
+          detailBody.innerHTML = `
+            <dl class="row mb-0">
+              <dt class="col-4">Nama</dt><dd class="col-8">${escaped(user.namaLengkap)}</dd>
+              <dt class="col-4">Email</dt><dd class="col-8">${escaped(user.email)}</dd>
+              <dt class="col-4">Role</dt><dd class="col-8"><span class="badge badge-role">${escaped(user.role)}</span></dd>
+              <dt class="col-4">Unit</dt><dd class="col-8">${escaped(user.unitPengusulNama || "-")}</dd>
+              <dt class="col-4">Status</dt><dd class="col-8">${statusBadge(user.status)}</dd>
+              <dt class="col-4">Dibuat</dt><dd class="col-8">${formatDate(user.createdAt)}</dd>
+              <dt class="col-4">Diupdate</dt><dd class="col-8">${formatDate(user.updatedAt)}</dd>
+            </dl>
+          `;
+          userDetailCanvas.show();
+        }
+
+        function openEdit(user) {
+          userFormTitle.textContent = "Edit User";
+          formID.value = String(user.id);
+          formName.value = user.namaLengkap;
+          formEmail.value = user.email;
+          formRole.value = user.role;
+          formUnitPengusulID.value = user.unitPengusulID
+            ? String(user.unitPengusulID)
+            : "";
+          formStatus.value = user.status;
+          formPassword.value = "";
+          userFormModal.show();
+        }
+
+        function openCreate() {
+          userFormTitle.textContent = "Tambah User";
+          formID.value = "";
+          formName.value = "";
+          formEmail.value = "";
+          formRole.value = "PERENCANA";
+          formUnitPengusulID.value = "";
+          formStatus.value = "AKTIF";
+          formPassword.value = "";
+        }
+
+        function askConfirm(message, callback) {
+          confirmText.innerHTML = message;
+          onConfirm = callback;
+          confirmModal.show();
+        }
+
+        userFormModalEl.addEventListener("hidden.bs.modal", () => {
+          if (document.activeElement === document.body) {
+            btnNewUser.focus();
+          }
+        });
+
+        confirmModalEl.addEventListener("hidden.bs.modal", () => {
+          if (document.activeElement === document.body) {
+            btnBulkActivate.focus();
+          }
+        });
+
+        btnNewUser.addEventListener("click", () => {
+          if (!canMutateByRole(currentUserRole)) {
+            setStatus(
+              "Anda tidak memiliki hak akses untuk menambah user",
+              true,
+            );
+            return;
+          }
+          openCreate();
+        });
+
+        userForm.addEventListener("submit", async (event) => {
+          event.preventDefault();
+          if (!canMutateByRole(currentUserRole)) {
+            setStatus(
+              "Anda tidak memiliki hak akses untuk menyimpan perubahan",
+              true,
+            );
+            return;
+          }
+          const id = Number(formID.value || 0);
+          const payload = {
+            nama_lengkap: formName.value.trim(),
+            email: formEmail.value.trim(),
+            role: formRole.value,
+            unit_pengusul_id: formUnitPengusulID.value
+              ? Number(formUnitPengusulID.value)
+              : null,
+            status: formStatus.value,
+          };
+
+          if (!payload.nama_lengkap || !payload.email) {
+            setStatus("Nama lengkap dan email wajib diisi", true);
+            return;
+          }
+
+          if (formPassword.value.trim()) {
+            payload.password = formPassword.value.trim();
+          }
+
+          if (!id && !payload.password) {
+            setStatus("Password wajib diisi saat tambah user", true);
+            return;
+          }
+
+          const method = id > 0 ? "PUT" : "POST";
+          const url = id > 0 ? `${endpoint}/${id}` : endpoint;
+
+          try {
+            await fetchJSON(url, {
+              method,
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(payload),
+            });
+            setStatus(
+              id > 0 ? "User berhasil diperbarui" : "User berhasil ditambahkan",
+            );
+            hideModalSafely(userFormModal, userFormModalEl, btnNewUser);
+            await loadUsers();
+          } catch (error) {
+            setStatus(error.message, true);
+          }
+        });
+
+        confirmOK.addEventListener("click", async () => {
+          if (typeof onConfirm === "function") {
+            await onConfirm();
+          }
+          onConfirm = null;
+          hideModalSafely(confirmModal, confirmModalEl, btnBulkActivate);
+        });
+
+        checkAll.addEventListener("change", () => {
+          if (checkAll.checked) {
+            users.forEach((u) => selectedIDs.add(u.id));
+          } else {
+            users.forEach((u) => selectedIDs.delete(u.id));
+          }
+          renderTable();
+        });
+
+        btnBulkActivate.addEventListener("click", () => {
+          if (!canMutateByRole(currentUserRole)) {
+            setStatus(
+              "Anda tidak memiliki hak akses untuk bulk update user",
+              true,
+            );
+            return;
+          }
+          const ids = Array.from(selectedIDs);
+          if (ids.length === 0) {
+            setStatus("Pilih minimal 1 user", true);
+            return;
+          }
+
+          askConfirm(
+            `Aktifkan <strong>${ids.length}</strong> user terpilih?`,
+            async () => {
+              try {
+                for (const id of ids) {
+                  const u = users.find((item) => item.id === id);
+                  if (!u) continue;
+                  await fetchJSON(`${endpoint}/${id}`, {
+                    method: "PUT",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                      nama_lengkap: u.namaLengkap,
+                      email: u.email,
+                      role: u.role,
+                      unit_pengusul_id: u.unitPengusulID || null,
+                      status: "AKTIF",
+                    }),
+                  });
+                }
+                selectedIDs.clear();
+                setStatus("Bulk aktif user berhasil");
+                await loadUsers();
+              } catch (error) {
+                setStatus(error.message, true);
+              }
+            },
+          );
+        });
+
+        btnBulkDeactivate.addEventListener("click", () => {
+          if (!canMutateByRole(currentUserRole)) {
+            setStatus(
+              "Anda tidak memiliki hak akses untuk bulk update user",
+              true,
+            );
+            return;
+          }
+          const ids = Array.from(selectedIDs);
+          if (ids.length === 0) {
+            setStatus("Pilih minimal 1 user", true);
+            return;
+          }
+
+          askConfirm(
+            `Nonaktifkan <strong>${ids.length}</strong> user terpilih?`,
+            async () => {
+              try {
+                for (const id of ids) {
+                  const u = users.find((item) => item.id === id);
+                  if (!u) continue;
+                  await fetchJSON(`${endpoint}/${id}`, {
+                    method: "PUT",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                      nama_lengkap: u.namaLengkap,
+                      email: u.email,
+                      role: u.role,
+                      unit_pengusul_id: u.unitPengusulID || null,
+                      status: "NONAKTIF",
+                    }),
+                  });
+                }
+                selectedIDs.clear();
+                setStatus("Bulk nonaktif user berhasil");
+                await loadUsers();
+              } catch (error) {
+                setStatus(error.message, true);
+              }
+            },
+          );
+        });
+
+        [qInput, roleInput, statusInput, unitInput].forEach((el) => {
+          el.addEventListener("change", () => {
+            loadUsers().catch((error) => setStatus(error.message, true));
+          });
+          el.addEventListener("keydown", (event) => {
+            if (event.key === "Enter") {
+              event.preventDefault();
+              loadUsers().catch((error) => setStatus(error.message, true));
+            }
+          });
+        });
+
+        btnResetFilter.addEventListener("click", () => {
+          qInput.value = "";
+          roleInput.value = "";
+          statusInput.value = "";
+          unitInput.value = "";
+          loadUsers().catch((error) => setStatus(error.message, true));
+        });
+
+        Promise.all([loadCurrentUser(), loadUnits(), loadUsers()])
+          .then(() => {
+            applyRoleAccess();
+            renderTable();
+          })
+          .then(() => setStatus("Data user berhasil dimuat"))
+          .catch((error) =>
+            setStatus(`Gagal memuat data: ${error.message}`, true),
+          );
+      })();
+    </script>
+  </body>
+</html>

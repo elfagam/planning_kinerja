@@ -9,31 +9,6 @@
       rel="stylesheet"
     />
     <link href="/assets/css/app.css" rel="stylesheet" />
-    <style>
-      body[data-module-name="Realisasi Rencana Kerja"] {
-        font-size: 0.92rem;
-      }
-
-      body[data-module-name="Realisasi Rencana Kerja"] .card-body {
-        font-size: 0.9rem;
-      }
-
-      body[data-module-name="Realisasi Rencana Kerja"] .form-label,
-      body[data-module-name="Realisasi Rencana Kerja"] .form-control,
-      body[data-module-name="Realisasi Rencana Kerja"] .form-select,
-      body[data-module-name="Realisasi Rencana Kerja"] .btn {
-        font-size: 0.85rem;
-      }
-
-      body[data-module-name="Realisasi Rencana Kerja"] .table {
-        font-size: 0.82rem;
-      }
-
-      body[data-module-name="Realisasi Rencana Kerja"] .table thead th {
-        font-size: 0.78rem;
-        white-space: nowrap;
-      }
-    </style>
   </head>
   <body
     class="bg-soft-pattern"
@@ -66,10 +41,10 @@
                 </select>
 
                 <label class="form-label mb-0" for="indikatorRkId"
-                  >Indikator Rencana Kerja</label
+                  >Rincian Rencana Kerja</label
                 >
                 <select id="indikatorRkId" class="form-select" required>
-                  <option value="">Pilih indikator rencana kerja</option>
+                  <option value="">Pilih rincian rencana kerja</option>
                 </select>
 
                 <label class="form-label mb-0" for="tahun">Tahun</label>
@@ -160,8 +135,12 @@
                   type="number"
                   min="1"
                   class="form-control"
+                  readonly
                   required
                 />
+                <small class="text-muted"
+                  >Terisi otomatis dari user login</small
+                >
 
                 <label class="form-label mb-0" for="keterangan"
                   >Keterangan</label
@@ -203,12 +182,23 @@
                 >
               </div>
               <div class="row g-2 mb-3">
-                <div class="col-md-8">
+                <div class="col-md-5">
                   <input
                     id="query"
                     class="form-control"
                     placeholder="Cari keterangan"
                     aria-label="Cari keterangan"
+                  />
+                </div>
+                <div class="col-md-3">
+                  <input
+                    id="filter-year"
+                    type="number"
+                    class="form-control"
+                    placeholder="Tahun"
+                    aria-label="Filter tahun"
+                    min="2000"
+                    max="2100"
                   />
                 </div>
                 <div class="col-md-4 d-grid">
@@ -229,7 +219,7 @@
                   <thead>
                     <tr>
                       <th scope="col">ID</th>
-                      <th scope="col">Indikator Rencana Kerja</th>
+                      <th scope="col">Rincian Rencana Kerja</th>
                       <th scope="col">Target Tahunan</th>
                       <th scope="col">Anggaran Tahunan</th>
                       <th scope="col">Tahun</th>
@@ -261,8 +251,9 @@
     <script>
       (() => {
         const endpoint = document.body.dataset.apiEndpoint;
-        const rencanaKerjaEndpoint = "/api/v1/rencana_kerja";
-        const indikatorEndpoint = "/api/v1/indikator_rencana_kerja";
+        const finalOnlyRefQuery = "all=true&final_only=true";
+        const rencanaKerjaEndpoint = `/api/v1/rencana_kerja?${finalOnlyRefQuery}`;
+        const indikatorEndpoint = `/api/v1/indikator_rencana_kerja?${finalOnlyRefQuery}`;
 
         const form = document.getElementById("crud-form");
         const idInput = document.getElementById("entity-id");
@@ -278,21 +269,62 @@
         const keteranganInput = document.getElementById("keterangan");
         const statusText = document.getElementById("status-text");
         const queryInput = document.getElementById("query");
+        const filterYearInput = document.getElementById("filter-year");
         const btnSearch = document.getElementById("btn-search");
         const btnReset = document.getElementById("btn-reset");
         const tableBody = document.getElementById("table-body");
         const metaText = document.getElementById("meta-text");
+        const DEFAULT_YEAR_KEY = "DEFAULT_YEAR";
 
         const rencanaKerjaMap = new Map();
         const indikatorMap = new Map();
         const indikatorDetailMap = new Map();
         let indikatorItemsCache = [];
+        let currentUserID = 0;
+        const MUTATION_ROLES = new Set(["ADMIN", "OPERATOR", "PERENCANA"]);
+        let currentUserRole = "";
 
-        function authHeader() {
-          const token =
+        function normalizeRole(raw) {
+          return String(raw || "")
+            .trim()
+            .toUpperCase();
+        }
+
+        function canMutateByRole(role) {
+          return MUTATION_ROLES.has(normalizeRole(role));
+        }
+
+        function applyRoleAccess() {
+          if (canMutateByRole(currentUserRole)) return;
+          form
+            .querySelectorAll("input, textarea, select, button[type='submit']")
+            .forEach((el) => {
+              el.disabled = true;
+            });
+          const info = document.createElement("p");
+          info.className = "text-warning small mt-2 mb-0";
+          info.textContent =
+            "Mode baca saja — role Anda tidak memiliki hak untuk mengubah data.";
+          form.appendChild(info);
+        }
+
+        function getAccessToken() {
+          return (
             localStorage.getItem("AUTH_TOKEN") ||
             localStorage.getItem("authToken") ||
-            "";
+            ""
+          );
+        }
+
+        function redirectToLogin() {
+          const next = encodeURIComponent(
+            window.location.pathname + window.location.search,
+          );
+          window.location.href = `/ui/login?next=${next}`;
+        }
+
+        function authHeader() {
+          const token = getAccessToken();
           return token ? { Authorization: `Bearer ${token}` } : {};
         }
 
@@ -348,6 +380,46 @@
           };
         }
 
+        function defaultTahun() {
+          const stored = String(
+            localStorage.getItem(DEFAULT_YEAR_KEY) || "",
+          ).trim();
+          const year = Number(stored);
+          if (Number.isInteger(year) && year >= 2000 && year <= 2100) {
+            return String(year);
+          }
+          return String(new Date().getFullYear());
+        }
+
+        function normalizeYearFilter(val) {
+          const y = Number(String(val).trim());
+          if (Number.isInteger(y) && y >= 2000 && y <= 2100) return String(y);
+          return "";
+        }
+
+        function getYearFromURL() {
+          const params = new URLSearchParams(window.location.search);
+          return normalizeYearFilter(params.get("tahun") || "");
+        }
+
+        function writeYearToURL(year) {
+          const params = new URLSearchParams(window.location.search);
+          if (year) {
+            params.set("tahun", year);
+          } else {
+            params.delete("tahun");
+          }
+          history.replaceState(null, "", "?" + params.toString());
+        }
+
+        function applyInitialYearFilter() {
+          const year = getYearFromURL() || defaultTahun();
+          if (year) {
+            filterYearInput.value = year;
+            writeYearToURL(year);
+          }
+        }
+
         async function fetchJSON(url, options = {}) {
           const res = await fetch(url, {
             ...options,
@@ -359,6 +431,16 @@
 
           const body = await res.json();
           if (!res.ok || !body.success) {
+            if (res.status === 401) {
+              const authError = String(body?.error || "").toLowerCase();
+              if (
+                authError.includes("authorization") ||
+                authError.includes("token")
+              ) {
+                redirectToLogin();
+                throw new Error("Sesi login berakhir, silakan login ulang");
+              }
+            }
             throw new Error(body.error || `HTTP ${res.status}`);
           }
           return body.data;
@@ -368,14 +450,26 @@
           idInput.value = "";
           rencanaKerjaInput.value = "";
           indikatorInput.value = "";
-          tahunInput.value = String(new Date().getFullYear());
+          tahunInput.value = defaultTahun();
           bulanInput.value = "";
           triwulanInput.value = "";
           nilaiRealisasiInput.value = "0";
           realisasiAnggaranInput.value = "0";
-          diinputOlehInput.value = "";
+          diinputOlehInput.value =
+            currentUserID > 0 ? String(currentUserID) : "";
           keteranganInput.value = "";
           applyIndikatorFilter("", "");
+        }
+
+        async function loadCurrentUser() {
+          const me = await fetchJSON("/api/v1/auth/me");
+          currentUserID = Number(me?.user_id ?? me?.userID ?? 0);
+          currentUserRole = normalizeRole(me?.role ?? "");
+          if (!currentUserID) {
+            throw new Error("ID user login tidak ditemukan");
+          }
+
+          diinputOlehInput.value = String(currentUserID);
         }
 
         function indikatorLabel(id) {
@@ -419,7 +513,7 @@
           selectedIndikatorId = "",
         ) {
           indikatorInput.innerHTML =
-            '<option value="">Pilih indikator rencana kerja</option>';
+            '<option value="">Pilih Rencana Aksi</option>';
           indikatorMap.clear();
 
           const selectedRkIDNum = Number(rencanaKerjaId || 0);
@@ -483,12 +577,11 @@
             <td>${item.diinputOleh || "-"}</td>
             <td>${item.keterangan || "-"}</td>
             <td class="text-nowrap">
-              <button class="btn btn-sm btn-outline-primary me-1" data-action="edit">Edit</button>
-              <button class="btn btn-sm btn-outline-danger" data-action="delete">Hapus</button>
+              ${canMutateByRole(currentUserRole) ? '<button class="btn btn-sm btn-outline-primary me-1" data-action="edit">Edit</button><button class="btn btn-sm btn-outline-danger" data-action="delete">Hapus</button>' : '<span class="text-muted small">Read-only</span>'}
             </td>
           `;
 
-          tr.querySelector('[data-action="edit"]').addEventListener(
+          tr.querySelector('[data-action="edit"]')?.addEventListener(
             "click",
             () => {
               idInput.value = item.id;
@@ -505,13 +598,16 @@
                 item.triwulan == null ? "" : String(item.triwulan);
               nilaiRealisasiInput.value = String(item.nilaiRealisasi);
               realisasiAnggaranInput.value = String(item.realisasiAnggaran);
-              diinputOlehInput.value = String(item.diinputOleh || "");
+              diinputOlehInput.value =
+                currentUserID > 0
+                  ? String(currentUserID)
+                  : String(item.diinputOleh || "");
               keteranganInput.value = item.keterangan || "";
               setStatus(`Mode edit ID ${item.id}`);
             },
           );
 
-          tr.querySelector('[data-action="delete"]').addEventListener(
+          tr.querySelector('[data-action="delete"]')?.addEventListener(
             "click",
             async () => {
               if (!confirm(`Hapus data realisasi ID ${item.id}?`)) {
@@ -554,7 +650,6 @@
             )
               .map(normalizeIndikator)
               .sort((a, b) => a.id - b.id);
-
             fillSelect(
               rencanaKerjaInput,
               rencanaKerjaMap,
@@ -577,15 +672,20 @@
             if (q) {
               params.set("q", q);
             }
+            params.set("final_only", "true");
 
             const url = params.size
               ? `${endpoint}?${params.toString()}`
               : endpoint;
             const data = await fetchJSON(url);
 
-            const items = (Array.isArray(data?.items) ? data.items : []).map(
+            let items = (Array.isArray(data?.items) ? data.items : []).map(
               normalizeItem,
             );
+            const filterYear = normalizeYearFilter(filterYearInput.value);
+            if (filterYear) {
+              items = items.filter((item) => String(item.tahun) === filterYear);
+            }
 
             tableBody.innerHTML = "";
             metaText.textContent = `Total ${items.length} data`;
@@ -609,12 +709,20 @@
         form.addEventListener("submit", async (event) => {
           event.preventDefault();
 
+          if (!canMutateByRole(currentUserRole)) {
+            setStatus(
+              "Anda tidak memiliki hak akses untuk menyimpan perubahan",
+              true,
+            );
+            return;
+          }
+
           const payload = {
             indikator_rencana_kerja_id: Number(indikatorInput.value),
             tahun: Number(tahunInput.value || 0),
             nilai_realisasi: Number(nilaiRealisasiInput.value || 0),
             realisasi_anggaran: Number(realisasiAnggaranInput.value || 0),
-            diinput_oleh: Number(diinputOlehInput.value || 0),
+            diinput_oleh: Number(currentUserID || diinputOlehInput.value || 0),
             keterangan: keteranganInput.value.trim(),
           };
 
@@ -635,6 +743,10 @@
 
           if (!payload.indikator_rencana_kerja_id) {
             setStatus("Indikator rencana kerja wajib dipilih", true);
+            return;
+          }
+          if (!payload.diinput_oleh) {
+            setStatus("ID user login tidak valid", true);
             return;
           }
 
@@ -668,12 +780,21 @@
         });
 
         btnSearch.addEventListener("click", () => {
+          writeYearToURL(normalizeYearFilter(filterYearInput.value));
           loadList();
         });
 
         queryInput.addEventListener("keydown", (event) => {
           if (event.key === "Enter") {
             event.preventDefault();
+            loadList();
+          }
+        });
+
+        filterYearInput.addEventListener("keydown", (event) => {
+          if (event.key === "Enter") {
+            event.preventDefault();
+            writeYearToURL(normalizeYearFilter(filterYearInput.value));
             loadList();
           }
         });
@@ -694,10 +815,24 @@
           }
         });
 
-        resetForm();
-        loadReferenceOptions();
-        loadList();
+        (async () => {
+          try {
+            if (!getAccessToken()) {
+              redirectToLogin();
+              return;
+            }
+            await loadCurrentUser();
+            applyRoleAccess();
+            applyInitialYearFilter();
+            resetForm();
+            await loadReferenceOptions();
+            await loadList();
+          } catch (error) {
+            setStatus(`Gagal inisialisasi form: ${error.message}`, true);
+          }
+        })();
       })();
     </script>
+    <script src="/assets/js/auth-client.js"></script>
   </body>
 </html>
