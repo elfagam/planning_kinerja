@@ -2,6 +2,7 @@ package http
 
 import (
 	"errors"
+	"fmt"
 	"log"
 	"net/http"
 	"strconv"
@@ -98,6 +99,9 @@ func (h *Handler) Create(c *gin.Context) {
 	if !h.ensureReady(c) {
 		return
 	}
+	if !allowedToMutateVisi(c) {
+		return
+	}
 
 	var req upsertRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -132,6 +136,9 @@ func (h *Handler) Create(c *gin.Context) {
 
 func (h *Handler) Update(c *gin.Context) {
 	if !h.ensureReady(c) {
+		return
+	}
+	if !allowedToMutateVisi(c) {
 		return
 	}
 
@@ -181,6 +188,9 @@ func (h *Handler) Delete(c *gin.Context) {
 	if !h.ensureReady(c) {
 		return
 	}
+	if !allowedToMutateVisi(c) {
+		return
+	}
 
 	id, ok := parseID(c)
 	if !ok {
@@ -209,6 +219,23 @@ func (h *Handler) ensureReady(c *gin.Context) bool {
 	}
 	response.Error(c, http.StatusServiceUnavailable, h.reason)
 	return false
+}
+
+// visiMutationAllowedRoles are roles permitted to create/update/delete visi.
+var visiMutationAllowedRoles = map[string]bool{
+	"ADMIN":     true,
+	"OPERATOR":  true,
+	"PERENCANA": true,
+}
+
+func allowedToMutateVisi(c *gin.Context) bool {
+	rawRole, _ := c.Get("auth.role")
+	role := strings.ToUpper(strings.TrimSpace(fmt.Sprintf("%v", rawRole)))
+	if !visiMutationAllowedRoles[role] {
+		response.Error(c, http.StatusForbidden, "anda tidak memiliki hak akses untuk mengubah data visi")
+		return false
+	}
+	return true
 }
 
 func validateUpsertRequest(c *gin.Context, req upsertRequest) bool {
