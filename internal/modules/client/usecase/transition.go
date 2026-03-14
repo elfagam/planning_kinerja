@@ -101,7 +101,23 @@ func (s *Service) transition(ctx context.Context, action string, clientID uint64
 		if cleanActorName != "" {
 			history.ActorName = &cleanActorName
 		}
-		return s.repo.CreateHistory(txCtx, history)
+		if err := s.repo.CreateHistory(txCtx, history); err != nil {
+			return err
+		}
+
+		auditPayload := map[string]any{
+			"from_status": fromStatus,
+			"to_status":   toStatus,
+			"action":      action,
+		}
+		if note != "" {
+			auditPayload["note"] = note
+		}
+		if reason != "" {
+			auditPayload["reason"] = reason
+		}
+
+		return s.repo.AppendAudit(txCtx, buildAuditEntry(actor, "CLIENT_"+strings.ToUpper(action), clientID, auditPayload))
 	})
 }
 

@@ -302,7 +302,13 @@ func actorFromContext(c *gin.Context) (usecase.Actor, bool) {
 	rawName, _ := c.Get("auth.full_name")
 	name := strings.TrimSpace(fmt.Sprintf("%v", rawName))
 
-	return usecase.Actor{ID: actorID, Role: role, Name: name}, true
+	return usecase.Actor{
+		ID:        actorID,
+		Role:      role,
+		Name:      name,
+		IPAddress: strings.TrimSpace(c.ClientIP()),
+		UserAgent: strings.TrimSpace(c.Request.UserAgent()),
+	}, true
 }
 
 func toUint64(v any) (uint64, bool) {

@@ -56,7 +56,30 @@ func (s *Service) Create(ctx context.Context, actor Actor, client domain.Client)
 	client.CreatedBy = &actor.ID
 	client.UpdatedBy = &actor.ID
 
-	return s.repo.Create(ctx, client)
+	var created domain.Client
+	err := s.tx.WithinTransaction(ctx, func(txCtx context.Context) error {
+		result, err := s.repo.Create(txCtx, client)
+		if err != nil {
+			return err
+		}
+		created = result
+
+		auditPayload := map[string]any{
+			"kode":   created.Kode,
+			"nama":   created.Nama,
+			"status": created.Status,
+		}
+		if created.UnitPengusulID != nil {
+			auditPayload["unit_pengusul_id"] = *created.UnitPengusulID
+		}
+
+		return s.repo.AppendAudit(txCtx, buildAuditEntry(actor, "CLIENT_CREATE", created.ID, auditPayload))
+	})
+	if err != nil {
+		return domain.Client{}, err
+	}
+
+	return created, nil
 }
 
 func (s *Service) Update(ctx context.Context, id uint64, actor Actor, payload domain.Client) (domain.Client, error) {
@@ -86,7 +109,31 @@ func (s *Service) Update(ctx context.Context, id uint64, actor Actor, payload do
 	}
 	current.UnitPengusulID = payload.UnitPengusulID
 	current.UpdatedBy = &actor.ID
-	return s.repo.Update(ctx, current)
+
+	var updated domain.Client
+	err = s.tx.WithinTransaction(ctx, func(txCtx context.Context) error {
+		result, err := s.repo.Update(txCtx, current)
+		if err != nil {
+			return err
+		}
+		updated = result
+
+		auditPayload := map[string]any{
+			"kode":   updated.Kode,
+			"nama":   updated.Nama,
+			"status": updated.Status,
+		}
+		if updated.UnitPengusulID != nil {
+			auditPayload["unit_pengusul_id"] = *updated.UnitPengusulID
+		}
+
+		return s.repo.AppendAudit(txCtx, buildAuditEntry(actor, "CLIENT_UPDATE", updated.ID, auditPayload))
+	})
+	if err != nil {
+		return domain.Client{}, err
+	}
+
+	return updated, nil
 }
 
 func (s *Service) Delete(ctx context.Context, id uint64, actor Actor) error {
@@ -106,7 +153,22 @@ func (s *Service) Delete(ctx context.Context, id uint64, actor Actor) error {
 		return domain.ErrForbiddenOperation
 	}
 
-	return s.repo.SoftDelete(ctx, id)
+	return s.tx.WithinTransaction(ctx, func(txCtx context.Context) error {
+		if err := s.repo.SoftDelete(txCtx, id); err != nil {
+			return err
+		}
+
+		auditPayload := map[string]any{
+			"kode":   current.Kode,
+			"nama":   current.Nama,
+			"status": current.Status,
+		}
+		if current.UnitPengusulID != nil {
+			auditPayload["unit_pengusul_id"] = *current.UnitPengusulID
+		}
+
+		return s.repo.AppendAudit(txCtx, buildAuditEntry(actor, "CLIENT_DELETE", id, auditPayload))
+	})
 }
 
 func (s *Service) StatusHistory(ctx context.Context, clientID uint64) ([]domain.StatusHistory, error) {
