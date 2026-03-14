@@ -914,8 +914,15 @@ func (h *Handler) update(rc resourceConfig) gin.HandlerFunc {
 				return
 			}
 			if res.RowsAffected == 0 {
-				response.Error(c, http.StatusNotFound, rc.name+" not found")
-				return
+				var exists int64
+				if err := h.db.WithContext(c.Request.Context()).Table("users").Where("id = ?", id).Count(&exists).Error; err != nil {
+					response.Error(c, http.StatusInternalServerError, mapReadError(rc, "get", err))
+					return
+				}
+				if exists == 0 {
+					response.Error(c, http.StatusNotFound, rc.name+" not found")
+					return
+				}
 			}
 
 			var updated userResponseItem
@@ -977,8 +984,15 @@ func (h *Handler) update(rc resourceConfig) gin.HandlerFunc {
 				return
 			}
 			if res.RowsAffected == 0 {
-				response.Error(c, http.StatusNotFound, rc.name+" not found")
-				return
+				var exists int64
+				if err := h.db.WithContext(c.Request.Context()).Model(&database.RencanaKerja{}).Where("id = ?", id).Count(&exists).Error; err != nil {
+					response.Error(c, http.StatusInternalServerError, mapReadError(rc, "get", err))
+					return
+				}
+				if exists == 0 {
+					response.Error(c, http.StatusNotFound, rc.name+" not found")
+					return
+				}
 			}
 
 			var updated database.RencanaKerja
@@ -1011,8 +1025,15 @@ func (h *Handler) update(rc resourceConfig) gin.HandlerFunc {
 			return
 		}
 		if res.RowsAffected == 0 {
-			response.Error(c, http.StatusNotFound, rc.name+" not found")
-			return
+			var exists int64
+			if err := h.db.WithContext(c.Request.Context()).Model(rc.newModel()).Where("id = ?", id).Count(&exists).Error; err != nil {
+				response.Error(c, http.StatusInternalServerError, mapReadError(rc, "get", err))
+				return
+			}
+			if exists == 0 {
+				response.Error(c, http.StatusNotFound, rc.name+" not found")
+				return
+			}
 		}
 
 		payload["id"] = id
