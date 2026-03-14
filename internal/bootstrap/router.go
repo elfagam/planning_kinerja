@@ -2,6 +2,8 @@ package bootstrap
 
 import (
 	"e-plan-ai/internal/config"
+	authhttp "e-plan-ai/internal/modules/auth/delivery/http"
+	clienthttp "e-plan-ai/internal/modules/client/delivery/http"
 	crudhttp "e-plan-ai/internal/modules/crud/delivery/http"
 	performancehttp "e-plan-ai/internal/modules/performance/delivery/http"
 	planninghttp "e-plan-ai/internal/modules/planning/delivery/http"
@@ -11,6 +13,7 @@ import (
 	unitpelaksanahttp "e-plan-ai/internal/modules/unitpelaksana/delivery/http"
 	unitpengusulhttp "e-plan-ai/internal/modules/unitpengusul/delivery/http"
 	visihttp "e-plan-ai/internal/modules/visi/delivery/http"
+	"e-plan-ai/internal/shared/database"
 	"e-plan-ai/internal/shared/middleware"
 
 	"github.com/gin-gonic/gin"
@@ -18,20 +21,51 @@ import (
 
 func NewRouter(cfg config.Config) *gin.Engine {
 	r := gin.New()
-	r.Use(gin.Logger(), middleware.Recovery())
+	r.Use(gin.Logger(), middleware.Recovery(), middleware.CORS())
 	r.Static("/assets", "web/assets")
+	r.GET("/favicon.ico", func(c *gin.Context) {
+		c.Status(204)
+	})
 	r.GET("/", func(c *gin.Context) {
 		c.Redirect(302, "/ui")
 	})
 	uihttp.NewHandler().RegisterRoutes(r)
 
 	r.GET("/health", func(c *gin.Context) {
-		c.JSON(200, gin.H{"service": "e-plan-ai", "status": "ok"})
+		c.JSON(200, gin.H{
+			"service":      "e-plan-ai",
+			"status":       "ok",
+			"auth_enabled": cfg.AuthEnabled,
+		})
 	})
+
+	r.GET("/ready", func(c *gin.Context) {
+		if err := database.PingMySQL(cfg); err != nil {
+			c.JSON(503, gin.H{
+				"service":      "e-plan-ai",
+				"status":       "degraded",
+				"auth_enabled": cfg.AuthEnabled,
+				"database":     "unavailable",
+				"error":        "database connection unavailable",
+			})
+			return
+		}
+
+		c.JSON(200, gin.H{
+			"service":      "e-plan-ai",
+			"status":       "ready",
+			"auth_enabled": cfg.AuthEnabled,
+			"database":     "ok",
+		})
+	})
+
+	authGroup := r.Group("/api/v1/auth")
+	authhttp.NewHandler(cfg).RegisterRoutes(authGroup)
 
 	v1 := r.Group("/api/v1")
 	v1.Use(middleware.Auth(cfg.AuthEnabled, cfg.AuthToken))
 	crudhttp.NewHandler(cfg).RegisterRoutes(v1)
+	clienthttp.NewHandler(cfg).RegisterRoutes(v1)
 	planninghttp.NewHandler().RegisterRoutes(v1)
 	renjahttp.NewHandler(cfg).RegisterRoutes(v1)
 	unitpelaksanahttp.NewHandler(cfg).RegisterRoutes(v1)
