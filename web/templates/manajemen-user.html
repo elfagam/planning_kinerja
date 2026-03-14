@@ -596,12 +596,50 @@
             : "d-block text-muted mt-1";
         }
 
+        function decodeJwtPayload(token) {
+          try {
+            const parts = String(token || "").split(".");
+            if (parts.length < 2) return null;
+            const base64 = parts[1].replace(/-/g, "+").replace(/_/g, "/");
+            const padded = base64.padEnd(Math.ceil(base64.length / 4) * 4, "=");
+            const json = atob(padded);
+            return JSON.parse(json);
+          } catch (_) {
+            return null;
+          }
+        }
+
+        function chooseLatestToken(primaryToken, secondaryToken) {
+          const p = decodeJwtPayload(primaryToken);
+          const s = decodeJwtPayload(secondaryToken);
+          const pIat = Number(p?.iat || 0);
+          const sIat = Number(s?.iat || 0);
+
+          if (pIat && sIat) {
+            return pIat >= sIat ? primaryToken : secondaryToken;
+          }
+          if (pIat) return primaryToken;
+          if (sIat) return secondaryToken;
+
+          return primaryToken || secondaryToken || "";
+        }
+
         function getAccessToken() {
-          return (
-            localStorage.getItem("AUTH_TOKEN") ||
-            localStorage.getItem("authToken") ||
-            ""
-          );
+          const primary = localStorage.getItem("AUTH_TOKEN") || "";
+          const secondary = localStorage.getItem("authToken") || "";
+          const chosen = chooseLatestToken(primary, secondary);
+
+          // Heal mismatched keys to avoid role resolution using stale token.
+          if (chosen) {
+            if (primary !== chosen) {
+              localStorage.setItem("AUTH_TOKEN", chosen);
+            }
+            if (secondary !== chosen) {
+              localStorage.setItem("authToken", chosen);
+            }
+          }
+
+          return chosen;
         }
 
         function redirectToLogin() {
@@ -614,19 +652,6 @@
         function authHeader() {
           const token = getAccessToken();
           return token ? { Authorization: `Bearer ${token}` } : {};
-        }
-
-        function decodeJwtPayload(token) {
-          try {
-            const parts = String(token || "").split(".");
-            if (parts.length < 2) return null;
-            const base64 = parts[1].replace(/-/g, "+").replace(/_/g, "/");
-            const padded = base64.padEnd(Math.ceil(base64.length / 4) * 4, "=");
-            const json = atob(padded);
-            return JSON.parse(json);
-          } catch (_) {
-            return null;
-          }
         }
 
         function resolveRoleFromToken() {
