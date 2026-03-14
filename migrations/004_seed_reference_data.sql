@@ -9,8 +9,8 @@ SELECT 'ADMIN', 'Administrator'
 WHERE NOT EXISTS (SELECT 1 FROM roles WHERE code = 'ADMIN');
 
 INSERT INTO roles (code, name)
-SELECT 'PLANNER', 'Perencana Unit'
-WHERE NOT EXISTS (SELECT 1 FROM roles WHERE code = 'PLANNER');
+SELECT 'PERENCANA', 'Perencana Unit'
+WHERE NOT EXISTS (SELECT 1 FROM roles WHERE code = 'PERENCANA');
 
 INSERT INTO roles (code, name)
 SELECT 'REVIEWER', 'Reviewer Perencanaan'
@@ -96,7 +96,7 @@ WHERE NOT EXISTS (
 INSERT INTO approval_flows (module_name, step_order, role_id, step_name, is_required, sla_hours)
 SELECT 'RENJA', 1, r.id, 'Submit by Planner', 1, 24
 FROM roles r
-WHERE r.code = 'PLANNER'
+WHERE r.code = 'PERENCANA'
   AND NOT EXISTS (
     SELECT 1 FROM approval_flows af
     WHERE af.module_name = 'RENJA' AND af.step_order = 1
@@ -123,7 +123,7 @@ WHERE r.code = 'APPROVER'
 INSERT INTO approval_flows (module_name, step_order, role_id, step_name, is_required, sla_hours)
 SELECT 'TARGET_REALISASI', 1, r.id, 'Input by Planner', 1, 24
 FROM roles r
-WHERE r.code = 'PLANNER'
+WHERE r.code = 'PERENCANA'
   AND NOT EXISTS (
     SELECT 1 FROM approval_flows af
     WHERE af.module_name = 'TARGET_REALISASI' AND af.step_order = 1

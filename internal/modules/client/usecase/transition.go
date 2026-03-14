@@ -126,7 +126,7 @@ func normalizeActorRole(raw string) string {
 	switch role {
 	case "ADMIN":
 		return RoleAdmin
-	case "PLANNER":
+	case "PERENCANA":
 		return RolePerencana
 	case "VERIFIER", "REVIEWER":
 		return RoleVerifikator
