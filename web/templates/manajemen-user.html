@@ -523,12 +523,6 @@
         let onConfirm = null;
         let currentUserRole = "";
         let roleResolved = false;
-        let authRoleDebug = "";
-
-        const authDebugText = document.createElement("small");
-        authDebugText.id = "auth-debug";
-        authDebugText.className = "d-block text-muted mt-1";
-        statusText.insertAdjacentElement("afterend", authDebugText);
 
         function normalizeRole(raw) {
           return String(raw || "")
@@ -616,33 +610,6 @@
           }
         }
 
-        function tokenRoleAndIat(token) {
-          const payload = decodeJwtPayload(token);
-          return {
-            role: normalizeRole(payload?.role ?? ""),
-            iat: Number(payload?.iat || 0),
-          };
-        }
-
-        function updateAuthRoleDebug(meRole = "") {
-          const primary = localStorage.getItem("AUTH_TOKEN") || "";
-          const secondary = localStorage.getItem("authToken") || "";
-          const chosen = chooseLatestToken(primary, secondary);
-
-          const p = tokenRoleAndIat(primary);
-          const s = tokenRoleAndIat(secondary);
-          const c = tokenRoleAndIat(chosen);
-
-          authRoleDebug =
-            `AUTH_TOKEN=${p.role || "-"}@${p.iat || 0} | ` +
-            `authToken=${s.role || "-"}@${s.iat || 0} | ` +
-            `chosen=${c.role || "-"}@${c.iat || 0}` +
-            (meRole ? ` | me=${meRole}` : "");
-
-          authDebugText.textContent = authRoleDebug;
-          console.info("[manajemen-user]", authRoleDebug);
-        }
-
         function chooseLatestToken(primaryToken, secondaryToken) {
           const p = decodeJwtPayload(primaryToken);
           const s = decodeJwtPayload(secondaryToken);
@@ -692,12 +659,10 @@
           const payload = decodeJwtPayload(getAccessToken());
           const tokenRole = normalizeRole(payload?.role ?? "");
           if (!tokenRole) {
-            updateAuthRoleDebug();
             return;
           }
           currentUserRole = tokenRole;
           roleResolved = true;
-          updateAuthRoleDebug();
         }
 
         async function fetchJSON(url, options = {}) {
@@ -728,13 +693,11 @@
               currentUserRole = apiRole;
               roleResolved = true;
             }
-            updateAuthRoleDebug(apiRole);
           } catch (error) {
             // Keep role from token when /auth/me is temporarily unavailable.
             if (!roleResolved) {
               resolveRoleFromToken();
             }
-            updateAuthRoleDebug();
           }
         }
 
@@ -1170,7 +1133,6 @@
             if (!roleResolved) {
               resolveRoleFromToken();
             }
-            updateAuthRoleDebug(currentUserRole);
             applyRoleAccess();
             renderTable();
           })
