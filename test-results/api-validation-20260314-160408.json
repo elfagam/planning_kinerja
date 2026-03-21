@@ -1,0 +1,10 @@
+{
+  "base_url": "http://localhost:8081",
+  "timestamp": "2026-03-14T16:04:09+08:00",
+  "summary": {
+    "pass": 0,
+    "fail": 7,
+    "total": 7
+  },
+  "results": [{"name":"login_tanpa_password","status":"FAIL","http_code":,"detail":"expected 400 + password is required"},{"name":"login_email_invalid","status":"FAIL","http_code":,"detail":"expected 400 + valid email"},{"name":"refresh_tanpa_token","status":"FAIL","http_code":,"detail":"expected 400 + refresh_token is required"},{"name":"create_tanpa_kode","status":"FAIL","http_code":,"detail":"expected 400 + kode is required"},{"name":"create_nama_pendek","status":"FAIL","http_code":,"detail":"expected 400 + nama minimum length is 3"},{"name":"create_unit_0","status":"FAIL","http_code":,"detail":"expected 400 + unit_pengusul_id must be greater than 0"},{"name":"create_valid","status":"FAIL","http_code":,"detail":"expected 200 and client_id"}]
+}

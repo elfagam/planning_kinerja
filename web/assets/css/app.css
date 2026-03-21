@@ -11,6 +11,27 @@
 body {
   font-family: "Plus Jakarta Sans", sans-serif;
   color: var(--ep-text);
+  font-size: 0.88rem;
+}
+
+.card-body {
+  font-size: 0.86rem;
+}
+
+.form-label,
+.form-control,
+.form-select,
+.btn {
+  font-size: 0.8rem;
+}
+
+.table {
+  font-size: 0.78rem;
+}
+
+.table thead th {
+  font-size: 0.74rem;
+  white-space: nowrap;
 }
 
 .bg-soft-pattern {

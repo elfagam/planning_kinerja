@@ -1,0 +1,864 @@
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Clients - E-Planning RSUD</title>
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <link href="/assets/css/app.css" rel="stylesheet" />
+  </head>
+  <body class="bg-soft-pattern">
+    <main class="container py-4">
+      <header
+        class="mb-3 d-flex flex-column flex-md-row justify-content-between gap-2 align-items-md-center"
+      >
+        <div>
+          <h1 class="h3 mb-1">Clients</h1>
+          <p class="text-muted mb-0">
+            CRUD dan transisi status Client menggunakan actor dari JWT context.
+          </p>
+        </div>
+        <div class="d-flex gap-2">
+          <button id="btn-new" class="btn btn-primary">Tambah Client</button>
+          <a href="/ui/dashboard" class="btn btn-outline-secondary"
+            >Menu Modul</a
+          >
+        </div>
+      </header>
+
+      <div
+        id="auth-mode-banner"
+        class="alert alert-warning d-none"
+        role="alert"
+      >
+        Mode read-only aktif: server berjalan dengan AUTH nonaktif, sehingga
+        aksi create/edit/delete/submit/reject/approve dinonaktifkan.
+      </div>
+
+      <section class="card border-0 shadow-sm mb-3">
+        <div class="card-body">
+          <form id="filter-form" class="row g-2 align-items-end">
+            <div class="col-md-4">
+              <label for="q" class="form-label mb-1">Cari</label>
+              <input id="q" class="form-control" placeholder="Kode atau nama" />
+            </div>
+            <div class="col-md-3">
+              <label for="status" class="form-label mb-1">Status</label>
+              <select id="status" class="form-select">
+                <option value="">Semua</option>
+                <option value="DRAFT">DRAFT</option>
+                <option value="DIAJUKAN">DIAJUKAN</option>
+                <option value="DISETUJUI">DISETUJUI</option>
+                <option value="DITOLAK">DITOLAK</option>
+              </select>
+            </div>
+            <div class="col-md-3">
+              <label for="unit-filter" class="form-label mb-1"
+                >Unit Pengusul</label
+              >
+              <select id="unit-filter" class="form-select">
+                <option value="">Semua Unit Pengusul</option>
+              </select>
+            </div>
+            <div class="col-md-2">
+              <button class="btn btn-outline-primary w-100" type="submit">
+                Filter
+              </button>
+            </div>
+          </form>
+        </div>
+      </section>
+
+      <section class="card border-0 shadow-sm">
+        <div class="card-body p-0">
+          <div class="table-responsive">
+            <table class="table table-hover mb-0" id="clients-table">
+              <thead class="table-light">
+                <tr>
+                  <th class="text-nowrap">ID</th>
+                  <th>Kode</th>
+                  <th>Nama</th>
+                  <th>Status</th>
+                  <th class="text-end">Aksi</th>
+                </tr>
+              </thead>
+              <tbody id="rows"></tbody>
+            </table>
+          </div>
+
+          <div
+            class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2 border-top p-3"
+          >
+            <div id="pagination-summary" class="small text-muted">
+              Menampilkan 0 data.
+            </div>
+            <div class="d-flex align-items-center gap-2">
+              <label for="limit" class="small text-muted mb-0">Limit</label>
+              <select
+                id="limit"
+                class="form-select form-select-sm"
+                style="width: 84px"
+              >
+                <option value="5">5</option>
+                <option value="10" selected>10</option>
+                <option value="20">20</option>
+                <option value="50">50</option>
+              </select>
+              <button
+                id="btn-prev"
+                class="btn btn-sm btn-outline-secondary"
+                type="button"
+              >
+                Sebelumnya
+              </button>
+              <button
+                id="btn-next"
+                class="btn btn-sm btn-outline-secondary"
+                type="button"
+              >
+                Berikutnya
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <div
+        class="modal fade"
+        id="client-modal"
+        tabindex="-1"
+        aria-hidden="true"
+      >
+        <div class="modal-dialog">
+          <form id="client-form" class="modal-content">
+            <div class="modal-header">
+              <h2 class="modal-title fs-5" id="modal-title">Tambah Client</h2>
+              <button
+                type="button"
+                class="btn-close"
+                data-bs-dismiss="modal"
+                aria-label="Close"
+              ></button>
+            </div>
+            <div class="modal-body">
+              <input type="hidden" id="client-id" />
+              <div class="mb-2">
+                <label for="kode" class="form-label">Kode</label>
+                <input id="kode" class="form-control" required />
+              </div>
+              <div class="mb-2">
+                <label for="nama" class="form-label">Nama</label>
+                <input id="nama" class="form-control" required />
+              </div>
+              <div>
+                <label for="unit-pengusul-id" class="form-label"
+                  >Unit Pengusul</label
+                >
+                <select id="unit-pengusul-id" class="form-select">
+                  <option value="">Pilih Unit Pengusul (Opsional)</option>
+                </select>
+              </div>
+            </div>
+            <div class="modal-footer">
+              <button
+                type="button"
+                class="btn btn-outline-secondary"
+                data-bs-dismiss="modal"
+              >
+                Batal
+              </button>
+              <button type="submit" class="btn btn-primary">Simpan</button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <div
+        class="modal fade"
+        id="history-modal"
+        tabindex="-1"
+        aria-hidden="true"
+      >
+        <div class="modal-dialog modal-lg modal-dialog-scrollable">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h2 class="modal-title fs-5" id="history-title">
+                Riwayat Status Client
+              </h2>
+              <button
+                type="button"
+                class="btn-close"
+                data-bs-dismiss="modal"
+                aria-label="Close"
+              ></button>
+            </div>
+            <div class="modal-body">
+              <div id="history-body" class="small text-muted">
+                Memuat riwayat...
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="/assets/js/auth-client.js"></script>
+    <script>
+      (() => {
+        const rowsEl = document.getElementById("rows");
+        const form = document.getElementById("client-form");
+        const filterForm = document.getElementById("filter-form");
+        const qEl = document.getElementById("q");
+        const statusEl = document.getElementById("status");
+        const unitFilterEl = document.getElementById("unit-filter");
+        const limitEl = document.getElementById("limit");
+        const prevBtn = document.getElementById("btn-prev");
+        const nextBtn = document.getElementById("btn-next");
+        const paginationSummaryEl =
+          document.getElementById("pagination-summary");
+        const btnNewEl = document.getElementById("btn-new");
+        const filterSubmitBtn = filterForm.querySelector(
+          'button[type="submit"]',
+        );
+        const idEl = document.getElementById("client-id");
+        const kodeEl = document.getElementById("kode");
+        const namaEl = document.getElementById("nama");
+        const unitEl = document.getElementById("unit-pengusul-id");
+        const modalEl = document.getElementById("client-modal");
+        const modalTitleEl = document.getElementById("modal-title");
+        const modal = new bootstrap.Modal(modalEl);
+        const historyModalEl = document.getElementById("history-modal");
+        const historyBodyEl = document.getElementById("history-body");
+        const historyTitleEl = document.getElementById("history-title");
+        const historyModal = new bootstrap.Modal(historyModalEl);
+        const unitEndpoint = "/api/v1/unit_pengusul";
+        const authModeBannerEl = document.getElementById("auth-mode-banner");
+
+        const pager = {
+          page: 1,
+          limit: 10,
+          total: 0,
+        };
+
+        let workflowReadOnly = false;
+
+        let filterDebounceTimer = null;
+
+        function normalizeUnitItems(data) {
+          if (Array.isArray(data?.items)) {
+            return data.items;
+          }
+          if (Array.isArray(data)) {
+            return data;
+          }
+          return [];
+        }
+
+        function fillUnitOptions(units) {
+          const filterOptions = [
+            '<option value="">Semua Unit Pengusul</option>',
+          ];
+          const formOptions = [
+            '<option value="">Pilih Unit Pengusul (Opsional)</option>',
+          ];
+
+          units.forEach((unit) => {
+            const id = Number(unit.id ?? unit.ID ?? 0);
+            const kode = String(unit.kode ?? unit.Kode ?? "").trim();
+            const nama = String(unit.nama ?? unit.Nama ?? "").trim();
+            if (!id || !nama) {
+              return;
+            }
+
+            const label = kode
+              ? `${escapeHTML(kode)} - ${escapeHTML(nama)}`
+              : escapeHTML(nama);
+            filterOptions.push(`<option value="${id}">${label}</option>`);
+            formOptions.push(`<option value="${id}">${label}</option>`);
+          });
+
+          unitFilterEl.innerHTML = filterOptions.join("");
+          unitEl.innerHTML = formOptions.join("");
+        }
+
+        async function loadUnitOptions() {
+          const data = await fetchJSON(unitEndpoint, { method: "GET" });
+          const units = normalizeUnitItems(data);
+          fillUnitOptions(units);
+        }
+
+        function normalizeClientItem(raw) {
+          return {
+            id: Number(raw?.id ?? raw?.ID ?? 0),
+            kode: String(raw?.kode ?? raw?.Kode ?? "").trim(),
+            nama: String(raw?.nama ?? raw?.Nama ?? "").trim(),
+            status: String(raw?.status ?? raw?.Status ?? "").trim(),
+            unit_pengusul_id:
+              raw?.unit_pengusul_id ?? raw?.UnitPengusulID ?? "",
+          };
+        }
+
+        function normalizeHistoryItem(raw) {
+          return {
+            created_at: raw?.created_at ?? raw?.CreatedAt ?? "",
+            action: raw?.action ?? raw?.Action ?? "",
+            from_status: raw?.from_status ?? raw?.FromStatus ?? "",
+            to_status: raw?.to_status ?? raw?.ToStatus ?? "",
+            actor_name: raw?.actor_name ?? raw?.ActorName ?? "",
+            actor_id: raw?.actor_id ?? raw?.ActorID ?? "",
+            reason: raw?.reason ?? raw?.Reason ?? "",
+            note: raw?.note ?? raw?.Note ?? "",
+          };
+        }
+
+        function setLoadingState(isLoading) {
+          qEl.disabled = isLoading;
+          statusEl.disabled = isLoading;
+          unitFilterEl.disabled = isLoading;
+          limitEl.disabled = isLoading;
+          prevBtn.disabled = isLoading || pager.page <= 1;
+          nextBtn.disabled = isLoading;
+          if (btnNewEl) {
+            btnNewEl.disabled = isLoading || workflowReadOnly;
+          }
+          if (filterSubmitBtn) {
+            filterSubmitBtn.disabled = isLoading;
+          }
+        }
+
+        function readOnlyButtonAttrs() {
+          if (!workflowReadOnly) {
+            return "";
+          }
+          return 'disabled title="AUTH nonaktif: aksi workflow dinonaktifkan"';
+        }
+
+        function renderAuthModeBanner() {
+          if (!authModeBannerEl) {
+            return;
+          }
+          authModeBannerEl.classList.toggle("d-none", !workflowReadOnly);
+          if (btnNewEl) {
+            btnNewEl.disabled = workflowReadOnly;
+            btnNewEl.title = workflowReadOnly
+              ? "AUTH nonaktif: aksi create dinonaktifkan"
+              : "";
+          }
+        }
+
+        async function syncAuthMode() {
+          const actorContextEnabled =
+            await (window.__AUTH__?.hasActorContext?.() ||
+              Promise.resolve(true));
+          workflowReadOnly = !actorContextEnabled;
+          renderAuthModeBanner();
+        }
+
+        function moveFocusOutOf(element) {
+          const active = document.activeElement;
+          if (
+            active &&
+            element.contains(active) &&
+            typeof active.blur === "function"
+          ) {
+            active.blur();
+          }
+        }
+
+        function renderLoadingRow() {
+          const skeletonRows = Math.min(Math.max(pager.limit || 5, 3), 8);
+          rowsEl.innerHTML = Array.from({ length: skeletonRows })
+            .map(
+              () => `
+                <tr class="placeholder-glow">
+                  <td><span class="placeholder col-6"></span></td>
+                  <td><span class="placeholder col-10"></span></td>
+                  <td><span class="placeholder col-12"></span></td>
+                  <td><span class="placeholder col-7"></span></td>
+                  <td class="text-end"><span class="placeholder col-8"></span></td>
+                </tr>
+              `,
+            )
+            .join("");
+          paginationSummaryEl.textContent = "Memuat data...";
+        }
+
+        function token() {
+          return (
+            localStorage.getItem("AUTH_TOKEN") ||
+            localStorage.getItem("authToken") ||
+            ""
+          );
+        }
+
+        function authHeader() {
+          const t = token();
+          return t ? { Authorization: `Bearer ${t}` } : {};
+        }
+
+        function friendlyErrorMessage(rawMessage) {
+          const msg = String(rawMessage || "").trim();
+          const lower = msg.toLowerCase();
+
+          if (
+            lower.includes("missing auth user id") ||
+            lower.includes("invalid auth user id") ||
+            lower.includes("missing auth role") ||
+            lower.includes("invalid auth role")
+          ) {
+            return "Aksi ini membutuhkan sesi login yang valid. Jika server berjalan dengan AUTH nonaktif, aktifkan AUTH_ENABLED=true atau login ulang.";
+          }
+
+          if (
+            lower.includes("forbidden") ||
+            lower.includes("forbidden client operation")
+          ) {
+            return "Anda tidak memiliki hak akses untuk aksi ini.";
+          }
+
+          return msg || "Terjadi kesalahan saat memproses permintaan.";
+        }
+
+        async function ensureActorRequiredActionAllowed() {
+          const authEnabled = await (window.__AUTH__?.isAuthEnabled?.() ||
+            Promise.resolve(false));
+          const actorContextEnabled =
+            await (window.__AUTH__?.hasActorContext?.() ||
+              Promise.resolve(true));
+
+          if (!actorContextEnabled) {
+            throw new Error(
+              "Aksi ini membutuhkan actor context yang valid. Aktifkan AUTH_ENABLED=true atau siapkan DEV_AUTH_USER_EMAIL untuk mode development.",
+            );
+          }
+
+          if (authEnabled && !token()) {
+            throw new Error(
+              "Silakan login terlebih dahulu untuk menjalankan aksi ini.",
+            );
+          }
+        }
+
+        async function fetchJSON(url, options = {}) {
+          const res = await fetch(url, {
+            headers: {
+              "Content-Type": "application/json",
+              ...authHeader(),
+              ...(options.headers || {}),
+            },
+            ...options,
+          });
+          let body = null;
+          try {
+            body = await res.json();
+          } catch (_) {}
+
+          if (res.status === 401) {
+            const authEnabled = await (window.__AUTH__?.isAuthEnabled?.() ||
+              Promise.resolve(false));
+            if (authEnabled) {
+              window.location.href = "/ui/login";
+              return null;
+            }
+          }
+
+          if (!res.ok || body?.success === false) {
+            const msg = body?.error || `Request gagal (${res.status})`;
+            throw new Error(friendlyErrorMessage(msg));
+          }
+          return body?.data ?? body;
+        }
+
+        function statusBadge(status) {
+          const cls =
+            status === "DRAFT"
+              ? "text-bg-secondary"
+              : status === "DIAJUKAN"
+                ? "text-bg-primary"
+                : status === "DISETUJUI"
+                  ? "text-bg-success"
+                  : "text-bg-danger";
+          return `<span class="badge ${cls}">${status}</span>`;
+        }
+
+        function actionButtons(item) {
+          const disabledAttrs = readOnlyButtonAttrs();
+          const base = `<button class="btn btn-sm btn-outline-info" data-history="${item.id}">Riwayat</button>
+            <button class="btn btn-sm btn-outline-secondary" data-edit="${item.id}" ${disabledAttrs}>Edit</button>
+            <button class="btn btn-sm btn-outline-danger" data-delete="${item.id}" ${disabledAttrs}>Hapus</button>`;
+
+          if (item.status === "DRAFT") {
+            return `${base} <button class="btn btn-sm btn-outline-primary" data-transition="submit" data-id="${item.id}" ${disabledAttrs}>Submit</button>`;
+          }
+          if (item.status === "DIAJUKAN") {
+            return `${base} <button class="btn btn-sm btn-outline-warning" data-transition="unsubmit" data-id="${item.id}" ${disabledAttrs}>Unsubmit</button>
+              <button class="btn btn-sm btn-outline-danger" data-transition="reject" data-id="${item.id}" ${disabledAttrs}>Reject</button>
+              <button class="btn btn-sm btn-outline-success" data-transition="approve" data-id="${item.id}" ${disabledAttrs}>Approve</button>`;
+          }
+          if (item.status === "DITOLAK") {
+            return `${base} <button class="btn btn-sm btn-outline-primary" data-transition="re-evaluate" data-id="${item.id}" ${disabledAttrs}>Re-evaluate</button>`;
+          }
+          return base;
+        }
+
+        async function loadClients() {
+          setLoadingState(true);
+          renderLoadingRow();
+
+          try {
+            const params = new URLSearchParams();
+            if (qEl.value.trim()) {
+              params.set("q", qEl.value.trim());
+            }
+            if (statusEl.value) {
+              params.set("status", statusEl.value);
+            }
+            const unitVal = unitFilterEl.value.trim();
+            if (unitVal) {
+              params.set("unit_pengusul_id", unitVal);
+            }
+            params.set("page", String(pager.page));
+            params.set("limit", String(pager.limit));
+
+            const qs = params.toString();
+            const url = `/api/v1/clients${qs ? `?${qs}` : ""}`;
+            const data = await fetchJSON(url, { method: "GET" });
+            const items = (data?.items || []).map(normalizeClientItem);
+            const meta = data?.meta || {};
+
+            pager.total = Number(meta.total || items.length || 0);
+            pager.page = Number(meta.page || pager.page || 1);
+            pager.limit = Number(meta.limit || pager.limit || 10);
+            limitEl.value = String(pager.limit);
+
+            rowsEl.innerHTML = items.length
+              ? items
+                  .map(
+                    (item) => `<tr>
+                    <td>${item.id}</td>
+                    <td>${item.kode || "-"}</td>
+                    <td>${item.nama || "-"}</td>
+                    <td>${statusBadge(item.status || "-")}</td>
+                    <td class="text-end"><div class="d-flex flex-wrap gap-1 justify-content-end">${actionButtons(item)}</div></td>
+                  </tr>`,
+                  )
+                  .join("")
+              : `<tr><td colspan="5" class="text-center text-muted py-4">Belum ada data.</td></tr>`;
+
+            const totalPages = Math.max(
+              1,
+              Math.ceil(pager.total / pager.limit),
+            );
+            const start =
+              pager.total === 0 ? 0 : (pager.page - 1) * pager.limit + 1;
+            const end = Math.min(pager.page * pager.limit, pager.total);
+
+            paginationSummaryEl.textContent = `Menampilkan ${start}-${end} dari ${pager.total} data (halaman ${pager.page}/${totalPages}).`;
+            prevBtn.disabled = pager.page <= 1;
+            nextBtn.disabled = pager.page >= totalPages;
+          } catch (err) {
+            rowsEl.innerHTML = `<tr><td colspan="5" class="text-center text-danger py-4">${escapeHTML(err.message || "Gagal memuat data clients.")}</td></tr>`;
+            paginationSummaryEl.textContent = "Gagal memuat data.";
+            throw err;
+          } finally {
+            setLoadingState(false);
+          }
+        }
+
+        function openCreate() {
+          idEl.value = "";
+          kodeEl.value = "";
+          namaEl.value = "";
+          unitEl.value = "";
+          modalTitleEl.textContent = "Tambah Client";
+          modal.show();
+        }
+
+        async function openEdit(id) {
+          const raw = await fetchJSON(`/api/v1/clients/${id}`, {
+            method: "GET",
+          });
+          const item = normalizeClientItem(raw || {});
+          idEl.value = String(item.id);
+          kodeEl.value = item.kode || "";
+          namaEl.value = item.nama || "";
+          unitEl.value = item.unit_pengusul_id || "";
+          modalTitleEl.textContent = `Edit Client #${item.id}`;
+          modal.show();
+        }
+
+        async function saveClient(e) {
+          e.preventDefault();
+          await ensureActorRequiredActionAllowed();
+
+          const payload = {
+            kode: kodeEl.value.trim(),
+            nama: namaEl.value.trim(),
+          };
+          const unitVal = unitEl.value.trim();
+          if (unitVal) {
+            payload.unit_pengusul_id = Number(unitVal);
+          }
+
+          const id = idEl.value.trim();
+          if (!id) {
+            await fetchJSON("/api/v1/clients", {
+              method: "POST",
+              body: JSON.stringify(payload),
+            });
+          } else {
+            await fetchJSON(`/api/v1/clients/${id}`, {
+              method: "PUT",
+              body: JSON.stringify(payload),
+            });
+          }
+
+          moveFocusOutOf(modalEl);
+          modal.hide();
+          await loadClients();
+        }
+
+        async function deleteClient(id) {
+          await ensureActorRequiredActionAllowed();
+
+          if (!window.confirm("Hapus data client ini?")) {
+            return;
+          }
+          await fetchJSON(`/api/v1/clients/${id}`, {
+            method: "DELETE",
+          });
+          await loadClients();
+        }
+
+        function escapeHTML(value) {
+          return String(value || "")
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/\"/g, "&quot;")
+            .replace(/'/g, "&#039;");
+        }
+
+        function formatDate(value) {
+          if (!value) {
+            return "-";
+          }
+          const d = new Date(value);
+          if (Number.isNaN(d.getTime())) {
+            return "-";
+          }
+          return d.toLocaleString("id-ID", {
+            year: "numeric",
+            month: "short",
+            day: "2-digit",
+            hour: "2-digit",
+            minute: "2-digit",
+          });
+        }
+
+        async function openHistory(id) {
+          historyTitleEl.textContent = `Riwayat Status Client #${id}`;
+          historyBodyEl.innerHTML =
+            '<p class="text-muted mb-0">Memuat riwayat...</p>';
+          historyModal.show();
+
+          const data = await fetchJSON(`/api/v1/clients/${id}/status-history`, {
+            method: "GET",
+          });
+          const items = (data?.items || []).map(normalizeHistoryItem);
+
+          if (!items.length) {
+            historyBodyEl.innerHTML =
+              '<p class="text-muted mb-0">Belum ada riwayat status.</p>';
+            return;
+          }
+
+          historyBodyEl.innerHTML = `
+            <div class="table-responsive">
+              <table class="table table-sm align-middle mb-0">
+                <thead class="table-light">
+                  <tr>
+                    <th>Waktu</th>
+                    <th>Action</th>
+                    <th>From</th>
+                    <th>To</th>
+                    <th>Actor</th>
+                    <th>Keterangan</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${items
+                    .map(
+                      (row) => `<tr>
+                        <td>${escapeHTML(formatDate(row.created_at))}</td>
+                        <td>${escapeHTML(row.action || "-")}</td>
+                        <td>${escapeHTML(row.from_status || "-")}</td>
+                        <td>${escapeHTML(row.to_status || "-")}</td>
+                        <td>${escapeHTML(row.actor_name || row.actor_id || "-")}</td>
+                        <td>${escapeHTML(row.reason || row.note || "-")}</td>
+                      </tr>`,
+                    )
+                    .join("")}
+                </tbody>
+              </table>
+            </div>
+          `;
+        }
+
+        async function runTransition(action, id) {
+          await ensureActorRequiredActionAllowed();
+
+          let payload = {};
+          if (action === "reject") {
+            const reason = window.prompt("Masukkan alasan reject:", "");
+            if (!reason || !reason.trim()) {
+              alert("Alasan reject wajib diisi.");
+              return;
+            }
+            payload.reason = reason.trim();
+          } else if (action === "unsubmit" || action === "re-evaluate") {
+            const reason = window.prompt("Alasan (opsional):", "");
+            if (reason && reason.trim()) {
+              payload.reason = reason.trim();
+            }
+          } else if (action === "submit" || action === "approve") {
+            const note = window.prompt("Catatan (opsional):", "");
+            if (note && note.trim()) {
+              payload.note = note.trim();
+            }
+          }
+
+          await fetchJSON(`/api/v1/clients/${id}/${action}`, {
+            method: "POST",
+            body: JSON.stringify(payload),
+          });
+          await loadClients();
+        }
+
+        function scheduleFilterReload(delayMs = 350) {
+          if (filterDebounceTimer) {
+            clearTimeout(filterDebounceTimer);
+          }
+          filterDebounceTimer = setTimeout(async () => {
+            pager.page = 1;
+            pager.limit = Number(limitEl.value || 10);
+            await loadClients();
+          }, delayMs);
+        }
+
+        document
+          .getElementById("btn-new")
+          .addEventListener("click", openCreate);
+
+        modalEl.addEventListener("hide.bs.modal", () => {
+          moveFocusOutOf(modalEl);
+        });
+
+        historyModalEl.addEventListener("hide.bs.modal", () => {
+          moveFocusOutOf(historyModalEl);
+        });
+
+        form.addEventListener("submit", async (e) => {
+          try {
+            await saveClient(e);
+          } catch (err) {
+            alert(err.message || "Gagal menyimpan data client.");
+          }
+        });
+        filterForm.addEventListener("submit", async (e) => {
+          e.preventDefault();
+          pager.page = 1;
+          pager.limit = Number(limitEl.value || 10);
+          await loadClients();
+        });
+
+        qEl.addEventListener("input", () => {
+          scheduleFilterReload(350);
+        });
+
+        unitFilterEl.addEventListener("change", async () => {
+          pager.page = 1;
+          pager.limit = Number(limitEl.value || 10);
+          await loadClients();
+        });
+
+        statusEl.addEventListener("change", async () => {
+          pager.page = 1;
+          pager.limit = Number(limitEl.value || 10);
+          await loadClients();
+        });
+
+        limitEl.addEventListener("change", async () => {
+          pager.limit = Number(limitEl.value || 10);
+          pager.page = 1;
+          await loadClients();
+        });
+
+        prevBtn.addEventListener("click", async () => {
+          if (pager.page <= 1) {
+            return;
+          }
+          pager.page -= 1;
+          await loadClients();
+        });
+
+        nextBtn.addEventListener("click", async () => {
+          const totalPages = Math.max(1, Math.ceil(pager.total / pager.limit));
+          if (pager.page >= totalPages) {
+            return;
+          }
+          pager.page += 1;
+          await loadClients();
+        });
+
+        rowsEl.addEventListener("click", async (e) => {
+          try {
+            if (e.target instanceof HTMLButtonElement && e.target.disabled) {
+              return;
+            }
+
+            const historyID = e.target.getAttribute("data-history");
+            if (historyID) {
+              await openHistory(historyID);
+              return;
+            }
+
+            const editID = e.target.getAttribute("data-edit");
+            if (editID) {
+              await openEdit(editID);
+              return;
+            }
+
+            const deleteID = e.target.getAttribute("data-delete");
+            if (deleteID) {
+              await deleteClient(deleteID);
+              return;
+            }
+
+            const action = e.target.getAttribute("data-transition");
+            const id = e.target.getAttribute("data-id");
+            if (action && id) {
+              await runTransition(action, id);
+            }
+          } catch (err) {
+            alert(err.message || "Aksi gagal diproses.");
+          }
+        });
+
+        (async () => {
+          try {
+            await syncAuthMode();
+            await loadUnitOptions();
+            await loadClients();
+          } catch (err) {
+            alert(err.message || "Gagal memuat data clients.");
+          }
+        })();
+      })();
+    </script>
+  </body>
+</html>

@@ -33,6 +33,13 @@
     );
   }
 
+  function redirectToLogin() {
+    const next = encodeURIComponent(
+      window.location.pathname + window.location.search,
+    );
+    window.location.href = `/ui/login?next=${next}`;
+  }
+
   async function apiFetch(url, options = {}) {
     const token = getAuthToken();
     const headers = {
@@ -58,6 +65,57 @@
   function setStatus(message, isError = false) {
     status.textContent = message;
     status.className = isError ? "text-danger small" : "text-success small";
+  }
+
+  function canWrite() {
+    return true;
+  }
+
+  function applyReadOnlyAccess() {
+    // No-op: OPERATOR is no longer forced into read-only mode.
+  }
+
+  async function resolveRoleAccess() {
+    try {
+      const token = getAuthToken();
+      const res = await fetch("/api/v1/auth/me", {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!res.ok) {
+        return;
+      }
+
+      const body = await res.json();
+      if (!body?.success) {
+        return;
+      }
+
+      applyReadOnlyAccess();
+    } catch (_) {
+      // Keep default behavior and rely on server-side authorization.
+    }
+  }
+
+  function handleUnauthorized(res, body) {
+    if (res.status !== 401) {
+      return false;
+    }
+
+    const authError = String(body?.error || "").toLowerCase();
+    if (
+      authError.includes("authorization") ||
+      authError.includes("token") ||
+      authError.includes("unauthorized")
+    ) {
+      setStatus("Sesi login berakhir, silakan login ulang", true);
+      redirectToLogin();
+      return true;
+    }
+
+    return false;
   }
 
   function parseAttributes() {
@@ -89,6 +147,9 @@
 
   function rowTemplate(item) {
     const tr = document.createElement("tr");
+    const actionHTML = canWrite()
+      ? '<button class="btn btn-sm btn-outline-primary me-1" data-action="edit">Edit</button><button class="btn btn-sm btn-outline-danger" data-action="delete">Hapus</button>'
+      : '<span class="text-muted">Read-only</span>';
     tr.innerHTML = `
       <td>${item.id}</td>
       <td>${item.code || "-"}</td>
@@ -96,10 +157,13 @@
       <td>${item.description || "-"}</td>
       <td><code>${JSON.stringify(item.attributes || {})}</code></td>
       <td class="text-nowrap">
-        <button class="btn btn-sm btn-outline-primary me-1" data-action="edit">Edit</button>
-        <button class="btn btn-sm btn-outline-danger" data-action="delete">Hapus</button>
+        ${actionHTML}
       </td>
     `;
+
+    if (!canWrite()) {
+      return tr;
+    }
 
     tr.querySelector('[data-action="edit"]').addEventListener("click", () => {
       idInput.value = item.id;
@@ -121,11 +185,7 @@
         });
         const body = await res.json();
         if (!res.ok || !body.success) {
-          if (res.status === 401) {
-            setStatus(
-              "Unauthorized. Set token via localStorage key AUTH_TOKEN/authToken",
-              true,
-            );
+          if (handleUnauthorized(res, body)) {
             return;
           }
           setStatus(body.error || "Gagal hapus data", true);
@@ -152,11 +212,7 @@
     const res = await apiFetch(`${endpoint}?${params.toString()}`);
     const body = await res.json();
     if (!res.ok || !body.success) {
-      if (res.status === 401) {
-        setStatus(
-          "Unauthorized. Set token via localStorage key AUTH_TOKEN/authToken",
-          true,
-        );
+      if (handleUnauthorized(res, body)) {
         return;
       }
       setStatus(body.error || "Gagal memuat daftar", true);
@@ -188,6 +244,11 @@
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
 
+    if (!canWrite()) {
+      setStatus("Role OPERATOR hanya dapat melihat data", true);
+      return;
+    }
+
     let attributes;
     try {
       attributes = parseAttributes();
@@ -216,11 +277,7 @@
 
     const body = await res.json();
     if (!res.ok || !body.success) {
-      if (res.status === 401) {
-        setStatus(
-          "Unauthorized. Set token via localStorage key AUTH_TOKEN/authToken",
-          true,
-        );
+      if (handleUnauthorized(res, body)) {
         return;
       }
       setStatus(body.error || "Gagal simpan data", true);
@@ -235,6 +292,10 @@
   });
 
   document.getElementById("btn-reset").addEventListener("click", () => {
+    if (!canWrite()) {
+      setStatus("Role OPERATOR hanya dapat melihat data", true);
+      return;
+    }
     resetForm();
     setStatus("Form direset");
   });
@@ -263,6 +324,13 @@
     loadList();
   });
 
+  if (!getAuthToken()) {
+    redirectToLogin();
+    return;
+  }
+
   resetForm();
-  loadList();
+  resolveRoleAccess().finally(() => {
+    loadList();
+  });
 })();

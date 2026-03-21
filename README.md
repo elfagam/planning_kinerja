@@ -13,6 +13,22 @@ go run ./cmd/api
 
 Lalu buka `http://localhost:8080/ui`.
 
+## Kredensial Demo (Development)
+
+Setelah menjalankan migrasi terbaru, gunakan akun berikut:
+
+- Username/Email: `superadmin@rsudcontoh.go.id`
+- Password: `Admin123!`
+
+Akun demo lain yang tersedia:
+
+- `planner.med@rsudcontoh.go.id`
+- `reviewer.nur@rsudcontoh.go.id`
+- `approver@rsudcontoh.go.id`
+- `verifier@rsudcontoh.go.id`
+
+Semua akun demo di atas menggunakan password yang sama: `Admin123!`.
+
 ## Struktur Folder
 
 ```text
@@ -79,6 +95,80 @@ open http://localhost:8080/ui
 - `DELETE /api/v1/visi/:id`
 
 Pola endpoint yang sama tersedia untuk semua modul sampai `target-realisasi`.
+
+## Contoh Endpoint Client (JWT Context)
+
+Catatan penting:
+
+- Endpoint mutasi Client mengambil actor dari JWT claim (`auth.user_id`, `auth.role`, `auth.full_name`).
+- Payload request tidak perlu `actor_id` atau `actor_role`.
+
+1. List client:
+
+```bash
+curl "http://localhost:8080/api/v1/clients?q=unit&status=DRAFT&page=1&limit=10" \
+  -H "Authorization: Bearer change-me-in-production"
+```
+
+2. Create client:
+
+```bash
+curl -X POST http://localhost:8080/api/v1/clients \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer change-me-in-production" \
+  -d '{
+    "kode": "CL-2026-001",
+    "nama": "Client Unit Pelayanan A",
+    "unit_pengusul_id": 1
+  }'
+```
+
+3. Update client:
+
+```bash
+curl -X PUT http://localhost:8080/api/v1/clients/1 \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer change-me-in-production" \
+  -d '{
+    "nama": "Client Unit Pelayanan A (Revisi)"
+  }'
+```
+
+4. Submit client:
+
+```bash
+curl -X POST http://localhost:8080/api/v1/clients/1/submit \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer change-me-in-production" \
+  -d '{"note":"siap diajukan"}'
+```
+
+5. Reject client:
+
+```bash
+curl -X POST http://localhost:8080/api/v1/clients/1/reject \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer change-me-in-production" \
+  -d '{"reason":"dokumen belum lengkap"}'
+```
+
+6. Approve client:
+
+```bash
+curl -X POST http://localhost:8080/api/v1/clients/1/approve \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer change-me-in-production" \
+  -d '{"note":"disetujui"}'
+```
+
+7. Delete client:
+
+```bash
+curl -X DELETE http://localhost:8080/api/v1/clients/1 \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer change-me-in-production" \
+  -d '{}'
+```
 
 ## Contoh Update Target dan Realisasi
 

@@ -18,6 +18,8 @@ func (h *Handler) RegisterRoutes(r *gin.Engine) {
 		c.File("web/templates/index.html")
 	})
 
+	registerShortRoutes(r)
+
 	for _, p := range pages() {
 		page := p
 		r.GET("/ui/"+page.Route, func(c *gin.Context) {
@@ -28,6 +30,7 @@ func (h *Handler) RegisterRoutes(r *gin.Engine) {
 
 func pages() []page {
 	return []page{
+		{Route: "login", File: "login.html"},
 		{Route: "visi", File: "visi.html"},
 		{Route: "misi", File: "misi.html"},
 		{Route: "tujuan", File: "tujuan.html"},
@@ -39,11 +42,36 @@ func pages() []page {
 		{Route: "kegiatan", File: "kegiatan.html"},
 		{Route: "indikator-kegiatan", File: "indikator-kegiatan.html"},
 		{Route: "sub-kegiatan", File: "sub-kegiatan.html"},
+		{Route: "pagu-sub-kegiatan", File: "pagu-sub-kegiatan.html"},
+		{Route: "unit-pengusul", File: "unit-pengusul.html"},
+		{Route: "unit_pengusul", File: "unit-pengusul.html"},
 		{Route: "indikator-sub-kegiatan", File: "indikator-sub-kegiatan.html"},
 		{Route: "rencana-kerja", File: "rencana-kerja.html"},
+		{Route: "rencana-kerja-spa", File: "rencana-kerja-spa.html"},
 		{Route: "renja", File: "renja.html"},
 		{Route: "indikator-kinerja", File: "indikator-kinerja.html"},
 		{Route: "target-realisasi", File: "target-realisasi.html"},
+		{Route: "target-evaluasi", File: "target-realisasi.html"},
+		{Route: "informasi", File: "informasi.html"},
+		{Route: "manajemen-user", File: "manajemen-user.html"},
+		{Route: "clients", File: "clients.html"},
 		{Route: "dashboard", File: "dashboard.html"},
+	}
+}
+
+func registerShortRoutes(r *gin.Engine) {
+	shortToUI := map[string]string{
+		"/dashboard":       "/ui/dashboard",
+		"/rencana-kerja":   "/ui/rencana-kerja",
+		"/target-evaluasi": "/ui/target-evaluasi",
+		"/informasi":       "/ui/informasi",
+	}
+
+	for shortPath, uiPath := range shortToUI {
+		path := shortPath
+		target := uiPath
+		r.GET(path, func(c *gin.Context) {
+			c.Redirect(302, target)
+		})
 	}
 }

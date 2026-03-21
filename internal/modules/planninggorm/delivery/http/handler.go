@@ -492,9 +492,12 @@ func (h *Handler) list(rc resourceConfig) gin.HandlerFunc {
 			})
 			return
 		}
-		if rc.path == "indikator_rencana_kerja" && isTruthy(c.Query("final_only")) {
-			query = query.Joins("JOIN rencana_kerja rk ON rk.id = indikator_rencana_kerja.rencana_kerja_id").
-				Where("rk.status = ?", "DISETUJUI")
+		if rc.path == "indikator_rencana_kerja" {
+			query = query.Preload("StandarHarga")
+			if isTruthy(c.Query("final_only")) {
+				query = query.Joins("JOIN rencana_kerja rk ON rk.id = indikator_rencana_kerja.rencana_kerja_id").
+					Where("rk.status = ?", "DISETUJUI")
+			}
 		}
 		if rc.path == "realisasi_rencana_kerja" && isTruthy(c.Query("final_only")) {
 			query = query.Joins("JOIN indikator_rencana_kerja irk ON irk.id = realisasi_rencana_kerja.indikator_rencana_kerja_id").
@@ -648,6 +651,23 @@ func (h *Handler) get(rc resourceConfig) gin.HandlerFunc {
 				return
 			}
 
+			response.Success(c, item)
+			return
+		}
+
+		if rc.path == "indikator_rencana_kerja" {
+			var item database.IndikatorRencanaKerja
+			err := h.db.WithContext(c.Request.Context()).
+				Preload("StandarHarga").
+				First(&item, "id = ?", id).Error
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				response.Error(c, http.StatusNotFound, rc.name+" not found")
+				return
+			}
+			if err != nil {
+				response.Error(c, http.StatusInternalServerError, mapReadError(rc, "get", err))
+				return
+			}
 			response.Success(c, item)
 			return
 		}

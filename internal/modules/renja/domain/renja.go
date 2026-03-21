@@ -42,14 +42,27 @@ type RencanaKerja struct {
 // Renja is kept as an alias for backward compatibility in use cases.
 type Renja = RencanaKerja
 
+type StandarHarga struct {
+	ID           int
+	JenisStandar *string
+	UraianBarang *string
+	Spesifikasi  *string
+	Satuan       *string
+	HargaSatuan  *float64
+	IdRekening   *string
+}
+
 // IndikatorRencanaKerja represents KPI and budgeting target for one rencana kerja.
 type IndikatorRencanaKerja struct {
-	ID              int64
-	RencanaKerjaID  int64
-	Code            string
+	ID               int64
+	RencanaKerjaID   int64
+	TbStandarHargaID *int
+	StandarHarga     *StandarHarga
+	Code             string
 	Name            string
 	Unit            string
 	TargetTahunan   float64
+	HargaSatuan     float64
 	AnggaranTahunan float64
 	CreatedAt       time.Time
 	UpdatedAt       time.Time

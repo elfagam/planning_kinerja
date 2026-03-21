@@ -123,6 +123,83 @@ Index minimal:
 - `idx_client_status_histories_client_id (client_id)`
 - `idx_client_status_histories_created_at (created_at)`
 
+### Relasi users, clients, dan client_status_histories
+
+`users` adalah master actor untuk modul Client.
+
+Relasi utamanya:
+
+- `users.id -> clients.created_by`: user yang membuat data client.
+- `users.id -> clients.updated_by`: user yang terakhir mengubah data client.
+- `users.id -> clients.approved_by`: user yang menyetujui data client.
+- `users.id -> clients.rejected_by`: user yang menolak data client.
+- `users.id -> client_status_histories.actor_id`: user yang menjalankan action transisi.
+- `clients.id -> client_status_histories.client_id`: satu client memiliki banyak histori status.
+
+Implikasi desain:
+
+- `clients` tidak menyimpan role actor, hanya menyimpan referensi `user_id` untuk peran create/update/approve/reject.
+- `client_status_histories` menyimpan `actor_id` sebagai FK ke `users.id` dan `actor_name` sebagai snapshot nama saat aksi terjadi.
+- `users.role` adalah sumber utama tunggal untuk role runtime saat login dan policy workflow.
+- Jika role user berubah di Manajemen User, perubahan itu berlaku untuk aksi client berikutnya setelah sesi login/token diperbarui, tanpa mengubah histori client lama.
+
+Skema relasi ringkas:
+
+```text
+users.id
+  -> clients.created_by
+  -> clients.updated_by
+  -> clients.approved_by
+  -> clients.rejected_by
+  -> client_status_histories.actor_id
+
+clients.id
+  -> client_status_histories.client_id
+```
+
+Diagram ER ringkas:
+
+```mermaid
+erDiagram
+  USERS {
+    bigint id PK
+    varchar email
+    varchar nama_lengkap
+    enum role
+    boolean aktif
+  }
+
+  CLIENTS {
+    bigint id PK
+    varchar kode
+    varchar nama
+    enum status
+    bigint unit_pengusul_id FK
+    bigint created_by FK
+    bigint updated_by FK
+    bigint approved_by FK
+    bigint rejected_by FK
+  }
+
+  CLIENT_STATUS_HISTORIES {
+    bigint id PK
+    bigint client_id FK
+    enum from_status
+    enum to_status
+    varchar action
+    bigint actor_id FK
+    varchar actor_name
+    datetime created_at
+  }
+
+  USERS ||--o{ CLIENTS : creates
+  USERS ||--o{ CLIENTS : updates
+  USERS ||--o{ CLIENTS : approves
+  USERS ||--o{ CLIENTS : rejects
+  USERS ||--o{ CLIENT_STATUS_HISTORIES : acts_on
+  CLIENTS ||--o{ CLIENT_STATUS_HISTORIES : has_history
+```
+
 ## 5. Struktur File yang Direkomendasikan
 
 Ikuti pola modul di project:

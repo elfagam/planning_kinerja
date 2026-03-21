@@ -9,6 +9,35 @@
       rel="stylesheet"
     />
     <link href="/assets/css/app.css" rel="stylesheet" />
+    <style>
+      @keyframes fadeEffect {
+        0% {
+          opacity: 0.2;
+        }
+        20% {
+          opacity: 1;
+        }
+        80% {
+          opacity: 1;
+        }
+        100% {
+          opacity: 0.2;
+        }
+      }
+
+      .info-switcher {
+        margin-top: 0.75rem;
+        background: rgba(255, 255, 255, 0.2);
+        border: 1px solid rgba(255, 255, 255, 0.35);
+        border-radius: 0.65rem;
+        padding: 0.55rem 0.75rem;
+      }
+
+      .info-switcher-text {
+        margin-bottom: 0;
+        animation: fadeEffect 5s ease-in-out infinite;
+      }
+    </style>
   </head>
   <body
     class="bg-soft-pattern"
@@ -21,6 +50,12 @@
       >
         <h1 class="h3 mb-1" id="module-title">CRUD RENCANA KERJA</h1>
         <p class="mb-0 opacity-75">Kelola data Rencana Kerja secara terpisah</p>
+        <div class="info-switcher">
+          <small class="opacity-75">Topik Informasi Berjalan</small>
+          <p id="info-switcher-text" class="info-switcher-text">
+            Memuat topik terbaru...
+          </p>
+        </div>
       </header>
 
       <div class="row g-4">
@@ -370,6 +405,8 @@
 
     <script>
       (() => {
+        const informasiLatestEndpoint = "/api/v1/performance/informasi/latest";
+        const activeInfoRoute = "/rencana-kerja";
         const endpoint = document.body.dataset.apiEndpoint;
         const subKegiatanEndpoint = "/api/v1/sub_kegiatan";
         const indikatorEndpoint = "/api/v1/indikator_sub_kegiatan?all=true";
@@ -430,6 +467,7 @@
         const akumulasiByKodeMeta = document.getElementById(
           "akumulasiByKodeMeta",
         );
+        const infoSwitcherText = document.getElementById("info-switcher-text");
 
         const subKegiatanMap = new Map();
         const indikatorMap = new Map();
@@ -437,13 +475,14 @@
         const paguSubKegiatanMap = new Map();
         const unitPengusulMap = new Map();
         const DEFAULT_PAGE_SIZE = 2;
-        const MUTATION_ROLES = new Set(["ADMIN", "OPERATOR", "PERENCANA"]);
+        const MUTATION_ROLES = new Set(["ADMIN", "PERENCANA", "OPERATOR"]);
         let subKegiatanItemsCache = [];
         let indikatorItemsCache = [];
         let currentListItems = [];
         let currentUserID = 0;
         let currentUserRole = "";
         let currentPage = 1;
+        let switcherTimerID = null;
 
         function getAccessToken() {
           return (
@@ -714,6 +753,49 @@
             currentUserID > 0 ? String(currentUserID) : "";
           catatanInput.value = "";
           applyIndikatorFilter("", "");
+        }
+
+        function showSwitcher(items) {
+          if (!infoSwitcherText) {
+            return;
+          }
+          if (switcherTimerID) {
+            clearInterval(switcherTimerID);
+            switcherTimerID = null;
+          }
+
+          if (!Array.isArray(items) || items.length === 0) {
+            infoSwitcherText.textContent = "Belum ada topik informasi";
+            return;
+          }
+
+          let index = 0;
+          infoSwitcherText.textContent = items[index].informasi;
+          if (items.length === 1) {
+            return;
+          }
+
+          switcherTimerID = setInterval(() => {
+            index = (index + 1) % items.length;
+            infoSwitcherText.textContent = items[index].informasi;
+          }, 5000);
+        }
+
+        async function loadInformasiSwitcher() {
+          try {
+            const params = new URLSearchParams();
+            params.set("limit", "2");
+            params.set("route", activeInfoRoute);
+            const data = await fetchJSON(
+              `${informasiLatestEndpoint}?${params.toString()}`,
+            );
+            const items = Array.isArray(data?.items) ? data.items : [];
+            showSwitcher(items);
+          } catch (_) {
+            if (infoSwitcherText) {
+              infoSwitcherText.textContent = "Gagal memuat topik informasi";
+            }
+          }
         }
 
         function filterSubKegiatanOptions(filterText = "") {
@@ -1035,10 +1117,10 @@
             <td>${indikatorLabel}</td>
             <td>${item.kode}</td>
             <td>${item.nama}</td>
-            
+
             <td>${item.tahun || "-"}</td>
             <td>${item.triwulan || "Tahunan"}</td>
-            
+
             <td>${unitLabel}</td>
             <td><span class="badge text-bg-secondary">${item.status}</span></td>
             <td class="text-nowrap">
@@ -1056,7 +1138,26 @@
 
           tr.querySelector('[data-action="edit"]').addEventListener(
             "click",
-            () => {
+            (() => {
+              // --- Anggaran Tahunan Calculation ---
+              const targetTahunanInput = document.getElementById("targetTahunan");
+              const hargaSatuanInput = document.getElementById("hargaSatuan");
+              const anggaranTahunanInput = document.getElementById("anggaranTahunan");
+
+              function updateAnggaranTahunan() {
+                const target = Number(targetTahunanInput?.value || 0);
+                const harga = Number(hargaSatuanInput?.value || 0);
+                const anggaran = target * harga;
+                if (anggaranTahunanInput) {
+                  anggaranTahunanInput.value = anggaran;
+                }
+              }
+
+              if (targetTahunanInput && hargaSatuanInput && anggaranTahunanInput) {
+                targetTahunanInput.addEventListener("input", updateAnggaranTahunan);
+                hargaSatuanInput.addEventListener("input", updateAnggaranTahunan);
+              }
+              // --- End Anggaran Tahunan Calculation ---
               idInput.value = item.id;
               const indikatorItem = indikatorDetailMap.get(
                 item.indikatorSubKegiatanId,
@@ -1489,7 +1590,7 @@
             await loadCurrentUser();
             resetForm();
             await loadReferenceOptions();
-            await loadList();
+            await Promise.all([loadList(), loadInformasiSwitcher()]);
           } catch (error) {
             setStatus(`Gagal inisialisasi form: ${error.message}`, true);
           }

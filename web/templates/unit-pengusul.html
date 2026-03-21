@@ -217,7 +217,7 @@
           window.location.href = `/ui/login?next=${next}`;
         }
 
-        const MUTATION_ROLES = new Set(["ADMIN", "OPERATOR", "PERENCANA"]);
+        const MUTATION_ROLES = new Set(["ADMIN", "PERENCANA", "OPERATOR"]);
         let currentUserRole = "";
 
         function normalizeRole(raw) {

@@ -9,6 +9,27 @@
       rel="stylesheet"
     />
     <link href="/assets/css/app.css" rel="stylesheet" />
+    <style>
+      @keyframes fadeEffect {
+        0% { opacity: 0.2; }
+        20% { opacity: 1; }
+        80% { opacity: 1; }
+        100% { opacity: 0.2; }
+      }
+
+      .info-switcher {
+        margin-top: 0.75rem;
+        background: rgba(255, 255, 255, 0.2);
+        border: 1px solid rgba(255, 255, 255, 0.35);
+        border-radius: 0.65rem;
+        padding: 0.55rem 0.75rem;
+      }
+
+      .info-switcher-text {
+        margin-bottom: 0;
+        animation: fadeEffect 5s ease-in-out infinite;
+      }
+    </style>
   </head>
   <body
     class="bg-soft-pattern"
@@ -23,6 +44,12 @@
         <p class="mb-0 opacity-75">
           Kelola data Target dan Realisasi secara terpisah
         </p>
+        <div class="info-switcher">
+          <small class="opacity-75">Topik Informasi Berjalan</small>
+          <p id="info-switcher-text" class="info-switcher-text">
+            Memuat topik terbaru...
+          </p>
+        </div>
       </header>
 
       <div class="row g-4">
@@ -246,10 +273,59 @@
           </div>
         </section>
       </div>
+
+      <section class="mt-4" aria-label="Informasi dan Rute Tujuan">
+        <div class="card border-0 shadow-sm">
+          <div class="card-body">
+            <h2 class="h6 text-uppercase text-muted mb-3">Informasi Dashboard</h2>
+            <div class="row g-3">
+              <div class="col-lg-4">
+                <form id="info-form" class="vstack gap-2" autocomplete="off">
+                  <input type="hidden" id="info-id" />
+                  <label class="form-label mb-0" for="info-text">Informasi</label>
+                  <textarea id="info-text" class="form-control" rows="3" placeholder="Tulis topik informasi" required></textarea>
+                  <label class="form-label mb-0" for="info-year">Tahun</label>
+                  <input id="info-year" type="number" min="2000" max="2100" class="form-control" required />
+                  <label class="form-label mb-0" for="info-route">Rute Halaman Tujuan</label>
+                  <select id="info-route" class="form-select" required>
+                    <option value="/dashboard">Dashboard</option>
+                    <option value="/rencana-kerja">Rencana Kerja</option>
+                    <option value="/target-evaluasi">Target dan Evaluasi</option>
+                  </select>
+                  <div class="d-flex gap-2 mt-1">
+                    <button type="submit" class="btn btn-primary btn-sm">Simpan</button>
+                    <button id="info-reset" type="button" class="btn btn-outline-secondary btn-sm">Reset</button>
+                  </div>
+                  <small id="info-status" class="text-muted">Siap</small>
+                </form>
+              </div>
+              <div class="col-lg-8">
+                <div class="table-responsive">
+                  <table class="table table-striped align-middle">
+                    <thead>
+                      <tr>
+                        <th>ID</th>
+                        <th>Informasi</th>
+                        <th>Tahun</th>
+                        <th>Rute Tujuan</th>
+                        <th>Aksi</th>
+                      </tr>
+                    </thead>
+                    <tbody id="info-table-body"></tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
     </main>
 
     <script>
       (() => {
+        const informasiEndpoint = "/api/v1/performance/informasi";
+        const informasiLatestEndpoint = "/api/v1/performance/informasi/latest";
+        const activeInfoRoute = "/target-evaluasi";
         const endpoint = document.body.dataset.apiEndpoint;
         const finalOnlyRefQuery = "all=true&final_only=true";
         const rencanaKerjaEndpoint = `/api/v1/rencana_kerja?${finalOnlyRefQuery}`;
@@ -274,6 +350,15 @@
         const btnReset = document.getElementById("btn-reset");
         const tableBody = document.getElementById("table-body");
         const metaText = document.getElementById("meta-text");
+        const infoForm = document.getElementById("info-form");
+        const infoIDInput = document.getElementById("info-id");
+        const infoTextInput = document.getElementById("info-text");
+        const infoYearInput = document.getElementById("info-year");
+        const infoRouteInput = document.getElementById("info-route");
+        const infoStatus = document.getElementById("info-status");
+        const infoTableBody = document.getElementById("info-table-body");
+        const infoResetBtn = document.getElementById("info-reset");
+        const infoSwitcherText = document.getElementById("info-switcher-text");
         const DEFAULT_YEAR_KEY = "DEFAULT_YEAR";
 
         const rencanaKerjaMap = new Map();
@@ -281,8 +366,9 @@
         const indikatorDetailMap = new Map();
         let indikatorItemsCache = [];
         let currentUserID = 0;
-        const MUTATION_ROLES = new Set(["ADMIN", "OPERATOR", "PERENCANA"]);
+        const MUTATION_ROLES = new Set(["ADMIN", "PERENCANA", "OPERATOR"]);
         let currentUserRole = "";
+        let switcherTimerID = null;
 
         function normalizeRole(raw) {
           return String(raw || "")
@@ -333,6 +419,14 @@
           statusText.className = isError
             ? "text-danger small"
             : "text-success small";
+        }
+
+        function setInfoStatus(message, isError = false) {
+          if (!infoStatus) {
+            return;
+          }
+          infoStatus.textContent = message;
+          infoStatus.className = isError ? "text-danger small" : "text-success small";
         }
 
         function normalizeRencanaKerja(raw) {
@@ -459,6 +553,140 @@
             currentUserID > 0 ? String(currentUserID) : "";
           keteranganInput.value = "";
           applyIndikatorFilter("", "");
+        }
+
+        function resetInfoForm() {
+          if (!infoForm) {
+            return;
+          }
+          infoIDInput.value = "";
+          infoTextInput.value = "";
+          infoYearInput.value = defaultTahun();
+          infoRouteInput.value = "/dashboard";
+        }
+
+        function showSwitcher(items) {
+          if (!infoSwitcherText) {
+            return;
+          }
+          if (switcherTimerID) {
+            clearInterval(switcherTimerID);
+            switcherTimerID = null;
+          }
+
+          if (!Array.isArray(items) || items.length === 0) {
+            infoSwitcherText.textContent = "Belum ada topik informasi";
+            return;
+          }
+
+          let index = 0;
+          infoSwitcherText.textContent = items[index].informasi;
+          if (items.length === 1) {
+            return;
+          }
+
+          switcherTimerID = setInterval(() => {
+            index = (index + 1) % items.length;
+            infoSwitcherText.textContent = items[index].informasi;
+          }, 5000);
+        }
+
+        function rowTemplateInformasi(item) {
+          const tr = document.createElement("tr");
+          tr.innerHTML = `
+            <td>${item.id}</td>
+            <td>${item.informasi}</td>
+            <td>${item.tahun}</td>
+            <td><a href="${item.pilihan_route_halaman_tujuan}">${item.pilihan_route_halaman_tujuan}</a></td>
+            <td class="d-flex gap-1">
+              <button type="button" class="btn btn-sm btn-outline-primary" data-action="edit-info">Edit</button>
+              <button type="button" class="btn btn-sm btn-outline-danger" data-action="delete-info">Hapus</button>
+            </td>
+          `;
+
+          tr.querySelector('[data-action="edit-info"]').addEventListener(
+            "click",
+            () => {
+              infoIDInput.value = String(item.id);
+              infoTextInput.value = item.informasi;
+              infoYearInput.value = String(item.tahun || defaultTahun());
+              infoRouteInput.value =
+                item.pilihan_route_halaman_tujuan || "/dashboard";
+              setInfoStatus(`Mode edit informasi ID ${item.id}`);
+            },
+          );
+
+          tr.querySelector('[data-action="delete-info"]').addEventListener(
+            "click",
+            async () => {
+              if (!confirm(`Hapus informasi ID ${item.id}?`)) {
+                return;
+              }
+              try {
+                await fetchJSON(`${informasiEndpoint}/${item.id}`, {
+                  method: "DELETE",
+                });
+                setInfoStatus(`Informasi ID ${item.id} berhasil dihapus`);
+                if (String(infoIDInput.value) === String(item.id)) {
+                  resetInfoForm();
+                }
+                await Promise.all([loadInformasiList(), loadInformasiSwitcher()]);
+              } catch (error) {
+                setInfoStatus(error.message, true);
+              }
+            },
+          );
+
+          return tr;
+        }
+
+        async function loadInformasiList() {
+          if (!infoTableBody) {
+            return;
+          }
+
+          infoTableBody.innerHTML =
+            '<tr><td colspan="5" class="text-center text-muted py-3">Memuat data informasi...</td></tr>';
+
+          try {
+            const params = new URLSearchParams();
+            params.set("limit", "50");
+            params.set("route", activeInfoRoute);
+            const data = await fetchJSON(`${informasiEndpoint}?${params.toString()}`);
+            const items = Array.isArray(data?.items) ? data.items : [];
+            infoTableBody.innerHTML = "";
+
+            if (items.length === 0) {
+              infoTableBody.innerHTML =
+                '<tr><td colspan="5" class="text-center text-muted py-3">Belum ada informasi</td></tr>';
+              return;
+            }
+
+            items.forEach((item) => {
+              infoTableBody.appendChild(rowTemplateInformasi(item));
+            });
+          } catch (error) {
+            infoTableBody.innerHTML =
+              '<tr><td colspan="5" class="text-center text-danger py-3">Gagal memuat informasi</td></tr>';
+            setInfoStatus(error.message, true);
+          }
+        }
+
+        async function loadInformasiSwitcher() {
+          try {
+            const params = new URLSearchParams();
+            params.set("limit", "2");
+            params.set("route", activeInfoRoute);
+            const data = await fetchJSON(
+              `${informasiLatestEndpoint}?${params.toString()}`,
+            );
+            const items = Array.isArray(data?.items) ? data.items : [];
+            showSwitcher(items);
+          } catch (_) {
+            if (infoSwitcherText) {
+              infoSwitcherText.textContent = "Gagal memuat topik informasi";
+            }
+          }
         }
 
         async function loadCurrentUser() {
@@ -815,6 +1043,50 @@
           }
         });
 
+        infoForm?.addEventListener("submit", async (event) => {
+          event.preventDefault();
+
+          const id = String(infoIDInput.value || "").trim();
+          const isEdit = id !== "";
+          const payload = {
+            informasi: infoTextInput.value.trim(),
+            tahun: Number(infoYearInput.value || 0),
+            pilihan_route_halaman_tujuan: infoRouteInput.value,
+          };
+
+          if (
+            !payload.informasi ||
+            !payload.tahun ||
+            !payload.pilihan_route_halaman_tujuan
+          ) {
+            setInfoStatus("Semua field informasi wajib diisi", true);
+            return;
+          }
+
+          try {
+            await fetchJSON(isEdit ? `${informasiEndpoint}/${id}` : informasiEndpoint, {
+              method: isEdit ? "PUT" : "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(payload),
+            });
+
+            setInfoStatus(
+              isEdit
+                ? `Informasi ID ${id} berhasil diperbarui`
+                : "Informasi baru berhasil disimpan",
+            );
+            resetInfoForm();
+            await Promise.all([loadInformasiList(), loadInformasiSwitcher()]);
+          } catch (error) {
+            setInfoStatus(error.message, true);
+          }
+        });
+
+        infoResetBtn?.addEventListener("click", () => {
+          resetInfoForm();
+          setInfoStatus("Form informasi direset");
+        });
+
         (async () => {
           try {
             if (!getAccessToken()) {
@@ -825,8 +1097,13 @@
             applyRoleAccess();
             applyInitialYearFilter();
             resetForm();
+            resetInfoForm();
             await loadReferenceOptions();
-            await loadList();
+            await Promise.all([
+              loadList(),
+              loadInformasiList(),
+              loadInformasiSwitcher(),
+            ]);
           } catch (error) {
             setStatus(`Gagal inisialisasi form: ${error.message}`, true);
           }

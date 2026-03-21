@@ -70,6 +70,17 @@
                   value="0"
                 />
 
+                <label class="form-label mb-0" for="hargaSatuan"
+                  >Harga Satuan</label
+                >
+                <input
+                  id="hargaSatuan"
+                  type="number"
+                  step="0.01"
+                  class="form-control"
+                  value="0"
+                />
+
                 <label class="form-label mb-0" for="anggaranTahunan"
                   >Anggaran Tahunan</label
                 >
@@ -136,12 +147,15 @@
                   </caption>
                   <thead>
                     <tr>
-                      <th scope="col">ID</th>
+                      <th scope="col" style="width: 1%; white-space: nowrap">
+                        ID
+                      </th>
                       <th scope="col">Rencana Kerja</th>
                       <th scope="col">Kode</th>
                       <th scope="col">Nama</th>
                       <th scope="col">Satuan</th>
                       <th scope="col">Target Tahunan</th>
+                      <th scope="col">Harga Satuan</th>
                       <th scope="col">Anggaran Tahunan</th>
                       <th scope="col">Aksi</th>
                     </tr>
@@ -149,6 +163,7 @@
                   <tbody id="table-body"></tbody>
                 </table>
               </div>
+
               <div
                 class="d-flex justify-content-between align-items-center mt-2"
               >
@@ -160,410 +175,7 @@
       </div>
     </main>
 
-    <script>
-      (() => {
-        const endpoint = document.body.dataset.apiEndpoint;
-        const rencanaKerjaEndpoint = "/api/v1/rencana_kerja";
-
-        const form = document.getElementById("crud-form");
-        const idInput = document.getElementById("entity-id");
-        const rencanaKerjaInput = document.getElementById("rencanaKerjaId");
-        const kodeInput = document.getElementById("kode");
-        const namaInput = document.getElementById("nama");
-        const satuanInput = document.getElementById("satuan");
-        const targetTahunanInput = document.getElementById("targetTahunan");
-        const anggaranTahunanInput = document.getElementById("anggaranTahunan");
-        const statusText = document.getElementById("status-text");
-        const queryInput = document.getElementById("query");
-        const btnSearch = document.getElementById("btn-search");
-        const btnReset = document.getElementById("btn-reset");
-        const tableBody = document.getElementById("table-body");
-        const metaText = document.getElementById("meta-text");
-
-        const rencanaKerjaMap = new Map();
-        let currentListItems = [];
-
-        const MUTATION_ROLES = new Set(["ADMIN", "OPERATOR", "PERENCANA"]);
-        let currentUserRole = "";
-
-        function normalizeRole(raw) {
-          return String(raw || "")
-            .trim()
-            .toUpperCase();
-        }
-
-        function canMutateByRole(role) {
-          return MUTATION_ROLES.has(normalizeRole(role));
-        }
-
-        function applyRoleAccess() {
-          if (canMutateByRole(currentUserRole)) return;
-          form
-            .querySelectorAll("input, textarea, select, button[type='submit']")
-            .forEach((el) => {
-              el.disabled = true;
-            });
-          const info = document.createElement("p");
-          info.className = "text-warning small mt-2 mb-0";
-          info.textContent =
-            "Mode baca saja — role Anda tidak memiliki hak untuk mengubah data.";
-          form.appendChild(info);
-        }
-        function authHeader() {
-          const token =
-            localStorage.getItem("AUTH_TOKEN") ||
-            localStorage.getItem("authToken") ||
-            "";
-          return token ? { Authorization: `Bearer ${token}` } : {};
-        }
-
-        function setStatus(message, isError = false) {
-          statusText.textContent = message;
-          statusText.className = isError
-            ? "text-danger small"
-            : "text-success small";
-        }
-
-        function normalizeRencanaKerja(raw) {
-          return {
-            id: Number(raw.id ?? raw.ID ?? 0),
-            kode: raw.kode ?? raw.Kode ?? "",
-            nama: raw.nama ?? raw.Nama ?? "",
-          };
-        }
-
-        function normalizeItem(raw) {
-          return {
-            id: Number(raw.id ?? raw.ID ?? 0),
-            rencanaKerjaId: Number(
-              raw.rencana_kerja_id ?? raw.RencanaKerjaID ?? 0,
-            ),
-            kode: raw.kode ?? raw.Kode ?? "",
-            nama: raw.nama ?? raw.Nama ?? "",
-            satuan: raw.satuan ?? raw.Satuan ?? "",
-            targetTahunan: Number(raw.target_tahunan ?? raw.TargetTahunan ?? 0),
-            anggaranTahunan: Number(
-              raw.anggaran_tahunan ?? raw.AnggaranTahunan ?? 0,
-            ),
-          };
-        }
-
-        async function fetchJSON(url, options = {}) {
-          const res = await fetch(url, {
-            ...options,
-            headers: {
-              ...(options.headers || {}),
-              ...authHeader(),
-            },
-          });
-
-          const body = await res.json();
-          if (!res.ok || !body.success) {
-            throw new Error(body.error || `HTTP ${res.status}`);
-          }
-          return body.data;
-        }
-
-        function isDuplicateKode(kode, editingID) {
-          const normalizedKode = String(kode || "")
-            .trim()
-            .toLowerCase();
-          if (!normalizedKode) {
-            return false;
-          }
-
-          return currentListItems.some((item) => {
-            const itemID = Number(item.id || 0);
-            if (editingID > 0 && itemID === editingID) {
-              return false;
-            }
-
-            return (
-              String(item.kode || "")
-                .trim()
-                .toLowerCase() === normalizedKode
-            );
-          });
-        }
-
-        function suggestNextKode() {
-          let maxNumber = 0;
-          let padWidth = 3;
-
-          currentListItems.forEach((item) => {
-            const kode = String(item.kode || "").trim();
-            const match = /^IRK-(\d+)$/i.exec(kode);
-            if (!match) {
-              return;
-            }
-
-            const numberPart = match[1];
-            const parsed = Number(numberPart);
-            if (Number.isFinite(parsed) && parsed > maxNumber) {
-              maxNumber = parsed;
-              padWidth = Math.max(padWidth, numberPart.length);
-            }
-          });
-
-          return `IRK-${String(maxNumber + 1).padStart(padWidth, "0")}`;
-        }
-
-        function resetForm() {
-          idInput.value = "";
-          rencanaKerjaInput.value = "";
-          kodeInput.value = suggestNextKode();
-          namaInput.value = "";
-          satuanInput.value = "";
-          targetTahunanInput.value = "0";
-          anggaranTahunanInput.value = "0";
-        }
-
-        function rencanaKerjaLabel(id) {
-          return rencanaKerjaMap.get(Number(id)) || `Rencana Kerja #${id}`;
-        }
-
-        function rowTemplate(item) {
-          const tr = document.createElement("tr");
-          tr.innerHTML = `
-            <td>${item.id}</td>
-            <td>${rencanaKerjaLabel(item.rencanaKerjaId)}</td>
-            <td>${item.kode}</td>
-            <td>${item.nama}</td>
-            <td>${item.satuan || "-"}</td>
-            <td>${item.targetTahunan.toFixed(2)}</td>
-            <td>${item.anggaranTahunan.toFixed(2)}</td>
-            <td class="text-nowrap">
-              ${canMutateByRole(currentUserRole) ? '<button class="btn btn-sm btn-outline-primary me-1" data-action="edit">Edit</button><button class="btn btn-sm btn-outline-danger" data-action="delete">Hapus</button>' : '<span class="text-muted small">Read-only</span>'}
-            </td>
-          `;
-
-          tr.querySelector('[data-action="edit"]')?.addEventListener(
-            "click",
-            () => {
-              idInput.value = item.id;
-              rencanaKerjaInput.value = String(item.rencanaKerjaId);
-              kodeInput.value = item.kode;
-              namaInput.value = item.nama;
-              satuanInput.value = item.satuan;
-              targetTahunanInput.value = String(item.targetTahunan);
-              anggaranTahunanInput.value = String(item.anggaranTahunan);
-              setStatus(`Mode edit ID ${item.id}`);
-            },
-          );
-
-          tr.querySelector('[data-action="delete"]')?.addEventListener(
-            "click",
-            async () => {
-              if (!confirm(`Hapus Rencana Aksi rencana kerja ${item.nama}?`)) {
-                return;
-              }
-              try {
-                await fetchJSON(`${endpoint}/${item.id}`, { method: "DELETE" });
-                setStatus("Data berhasil dihapus");
-                if (Number(idInput.value) === item.id) {
-                  resetForm();
-                }
-                await loadList();
-              } catch (error) {
-                setStatus(error.message, true);
-              }
-            },
-          );
-
-          return tr;
-        }
-
-        async function loadRencanaKerjaOptions() {
-          try {
-            const data = await fetchJSON(rencanaKerjaEndpoint);
-            const items = (Array.isArray(data?.items) ? data.items : [])
-              .map(normalizeRencanaKerja)
-              .sort((a, b) => a.id - b.id);
-
-            rencanaKerjaMap.clear();
-            rencanaKerjaInput.innerHTML =
-              '<option value="">Pilih rencana kerja</option>';
-
-            items.forEach((item) => {
-              const label = `${item.kode} - ${item.nama}`;
-              rencanaKerjaMap.set(item.id, label);
-
-              const option = document.createElement("option");
-              option.value = String(item.id);
-              option.textContent = label;
-              rencanaKerjaInput.appendChild(option);
-            });
-          } catch (error) {
-            setStatus(
-              `Pilihan rencana kerja tidak ditemukan: ${error.message}`,
-              true,
-            );
-          }
-        }
-
-        async function loadList() {
-          tableBody.innerHTML =
-            '<tr><td colspan="8" class="text-center text-muted py-4">Memuat...</td></tr>';
-
-          try {
-            const params = new URLSearchParams();
-            const q = queryInput.value.trim();
-            const selectedRencanaKerjaID = Number(rencanaKerjaInput.value || 0);
-            if (q) {
-              params.set("q", q);
-            }
-
-            const url = params.size
-              ? `${endpoint}?${params.toString()}`
-              : endpoint;
-
-            const data = await fetchJSON(url);
-            const allItems = (Array.isArray(data?.items) ? data.items : []).map(
-              normalizeItem,
-            );
-            currentListItems = allItems;
-            const items = selectedRencanaKerjaID
-              ? allItems.filter(
-                  (item) => item.rencanaKerjaId === selectedRencanaKerjaID,
-                )
-              : [];
-
-            tableBody.innerHTML = "";
-            metaText.textContent = `Total ${items.length} data`;
-
-            if (items.length === 0) {
-              tableBody.innerHTML = selectedRencanaKerjaID
-                ? '<tr><td colspan="8" class="text-center text-muted py-4">Belum ada data</td></tr>'
-                : '<tr><td colspan="8" class="text-center text-muted py-4">Pilih rencana kerja terlebih dahulu</td></tr>';
-              return;
-            }
-
-            items
-              .sort((a, b) => a.id - b.id)
-              .forEach((item) => tableBody.appendChild(rowTemplate(item)));
-          } catch (error) {
-            tableBody.innerHTML =
-              '<tr><td colspan="8" class="text-center text-danger py-4">Gagal memuat data</td></tr>';
-            setStatus(error.message, true);
-          }
-        }
-
-        form.addEventListener("submit", async (event) => {
-          event.preventDefault();
-
-          if (!canMutateByRole(currentUserRole)) {
-            setStatus(
-              "Anda tidak memiliki hak akses untuk menyimpan perubahan",
-              true,
-            );
-            return;
-          }
-
-          const payload = {
-            rencana_kerja_id: Number(rencanaKerjaInput.value),
-            kode: kodeInput.value.trim(),
-            nama: namaInput.value.trim(),
-            satuan: satuanInput.value.trim(),
-            target_tahunan: Number(targetTahunanInput.value || 0),
-            anggaran_tahunan: Number(anggaranTahunanInput.value || 0),
-          };
-
-          if (!payload.rencana_kerja_id || !payload.kode || !payload.nama) {
-            setStatus("Rencana Kerja, kode, dan nama wajib diisi", true);
-            return;
-          }
-
-          const id = idInput.value.trim();
-          const editingID = id ? Number(id) : 0;
-          if (isDuplicateKode(payload.kode, editingID)) {
-            const suggestedKode = suggestNextKode();
-            kodeInput.value = suggestedKode;
-            setStatus(
-              `Kode indikator_rencana_kerja sudah digunakan. Saran kode: ${suggestedKode}`,
-              true,
-            );
-            kodeInput.focus();
-            return;
-          }
-
-          const isEdit = Boolean(idInput.value);
-          const url = isEdit ? `${endpoint}/${idInput.value}` : endpoint;
-          const method = isEdit ? "PUT" : "POST";
-
-          try {
-            await fetchJSON(url, {
-              method,
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify(payload),
-            });
-
-            setStatus(
-              isEdit ? "Data berhasil diperbarui" : "Data berhasil ditambahkan",
-            );
-            resetForm();
-            await loadList();
-          } catch (error) {
-            if (
-              String(error.message || "")
-                .toLowerCase()
-                .includes("kode indikator_rencana_kerja sudah digunakan")
-            ) {
-              const suggestedKode = suggestNextKode();
-              kodeInput.value = suggestedKode;
-              setStatus(
-                `Kode indikator_rencana_kerja sudah digunakan. Saran kode: ${suggestedKode}`,
-                true,
-              );
-              kodeInput.focus();
-              return;
-            }
-            setStatus(error.message, true);
-          }
-        });
-
-        btnReset.addEventListener("click", () => {
-          resetForm();
-          setStatus("Form direset");
-        });
-
-        btnSearch.addEventListener("click", loadList);
-        rencanaKerjaInput.addEventListener("change", () => {
-          loadList();
-        });
-        queryInput.addEventListener("keydown", (event) => {
-          if (event.key === "Enter") {
-            event.preventDefault();
-            loadList();
-          }
-        });
-
-        async function loadCurrentUser() {
-          try {
-            const token =
-              localStorage.getItem("AUTH_TOKEN") ||
-              localStorage.getItem("authToken") ||
-              "";
-            if (!token) return;
-            const res = await fetch("/api/v1/auth/me", {
-              headers: { Authorization: `Bearer ${token}` },
-            });
-            if (!res.ok) return;
-            const body = await res.json();
-            currentUserRole = normalizeRole(body?.data?.role ?? "");
-          } catch (_) {
-            // non-fatal
-          }
-        }
-
-        (async () => {
-          await loadCurrentUser();
-          applyRoleAccess();
-          await loadRencanaKerjaOptions();
-          await loadList();
-          setStatus("Data siap dikelola");
-        })();
-      })();
-    </script>
+    <script src="/assets/js/indikator-kinerja.js"></script>
     <script src="/assets/js/auth-client.js"></script>
   </body>
 </html>

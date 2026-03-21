@@ -1,0 +1,560 @@
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Informasi - E-Planning RSUD</title>
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <link href="/assets/css/app.css" rel="stylesheet" />
+    <style>
+      @keyframes fadeEffect {
+        0% {
+          opacity: 0.2;
+        }
+        20% {
+          opacity: 1;
+        }
+        80% {
+          opacity: 1;
+        }
+        100% {
+          opacity: 0.2;
+        }
+      }
+
+      .info-switcher {
+        margin-top: 0.75rem;
+        background: rgba(255, 255, 255, 0.2);
+        border: 1px solid rgba(255, 255, 255, 0.35);
+        border-radius: 0.65rem;
+        padding: 0.55rem 0.75rem;
+      }
+
+      .info-switcher-text {
+        margin-bottom: 0;
+        animation: fadeEffect 5s ease-in-out infinite;
+      }
+
+      .table td,
+      .table th {
+        vertical-align: middle;
+      }
+    </style>
+  </head>
+  <body
+    class="bg-soft-pattern"
+    data-module-name="Informasi"
+    data-api-endpoint="/api/v1/performance/informasi"
+  >
+    <main class="container py-4">
+      <header
+        class="mb-4 p-4 card shadow-sm border-0 header-gradient text-white"
+      >
+        <h1 class="h3 mb-1">MANAJEMEN INFORMASI</h1>
+        <p class="mb-0 opacity-75">
+          Kelola topik baru/lama dan route halaman tujuan.
+        </p>
+        <div class="info-switcher">
+          <small class="opacity-75">Topik Informasi Berjalan</small>
+          <p id="info-switcher-text" class="info-switcher-text">
+            Memuat topik terbaru...
+          </p>
+        </div>
+      </header>
+
+      <div class="row g-4">
+        <section class="col-lg-4" aria-label="Form Informasi">
+          <div class="card border-0 shadow-sm">
+            <div class="card-body">
+              <h2 class="h6 text-uppercase text-muted">Form Data</h2>
+              <form id="info-form" class="vstack gap-2" autocomplete="off">
+                <input type="hidden" id="info-id" />
+
+                <label class="form-label mb-0" for="info-text">Informasi</label>
+                <textarea
+                  id="info-text"
+                  class="form-control"
+                  rows="4"
+                  placeholder="Tulis topik informasi"
+                  required
+                ></textarea>
+
+                <label class="form-label mb-0" for="info-year">Tahun</label>
+                <input
+                  id="info-year"
+                  type="number"
+                  min="2000"
+                  max="2100"
+                  class="form-control"
+                  required
+                />
+
+                <label class="form-label mb-0" for="info-route"
+                  >Route Halaman Tujuan</label
+                >
+                <select id="info-route" class="form-select" required>
+                  <option value="/dashboard">Dashboard</option>
+                  <option value="/rencana-kerja">Rencana Kerja</option>
+                  <option value="/target-evaluasi">Target dan Evaluasi</option>
+                </select>
+
+                <div class="d-flex gap-2 mt-1">
+                  <button type="submit" class="btn btn-primary btn-sm">
+                    Simpan
+                  </button>
+                  <button
+                    id="info-reset"
+                    type="button"
+                    class="btn btn-outline-secondary btn-sm"
+                  >
+                    Reset
+                  </button>
+                </div>
+                <small id="info-status" class="text-muted">Siap</small>
+              </form>
+            </div>
+          </div>
+        </section>
+
+        <section class="col-lg-8" aria-label="Daftar Informasi">
+          <div class="card border-0 shadow-sm">
+            <div class="card-body">
+              <div
+                class="d-flex justify-content-between align-items-center mb-3"
+              >
+                <h2 class="h6 text-uppercase text-muted mb-0">Daftar Data</h2>
+                <a href="/ui/dashboard" class="btn btn-sm btn-outline-dark"
+                  >Kembali ke Dashboard</a
+                >
+              </div>
+
+              <div class="d-flex flex-wrap gap-2 align-items-end mb-2">
+                <div>
+                  <label class="form-label mb-1" for="filter-route"
+                    >Filter Route</label
+                  >
+                  <select id="filter-route" class="form-select form-select-sm">
+                    <option value="">Semua Route</option>
+                    <option value="/dashboard">Dashboard</option>
+                    <option value="/rencana-kerja">Rencana Kerja</option>
+                    <option value="/target-evaluasi">
+                      Target dan Evaluasi
+                    </option>
+                  </select>
+                </div>
+                <div>
+                  <button
+                    id="btn-refresh"
+                    type="button"
+                    class="btn btn-sm btn-outline-primary"
+                  >
+                    Refresh
+                  </button>
+                </div>
+              </div>
+
+              <div class="small text-muted mb-2">
+                <span id="info-meta-text">Total 0 data</span>
+              </div>
+
+              <div class="table-responsive">
+                <table class="table table-striped align-middle">
+                  <thead>
+                    <tr>
+                      <th>ID</th>
+                      <th>Informasi</th>
+                      <th>Tahun</th>
+                      <th>Route Tujuan</th>
+                      <th>Aksi</th>
+                    </tr>
+                  </thead>
+                  <tbody id="info-table-body"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+    </main>
+
+    <script>
+      (() => {
+        const informasiEndpoint = "/api/v1/performance/informasi";
+        const informasiLatestEndpoint = "/api/v1/performance/informasi/latest";
+
+        const infoForm = document.getElementById("info-form");
+        const infoIDInput = document.getElementById("info-id");
+        const infoTextInput = document.getElementById("info-text");
+        const infoYearInput = document.getElementById("info-year");
+        const infoRouteInput = document.getElementById("info-route");
+        const infoStatus = document.getElementById("info-status");
+        const infoTableBody = document.getElementById("info-table-body");
+        const infoResetBtn = document.getElementById("info-reset");
+        const infoSwitcherText = document.getElementById("info-switcher-text");
+        const filterRouteInput = document.getElementById("filter-route");
+        const refreshBtn = document.getElementById("btn-refresh");
+        const infoMetaText = document.getElementById("info-meta-text");
+        const MUTATION_ROLES = new Set(["ADMIN", "PERENCANA", "OPERATOR"]);
+        let currentUserRole = "";
+        let canMutate = false;
+        let switcherTimerID = null;
+
+        function getAccessToken() {
+          return (
+            localStorage.getItem("AUTH_TOKEN") ||
+            localStorage.getItem("authToken") ||
+            ""
+          );
+        }
+
+        function authHeader() {
+          const token = getAccessToken();
+          return token ? { Authorization: `Bearer ${token}` } : {};
+        }
+
+        function redirectToLogin() {
+          const next = encodeURIComponent(
+            window.location.pathname + window.location.search,
+          );
+          window.location.href = `/ui/login?next=${next}`;
+        }
+
+        function normalizeRole(raw) {
+          return String(raw || "")
+            .trim()
+            .toUpperCase();
+        }
+
+        function canMutateByRole(role) {
+          return MUTATION_ROLES.has(normalizeRole(role));
+        }
+
+        function applyRoleAccess() {
+          canMutate = canMutateByRole(currentUserRole);
+          const fields = infoForm.querySelectorAll(
+            "input, select, textarea, button[type='submit'], #info-reset",
+          );
+
+          fields.forEach((field) => {
+            field.disabled = !canMutate;
+          });
+
+          if (!canMutate) {
+            setInfoStatus(
+              `Role ${currentUserRole || "UNKNOWN"} hanya dapat melihat data informasi`,
+            );
+          }
+        }
+
+        function setInfoStatus(message, isError = false) {
+          if (!infoStatus) {
+            return;
+          }
+          infoStatus.textContent = message;
+          infoStatus.className = isError
+            ? "text-danger small"
+            : "text-success small";
+        }
+
+        function defaultYear() {
+          return String(new Date().getFullYear());
+        }
+
+        function resetInfoForm() {
+          infoIDInput.value = "";
+          infoTextInput.value = "";
+          infoYearInput.value = defaultYear();
+          infoRouteInput.value = "/dashboard";
+        }
+
+        function resolveRouteFilter() {
+          return String(filterRouteInput?.value || "").trim();
+        }
+
+        async function fetchJSON(url, options = {}) {
+          const res = await fetch(url, {
+            ...options,
+            headers: {
+              ...(options.headers || {}),
+              ...authHeader(),
+            },
+          });
+
+          const rawText = await res.text();
+          let body;
+          try {
+            body = JSON.parse(rawText);
+          } catch (_) {
+            const firstBrace = rawText.indexOf("{");
+            const lastBrace = rawText.lastIndexOf("}");
+            if (firstBrace >= 0 && lastBrace > firstBrace) {
+              body = JSON.parse(rawText.slice(firstBrace, lastBrace + 1));
+            } else {
+              throw new Error("Respons API tidak valid");
+            }
+          }
+
+          if (!res.ok || !body.success) {
+            if (res.status === 401) {
+              const authError = String(body?.error || "").toLowerCase();
+              if (
+                authError.includes("authorization") ||
+                authError.includes("token")
+              ) {
+                redirectToLogin();
+                throw new Error("Sesi login berakhir, silakan login ulang");
+              }
+            }
+            throw new Error(body.error || `HTTP ${res.status}`);
+          }
+
+          return body.data;
+        }
+
+        function sanitize(value) {
+          return String(value || "")
+            .replaceAll("&", "&amp;")
+            .replaceAll("<", "&lt;")
+            .replaceAll(">", "&gt;")
+            .replaceAll('"', "&quot;")
+            .replaceAll("'", "&#39;");
+        }
+
+        function rowTemplateInformasi(item) {
+          const tr = document.createElement("tr");
+          const route = item.pilihan_route_halaman_tujuan || "/dashboard";
+          const actionHTML = canMutate
+            ? '<button type="button" class="btn btn-sm btn-outline-primary" data-action="edit-info">Edit</button><button type="button" class="btn btn-sm btn-outline-danger" data-action="delete-info">Hapus</button>'
+            : '<span class="badge text-bg-light border">Read only</span>';
+
+          tr.innerHTML = `
+            <td>${Number(item.id || 0)}</td>
+            <td>${sanitize(item.informasi)}</td>
+            <td>${Number(item.tahun || 0)}</td>
+            <td><a href="${sanitize(route)}">${sanitize(route)}</a></td>
+            <td class="d-flex gap-1">
+              ${actionHTML}
+            </td>
+          `;
+
+          if (!canMutate) {
+            return tr;
+          }
+
+          tr.querySelector('[data-action="edit-info"]').addEventListener(
+            "click",
+            () => {
+              infoIDInput.value = String(item.id || "");
+              infoTextInput.value = item.informasi || "";
+              infoYearInput.value = String(item.tahun || defaultYear());
+              infoRouteInput.value = route;
+              setInfoStatus(`Mode edit informasi ID ${item.id}`);
+            },
+          );
+
+          tr.querySelector('[data-action="delete-info"]').addEventListener(
+            "click",
+            async () => {
+              if (!canMutate) {
+                setInfoStatus(
+                  "Tidak memiliki izin untuk menghapus informasi",
+                  true,
+                );
+                return;
+              }
+              if (!confirm(`Hapus informasi ID ${item.id}?`)) {
+                return;
+              }
+
+              try {
+                await fetchJSON(`${informasiEndpoint}/${item.id}`, {
+                  method: "DELETE",
+                });
+                setInfoStatus(`Informasi ID ${item.id} berhasil dihapus`);
+                if (String(infoIDInput.value) === String(item.id)) {
+                  resetInfoForm();
+                }
+                await Promise.all([
+                  loadInformasiList(),
+                  loadInformasiSwitcher(),
+                ]);
+              } catch (error) {
+                setInfoStatus(error.message, true);
+              }
+            },
+          );
+
+          return tr;
+        }
+
+        function showSwitcher(items) {
+          if (!infoSwitcherText) {
+            return;
+          }
+
+          if (switcherTimerID) {
+            clearInterval(switcherTimerID);
+            switcherTimerID = null;
+          }
+
+          if (!Array.isArray(items) || items.length === 0) {
+            infoSwitcherText.textContent = "Belum ada topik informasi";
+            return;
+          }
+
+          let index = 0;
+          infoSwitcherText.textContent = items[index].informasi || "-";
+          if (items.length === 1) {
+            return;
+          }
+
+          switcherTimerID = setInterval(() => {
+            index = (index + 1) % items.length;
+            infoSwitcherText.textContent = items[index].informasi || "-";
+          }, 5000);
+        }
+
+        async function loadInformasiList() {
+          infoTableBody.innerHTML =
+            '<tr><td colspan="5" class="text-center text-muted py-3">Memuat data informasi...</td></tr>';
+
+          try {
+            const params = new URLSearchParams();
+            params.set("limit", "100");
+            const routeFilter = resolveRouteFilter();
+            if (routeFilter) {
+              params.set("route", routeFilter);
+            }
+
+            const data = await fetchJSON(
+              `${informasiEndpoint}?${params.toString()}`,
+            );
+            const items = Array.isArray(data?.items) ? data.items : [];
+
+            infoTableBody.innerHTML = "";
+            if (infoMetaText) {
+              infoMetaText.textContent = `Total ${items.length} data`;
+            }
+            if (items.length === 0) {
+              infoTableBody.innerHTML =
+                '<tr><td colspan="5" class="text-center text-muted py-3">Belum ada informasi</td></tr>';
+              return;
+            }
+
+            items.forEach((item) => {
+              infoTableBody.appendChild(rowTemplateInformasi(item));
+            });
+          } catch (error) {
+            infoTableBody.innerHTML =
+              '<tr><td colspan="5" class="text-center text-danger py-3">Gagal memuat informasi</td></tr>';
+            setInfoStatus(error.message, true);
+          }
+        }
+
+        async function loadInformasiSwitcher() {
+          try {
+            const params = new URLSearchParams();
+            params.set("limit", "2");
+            const routeFilter = resolveRouteFilter();
+            if (routeFilter) {
+              params.set("route", routeFilter);
+            }
+
+            const data = await fetchJSON(
+              `${informasiLatestEndpoint}?${params.toString()}`,
+            );
+            const items = Array.isArray(data?.items) ? data.items : [];
+            showSwitcher(items);
+          } catch (_) {
+            if (infoSwitcherText) {
+              infoSwitcherText.textContent = "Gagal memuat topik informasi";
+            }
+          }
+        }
+
+        infoForm.addEventListener("submit", async (event) => {
+          event.preventDefault();
+
+          if (!canMutate) {
+            setInfoStatus(
+              "Tidak memiliki izin untuk menyimpan informasi",
+              true,
+            );
+            return;
+          }
+
+          const payload = {
+            informasi: String(infoTextInput.value || "").trim(),
+            tahun: Number(infoYearInput.value || 0),
+            pilihan_route_halaman_tujuan: infoRouteInput.value,
+          };
+
+          if (!payload.informasi) {
+            setInfoStatus("Informasi wajib diisi", true);
+            return;
+          }
+
+          if (!Number.isFinite(payload.tahun) || payload.tahun < 2000) {
+            setInfoStatus("Tahun tidak valid", true);
+            return;
+          }
+
+          try {
+            const infoID = Number(infoIDInput.value || 0);
+            if (infoID > 0) {
+              await fetchJSON(`${informasiEndpoint}/${infoID}`, {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload),
+              });
+              setInfoStatus(`Informasi ID ${infoID} berhasil diperbarui`);
+            } else {
+              await fetchJSON(informasiEndpoint, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload),
+              });
+              setInfoStatus("Informasi berhasil ditambahkan");
+            }
+
+            resetInfoForm();
+            await Promise.all([loadInformasiList(), loadInformasiSwitcher()]);
+          } catch (error) {
+            setInfoStatus(error.message, true);
+          }
+        });
+
+        infoResetBtn.addEventListener("click", () => {
+          resetInfoForm();
+          setInfoStatus("Form direset");
+        });
+
+        filterRouteInput.addEventListener("change", async () => {
+          await Promise.all([loadInformasiList(), loadInformasiSwitcher()]);
+        });
+
+        refreshBtn.addEventListener("click", async () => {
+          await Promise.all([loadInformasiList(), loadInformasiSwitcher()]);
+          setInfoStatus("Data informasi diperbarui");
+        });
+
+        async function init() {
+          resetInfoForm();
+          try {
+            const me = await fetchJSON("/api/v1/auth/me");
+            currentUserRole = normalizeRole(me?.role ?? me?.Role ?? "");
+          } catch (error) {
+            setInfoStatus(error.message, true);
+          }
+          applyRoleAccess();
+          await Promise.all([loadInformasiList(), loadInformasiSwitcher()]);
+        }
+
+        init();
+      })();
+    </script>
+  </body>
+</html>

@@ -9,42 +9,54 @@ import (
 
 // Config contains runtime configuration loaded from environment variables.
 type Config struct {
-	AppName                string
-	AppEnv                 string
-	HTTPAddr               string
-	MySQLDSN               string
-	DBMaxOpenConns         int
-	DBMaxIdleConns         int
-	DBConnMaxLifetimeMins  int
-	DBConnMaxIdleTimeMins  int
-	GinMode                string
-	LogLevel               string
-	AuthEnabled            bool
-	AuthToken              string
-	ReadTimeoutSeconds     int
-	WriteTimeoutSeconds    int
-	ShutdownTimeoutSeconds int
+	AppName                  string
+	AppEnv                   string
+	HTTPAddr                 string
+	MySQLDSN                 string
+	DBConnectMaxRetries      int
+	DBConnectRetryDelaySecs  int
+	DBMaxOpenConns           int
+	DBMaxIdleConns           int
+	DBConnMaxLifetimeMins    int
+	DBConnMaxIdleTimeMins    int
+	GinMode                  string
+	LogLevel                 string
+	AuthEnabled              bool
+	AuthToken                string
+	DevAuthUserEmail         string
+	JWTIssuer                string
+	JWTAccessTokenTTLMinutes int
+	JWTRefreshTokenTTLHours  int
+	ReadTimeoutSeconds       int
+	WriteTimeoutSeconds      int
+	ShutdownTimeoutSeconds   int
 }
 
 func Load() Config {
 	loadDotEnvIfExists(".env")
 
 	return Config{
-		AppName:                getenv("APP_NAME", "e-plan-ai"),
-		AppEnv:                 getenv("APP_ENV", "development"),
-		HTTPAddr:               getenv("HTTP_ADDR", "localhost:8080"),
-		MySQLDSN:               getenv("MYSQL_DSN", "root@tcp(localhost:3306)/e-plan-ai?parseTime=true"),
-		DBMaxOpenConns:         getenvInt("DB_MAX_OPEN_CONNS", 20),
-		DBMaxIdleConns:         getenvInt("DB_MAX_IDLE_CONNS", 10),
-		DBConnMaxLifetimeMins:  getenvInt("DB_CONN_MAX_LIFETIME_MINUTES", 30),
-		DBConnMaxIdleTimeMins:  getenvInt("DB_CONN_MAX_IDLE_TIME_MINUTES", 10),
-		GinMode:                getenv("GIN_MODE", "debug"),
-		LogLevel:               getenv("LOG_LEVEL", "info"),
-		AuthEnabled:            getenvBool("AUTH_ENABLED", false),
-		AuthToken:              getenv("AUTH_TOKEN", "change-me-in-production"),
-		ReadTimeoutSeconds:     getenvInt("READ_TIMEOUT_SECONDS", 10),
-		WriteTimeoutSeconds:    getenvInt("WRITE_TIMEOUT_SECONDS", 10),
-		ShutdownTimeoutSeconds: getenvInt("SHUTDOWN_TIMEOUT_SECONDS", 10),
+		AppName:                  getenv("APP_NAME", "e-plan-ai"),
+		AppEnv:                   getenv("APP_ENV", "development"),
+		HTTPAddr:                 getenv("HTTP_ADDR", "localhost:8080"),
+		MySQLDSN:                 getenv("MYSQL_DSN", "root@tcp(localhost:3306)/e-plan-ai?parseTime=true"),
+		DBConnectMaxRetries:      getenvInt("DB_CONNECT_MAX_RETRIES", 10),
+		DBConnectRetryDelaySecs:  getenvInt("DB_CONNECT_RETRY_DELAY_SECONDS", 2),
+		DBMaxOpenConns:           getenvInt("DB_MAX_OPEN_CONNS", 20),
+		DBMaxIdleConns:           getenvInt("DB_MAX_IDLE_CONNS", 10),
+		DBConnMaxLifetimeMins:    getenvInt("DB_CONN_MAX_LIFETIME_MINUTES", 30),
+		DBConnMaxIdleTimeMins:    getenvInt("DB_CONN_MAX_IDLE_TIME_MINUTES", 10),
+		GinMode:                  getenv("GIN_MODE", "debug"),
+		LogLevel:                 getenv("LOG_LEVEL", "info"),
+		AuthEnabled:              getenvBool("AUTH_ENABLED", false),
+		AuthToken:                getenv("AUTH_TOKEN", "change-me-in-production"),
+		DevAuthUserEmail:         getenv("DEV_AUTH_USER_EMAIL", "superadmin@rsudcontoh.go.id"),
+		JWTIssuer:                getenv("JWT_ISSUER", "e-plan-ai"),
+		JWTAccessTokenTTLMinutes: getenvInt("JWT_ACCESS_TOKEN_TTL_MINUTES", 15),
+		JWTRefreshTokenTTLHours:  getenvInt("JWT_REFRESH_TOKEN_TTL_HOURS", 24),
+		ReadTimeoutSeconds:       getenvInt("READ_TIMEOUT_SECONDS", 10),
+		WriteTimeoutSeconds:      getenvInt("WRITE_TIMEOUT_SECONDS", 10),
+		ShutdownTimeoutSeconds:   getenvInt("SHUTDOWN_TIMEOUT_SECONDS", 10),
 	}
 }
 

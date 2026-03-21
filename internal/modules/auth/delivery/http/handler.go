@@ -288,35 +288,8 @@ func (h *Handler) findSystemUserByEmail(identifier string) (*systemUser, error) 
 	}
 
 	queries := []string{
-		// Legacy schema from SQL migrations (users.full_name, users.is_active + user_roles table)
-		`
-		SELECT
-			u.id,
-			u.email,
-			u.full_name AS full_name,
-			u.password_hash,
-			u.is_active AS is_active,
-			COALESCE(r.code, 'PERENCANA') AS role
-		FROM users u
-		LEFT JOIN user_roles ur ON ur.user_id = u.id
-		LEFT JOIN roles r ON r.id = ur.role_id
-		WHERE LOWER(u.email) = ?
-		LIMIT 1
-		`,
-		// Legacy-compatible schema without user_roles table.
-		`
-		SELECT
-			u.id,
-			u.email,
-			u.full_name AS full_name,
-			u.password_hash,
-			u.is_active AS is_active,
-			'PERENCANA' AS role
-		FROM users u
-		WHERE LOWER(u.email) = ?
-		LIMIT 1
-		`,
-		// Newer schema from gorm models (users.nama_lengkap, users.aktif, users.role)
+		// Newer schema from gorm models (users.nama_lengkap, users.aktif, users.role).
+		// users.role is the single source of truth for authorization role.
 		`
 		SELECT
 			u.id,
@@ -324,12 +297,12 @@ func (h *Handler) findSystemUserByEmail(identifier string) (*systemUser, error) 
 			u.nama_lengkap AS full_name,
 			u.password_hash,
 			u.aktif AS is_active,
-			u.role AS role
+			COALESCE(NULLIF(u.role, ''), 'PERENCANA') AS role
 		FROM users u
 		WHERE LOWER(u.email) = ?
 		LIMIT 1
 		`,
-		// Hybrid schema: legacy name/active with inline role column.
+		// Legacy column naming with inline users.role.
 		`
 		SELECT
 			u.id,
@@ -337,7 +310,7 @@ func (h *Handler) findSystemUserByEmail(identifier string) (*systemUser, error) 
 			u.full_name AS full_name,
 			u.password_hash,
 			u.is_active AS is_active,
-			u.role AS role
+			COALESCE(NULLIF(u.role, ''), 'PERENCANA') AS role
 		FROM users u
 		WHERE LOWER(u.email) = ?
 		LIMIT 1

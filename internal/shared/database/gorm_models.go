@@ -3,13 +3,16 @@ package database
 import "time"
 
 type UnitPengusul struct {
-	ID         uint64    `gorm:"primaryKey;autoIncrement"`
-	Kode       string    `gorm:"size:30;not null;uniqueIndex:uq_unit_pengusul_kode"`
-	Nama       string    `gorm:"size:150;not null"`
-	Keterangan string    `gorm:"type:text"`
-	Aktif      bool      `gorm:"not null;default:true"`
-	CreatedAt  time.Time `gorm:"not null"`
-	UpdatedAt  time.Time `gorm:"not null"`
+	ID                     uint64    `gorm:"primaryKey;autoIncrement"`
+	Kode                   string    `gorm:"size:30;not null;uniqueIndex:uq_unit_pengusul_kode"`
+	Nama                   string    `gorm:"size:150;not null"`
+	NamaPenanggungjawab    string    `gorm:"size:150"`
+	NipPenanggungjawab     string    `gorm:"size:30"`
+	JabatanPenanggungjawab string    `gorm:"size:100"`
+	Keterangan             string    `gorm:"type:text"`
+	Aktif                  bool      `gorm:"not null;default:true"`
+	CreatedAt              time.Time `gorm:"not null"`
+	UpdatedAt              time.Time `gorm:"not null"`
 }
 
 func (UnitPengusul) TableName() string { return "unit_pengusul" }
@@ -120,21 +123,21 @@ type IndikatorSasaran struct {
 func (IndikatorSasaran) TableName() string { return "indikator_sasaran" }
 
 type Program struct {
-	ID             uint64    `gorm:"primaryKey;autoIncrement"`
-	SasaranID      uint64    `gorm:"not null;index:idx_program_sasaran"`
-	UnitPengusulID uint64    `gorm:"not null;index:idx_program_unit_pengusul;index:idx_program_unit_sasaran,priority:1"`
-	Kode           string    `gorm:"size:40;not null;uniqueIndex:uq_program_kode"`
-	Nama           string    `gorm:"size:255;not null"`
-	Deskripsi      string    `gorm:"type:text"`
-	CreatedAt      time.Time `gorm:"not null"`
-	UpdatedAt      time.Time `gorm:"not null"`
+	ID        uint64    `gorm:"primaryKey;autoIncrement"`
+	Kode      string    `gorm:"size:40;not null;uniqueIndex:uq_program_kode"`
+	Nama      string    `gorm:"size:255;not null"`
+	Deskripsi string    `gorm:"type:text"`
+	CreatedAt time.Time `gorm:"not null"`
+	UpdatedAt time.Time `gorm:"not null"`
 }
 
 func (Program) TableName() string { return "program" }
 
 type IndikatorProgram struct {
 	ID        uint64    `gorm:"primaryKey;autoIncrement"`
+	SasaranID uint64    `gorm:"not null"`
 	ProgramID uint64    `gorm:"not null;index:idx_indikator_program_program"`
+	Program   *Program  `gorm:"foreignKey:ProgramID;references:ID"`
 	Kode      string    `gorm:"size:40;not null;uniqueIndex:uq_indikator_program_kode"`
 	Nama      string    `gorm:"size:255;not null"`
 	Formula   string    `gorm:"type:text"`
@@ -147,28 +150,33 @@ type IndikatorProgram struct {
 func (IndikatorProgram) TableName() string { return "indikator_program" }
 
 type Kegiatan struct {
-	ID              uint64    `gorm:"primaryKey;autoIncrement"`
-	ProgramID       uint64    `gorm:"not null;index:idx_kegiatan_program"`
-	UnitPelaksanaID uint64    `gorm:"not null;index:idx_kegiatan_unit_pelaksana;index:idx_kegiatan_unit_program,priority:1"`
-	Kode            string    `gorm:"size:40;not null;uniqueIndex:uq_kegiatan_kode"`
-	Nama            string    `gorm:"size:255;not null"`
-	Deskripsi       string    `gorm:"type:text"`
-	CreatedAt       time.Time `gorm:"not null"`
-	UpdatedAt       time.Time `gorm:"not null"`
+	ID        uint64    `gorm:"primaryKey;autoIncrement"`
+	ProgramID uint64    `gorm:"not null;index:idx_kegiatan_program"`
+	Program   *Program  `gorm:"not null;index:idx_kegiatan_program"`
+	Kegiatan  *Kegiatan `gorm:"foreignKey:ProgramID;references:ID"`
+	// UnitPelaksanaID uint64    `gorm:"not null;index:idx_kegiatan_unit_pelaksana;index:idx_kegiatan_unit_program,priority:1"`
+	Kode      string    `gorm:"size:40;not null;uniqueIndex:uq_kegiatan_kode"`
+	Nama      string    `gorm:"size:255;not null"`
+	Deskripsi string    `gorm:"type:text"`
+	CreatedAt time.Time `gorm:"not null"`
+	UpdatedAt time.Time `gorm:"not null"`
 }
 
 func (Kegiatan) TableName() string { return "kegiatan" }
 
 type IndikatorKegiatan struct {
-	ID         uint64    `gorm:"primaryKey;autoIncrement"`
-	KegiatanID uint64    `gorm:"not null;index:idx_indikator_kegiatan_kegiatan"`
-	Kode       string    `gorm:"size:40;not null;uniqueIndex:uq_indikator_kegiatan_kode"`
-	Nama       string    `gorm:"size:255;not null"`
-	Formula    string    `gorm:"type:text"`
-	Satuan     string    `gorm:"size:60"`
-	Baseline   float64   `gorm:"type:decimal(18,2);not null;default:0"`
-	CreatedAt  time.Time `gorm:"not null"`
-	UpdatedAt  time.Time `gorm:"not null"`
+	ID                 uint64            `gorm:"primaryKey;autoIncrement"`
+	IndikatorProgramID *uint64           `gorm:"index:idx_indikator_kegiatan_program"`
+	IndikatorProgram   *IndikatorProgram `gorm:"foreignKey:IndikatorProgramID"`
+	KegiatanID         uint64            `gorm:"not null;index:idx_indikator_kegiatan_kegiatan"`
+	Kegiatan           *Kegiatan         `gorm:"foreignKey:KegiatanID"`
+	Kode               string            `gorm:"size:40;not null;uniqueIndex:uq_indikator_kegiatan_kode"`
+	Nama               string            `gorm:"size:255;not null"`
+	Formula            string            `gorm:"type:text"`
+	Satuan             string            `gorm:"size:60"`
+	Baseline           float64           `gorm:"type:decimal(18,2);not null;default:0"`
+	CreatedAt          time.Time         `gorm:"not null"`
+	UpdatedAt          time.Time         `gorm:"not null"`
 }
 
 func (IndikatorKegiatan) TableName() string { return "indikator_kegiatan" }
@@ -176,6 +184,7 @@ func (IndikatorKegiatan) TableName() string { return "indikator_kegiatan" }
 type SubKegiatan struct {
 	ID         uint64    `gorm:"primaryKey;autoIncrement"`
 	KegiatanID uint64    `gorm:"not null;index:idx_sub_kegiatan_kegiatan"`
+	Kegiatan   *Kegiatan `gorm:"not null;index:idx_sub_kegiatan_kegiatan"`
 	Kode       string    `gorm:"size:40;not null;uniqueIndex:uq_sub_kegiatan_kode"`
 	Nama       string    `gorm:"size:255;not null"`
 	Deskripsi  string    `gorm:"type:text"`
@@ -185,48 +194,67 @@ type SubKegiatan struct {
 
 func (SubKegiatan) TableName() string { return "sub_kegiatan" }
 
+type PaguSubKegiatan struct {
+	ID                  uint64       `gorm:"primaryKey;autoIncrement"`
+	SubKegiatanID       uint64       `gorm:"not null;index:idx_pagu_sub_kegiatan_sub_kegiatan"`
+	SubKegiatan         *SubKegiatan `gorm:"foreignKey:SubKegiatanID"`
+	Tahun               *int16       `gorm:"type:year"`
+	PaguTahunSebelumnya float64      `gorm:"type:decimal(18,2);not null;default:0"`
+	PaguTahunIni        float64      `gorm:"type:decimal(18,2);not null;default:0"`
+}
+
+func (PaguSubKegiatan) TableName() string { return "pagu_sub_kegiatan" }
+
 type IndikatorSubKegiatan struct {
-	ID            uint64    `gorm:"primaryKey;autoIncrement"`
-	SubKegiatanID uint64    `gorm:"not null;index:idx_indikator_sub_kegiatan_sub_kegiatan"`
-	Kode          string    `gorm:"size:40;not null;uniqueIndex:uq_indikator_sub_kegiatan_kode"`
-	Nama          string    `gorm:"size:255;not null"`
-	Formula       string    `gorm:"type:text"`
-	Satuan        string    `gorm:"size:60"`
-	Baseline      float64   `gorm:"type:decimal(18,2);not null;default:0"`
-	AnggaranN1    float64   `gorm:"column:anggaran_tahun_sebelumnya;type:decimal(18,2);not null;default:0"`
-	AnggaranN     float64   `gorm:"column:anggaran_tahun_ini;type:decimal(18,2);not null;default:0"`
-	CreatedAt     time.Time `gorm:"not null"`
-	UpdatedAt     time.Time `gorm:"not null"`
+	ID                  uint64             `gorm:"primaryKey;autoIncrement"`
+	IndikatorKegiatanID uint64             `gorm:"not null;index:idx_indikator_sub_kegiatan_indikator_kegiatan"`
+	IndikatorKegiatan   *IndikatorKegiatan `gorm:"foreignKey:IndikatorKegiatanID"`
+	SubKegiatanID       uint64             `gorm:"not null;index:idx_indikator_sub_kegiatan_sub_kegiatan"`
+	SubKegiatan         *SubKegiatan       `gorm:"foreignKey:SubKegiatanID"`
+	Kode                string             `gorm:"size:40;not null;uniqueIndex:uq_indikator_sub_kegiatan_kode"`
+	Nama                string             `gorm:"size:255;not null"`
+	Formula             string             `gorm:"type:text"`
+	Satuan              string             `gorm:"size:60"`
+	Baseline            float64            `gorm:"type:decimal(18,2);not null;default:0"`
+	AnggaranN1          float64            `gorm:"column:anggaran_tahun_sebelumnya;type:decimal(18,2);not null;default:0"`
+	AnggaranN           float64            `gorm:"column:anggaran_tahun_ini;type:decimal(18,2);not null;default:0"`
+	CreatedAt           time.Time          `gorm:"not null"`
+	UpdatedAt           time.Time          `gorm:"not null"`
 }
 
 func (IndikatorSubKegiatan) TableName() string { return "indikator_sub_kegiatan" }
 
 type RencanaKerja struct {
-	ID                     uint64     `gorm:"primaryKey;autoIncrement"`
-	IndikatorSubKegiatanID uint64     `gorm:"not null;index:idx_rencana_kerja_indikator_sub_kegiatan"`
-	Kode                   string     `gorm:"size:50;not null;uniqueIndex:uq_rencana_kerja_kode"`
-	Nama                   string     `gorm:"size:255;not null"`
-	Tahun                  int16      `gorm:"not null;index:idx_rencana_kerja_tahun;index:idx_rencana_kerja_periode_status,priority:1;index:idx_rencana_kerja_unit_periode,priority:2"`
-	Triwulan               *int8      `gorm:"index:idx_rencana_kerja_periode_status,priority:2;index:idx_rencana_kerja_unit_periode,priority:3"`
-	UnitPengusulID         uint64     `gorm:"not null;index:idx_rencana_kerja_unit_periode,priority:1"`
-	Status                 string     `gorm:"type:enum('DRAFT','DIAJUKAN','DISETUJUI','DITOLAK');not null;default:'DRAFT';index:idx_rencana_kerja_status;index:idx_rencana_kerja_periode_status,priority:3"`
-	Catatan                string     `gorm:"type:text"`
-	DibuatOleh             uint64     `gorm:"not null"`
-	DisetujuiOleh          *uint64    `gorm:""`
-	TanggalPersetujuan     *time.Time `gorm:""`
-	CreatedAt              time.Time  `gorm:"not null"`
-	UpdatedAt              time.Time  `gorm:"not null"`
+	ID                     uint64                `gorm:"primaryKey;autoIncrement"`
+	IndikatorSubKegiatanID uint64                `gorm:"not null;index:idx_rencana_kerja_indikator_sub_kegiatan"`
+	IndikatorSubKegiatan   *IndikatorSubKegiatan `gorm:"foreignKey:IndikatorSubKegiatanID"`
+	Kode                   string                `gorm:"size:50;not null;uniqueIndex:uq_rencana_kerja_kode"`
+	Nama                   string                `gorm:"size:255;not null"`
+	Tahun                  int16                 `gorm:"not null;index:idx_rencana_kerja_tahun;index:idx_rencana_kerja_periode_status,priority:1;index:idx_rencana_kerja_unit_periode,priority:2"`
+	Triwulan               *int8                 `gorm:"index:idx_rencana_kerja_periode_status,priority:2;index:idx_rencana_kerja_unit_periode,priority:3"`
+	UnitPengusulID         uint64                `gorm:"not null;index:idx_rencana_kerja_unit_periode,priority:1"`
+	UnitPengusul           *UnitPengusul         `gorm:"foreignKey:UnitPengusulID"`
+	Status                 string                `gorm:"type:enum('DRAFT','DIAJUKAN','DISETUJUI','DITOLAK');not null;default:'DRAFT';index:idx_rencana_kerja_status;index:idx_rencana_kerja_periode_status,priority:3"`
+	Catatan                string                `gorm:"type:text"`
+	DibuatOleh             uint64                `gorm:"not null"`
+	DisetujuiOleh          *uint64               `gorm:""`
+	TanggalPersetujuan     *time.Time            `gorm:""`
+	CreatedAt              time.Time             `gorm:"not null"`
+	UpdatedAt              time.Time             `gorm:"not null"`
 }
 
 func (RencanaKerja) TableName() string { return "rencana_kerja" }
 
 type IndikatorRencanaKerja struct {
-	ID              uint64    `gorm:"primaryKey;autoIncrement"`
-	RencanaKerjaID  uint64    `gorm:"not null;index:idx_indikator_rk_rk;index:idx_indikator_rk_rk_kode,priority:1"`
-	Kode            string    `gorm:"size:50;not null;uniqueIndex:uq_indikator_rk_kode;index:idx_indikator_rk_rk_kode,priority:2"`
+	ID               uint64        `gorm:"primaryKey;autoIncrement"`
+	RencanaKerjaID   uint64        `gorm:"not null;index:idx_indikator_rk_rk;index:idx_indikator_rk_rk_kode,priority:1"`
+	TbStandarHargaID *int          `json:"tb_standar_harga_id" gorm:"column:tb_standar_harga_id"`
+	StandarHarga     *StandarHarga `json:"standar_harga" gorm:"foreignKey:TbStandarHargaID"`
+	Kode             string        `gorm:"size:50;not null;uniqueIndex:uq_indikator_rk_kode;index:idx_indikator_rk_rk_kode,priority:2"`
 	Nama            string    `gorm:"size:255;not null"`
 	Satuan          string    `gorm:"size:60"`
 	TargetTahunan   float64   `gorm:"type:decimal(18,2);not null;default:0"`
+	HargaSatuan     float64   `gorm:"type:decimal(18,2);not null;default:0"`
 	AnggaranTahunan float64   `gorm:"type:decimal(18,2);not null;default:0"`
 	CreatedAt       time.Time `gorm:"not null"`
 	UpdatedAt       time.Time `gorm:"not null"`
@@ -267,3 +295,26 @@ type TargetDanRealisasi struct {
 }
 
 func (TargetDanRealisasi) TableName() string { return "target_dan_realisasi" }
+
+type Informasi struct {
+	ID                        uint64    `gorm:"primaryKey;autoIncrement" json:"id" form:"id"`
+	Informasi                 string    `gorm:"type:text;not null" json:"informasi" form:"informasi"`
+	Tahun                     int       `gorm:"not null;index:idx_informasi_tahun" json:"tahun" form:"tahun"`
+	PilihanRouteHalamanTujuan string    `gorm:"column:pilihan_route_halaman_tujuan;size:120;not null" json:"pilihan_route_halaman_tujuan" form:"pilihan_route_halaman_tujuan"`
+	TanggalPembuatan          time.Time `gorm:"column:tanggal_pembuatan;not null" json:"tanggal_pembuatan" form:"tanggal_pembuatan"`
+	TanggalUbah               time.Time `gorm:"column:tanggal_ubah;not null" json:"tanggal_ubah" form:"tanggal_ubah"`
+}
+
+func (Informasi) TableName() string { return "informasi" }
+
+type StandarHarga struct {
+	ID           int      `json:"id" gorm:"primaryKey;column:id"`
+	JenisStandar *string  `json:"jenis_standar" gorm:"column:jenis_standar"`
+	UraianBarang *string  `json:"uraian_barang" gorm:"column:uraian_barang"`
+	Spesifikasi  *string  `json:"spesifikasi" gorm:"column:spesifikasi"`
+	Satuan       *string  `json:"satuan" gorm:"column:satuan"`
+	HargaSatuan  *float64 `json:"harga_satuan" gorm:"column:harga_satuan"`
+	IdRekening   *string  `json:"id_rekening" gorm:"column:id_rekening"`
+}
+
+func (StandarHarga) TableName() string { return "tb_standar_harga" }

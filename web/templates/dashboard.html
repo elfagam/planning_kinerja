@@ -310,6 +310,34 @@
         margin-bottom: 0;
       }
 
+      @keyframes fadeEffect {
+        0% {
+          opacity: 0.2;
+        }
+        20% {
+          opacity: 1;
+        }
+        80% {
+          opacity: 1;
+        }
+        100% {
+          opacity: 0.2;
+        }
+      }
+
+      .info-switcher {
+        margin-top: 0.75rem;
+        background: rgba(10, 107, 101, 0.1);
+        border: 1px solid rgba(10, 107, 101, 0.2);
+        border-radius: 0.65rem;
+        padding: 0.55rem 0.75rem;
+      }
+
+      .info-switcher-text {
+        margin-bottom: 0;
+        animation: fadeEffect 5s ease-in-out infinite;
+      }
+
       @media (max-width: 991.98px) {
         .admin-sidebar {
           border-radius: 0 0 1rem 1rem;
@@ -327,9 +355,10 @@
       >
         <div class="offcanvas-header">
           <div class="d-flex align-items-center gap-2" id="mobileSidebarLabel">
-            <span class="brand-mark">EP</span>
+            <span class="brand-mark">AI</span>
             <div>
-              <div class="fw-semibold">E-Planning</div>
+              <div class="fw-semibold">GO-Planning</div>
+              <small class="d-block" id="sidebarUserMobile">Pengguna</small>
               <small class="text-white-50" id="sidebarRoleMobile"
                 >Admin RSUD</small
               >
@@ -350,9 +379,11 @@
             <a class="nav-link admin-link" href="/ui/manajemen-user"
               >Manajemen User</a
             >
+            <a class="nav-link admin-link" href="/ui/dokumen_pdf">Library</a>
             <a class="nav-link admin-link" href="/ui/unit-pengusul"
               >Unit Pengusul</a
             >
+            <a class="nav-link admin-link" href="/ui/informasi">Informasi</a>
             <a class="nav-link admin-link" href="/ui/program">Program</a>
             <a class="nav-link admin-link" href="/ui/kegiatan">Kegiatan</a>
             <a class="nav-link admin-link" href="/ui/sub-kegiatan"
@@ -402,6 +433,7 @@
             <a class="nav-link admin-link" href="/ui/target-realisasi"
               >Target dan Realisasi</a
             >
+
             <div class="menu-group-label">Workflow Persetujuan</div>
             <a class="nav-link admin-link" href="/ui/clients">Clients</a>
           </nav>
@@ -412,9 +444,10 @@
         <aside class="d-none d-lg-block col-lg-3 col-xl-2 p-0 admin-sidebar">
           <div class="p-3 p-lg-4">
             <div class="d-flex align-items-center gap-2 mb-4">
-              <span class="brand-mark">EP</span>
+              <span class="brand-mark">AI</span>
               <div>
-                <div class="fw-semibold">E-Planning</div>
+                <div class="fw-semibold">GO-Planning</div>
+                <small class="d-block" id="sidebarUserDesktop">Pengguna</small>
                 <small class="text-white-50" id="sidebarRoleDesktop"
                   >Admin RSUD</small
                 >
@@ -425,6 +458,7 @@
               <a class="nav-link admin-link active" href="/ui/dashboard"
                 >Parameter</a
               >
+              <a class="nav-link admin-link" href="/ui/dokumen_pdf">Library</a>
               <a class="nav-link admin-link" href="/ui/manajemen-user"
                 >Manajemen User</a
               >
@@ -432,6 +466,7 @@
               <a class="nav-link admin-link" href="/ui/unit-pengusul"
                 >Unit Pengusul</a
               >
+              <a class="nav-link admin-link" href="/ui/informasi">Informasi</a>
               <a class="nav-link admin-link" href="/ui/program">Program</a>
               <a class="nav-link admin-link" href="/ui/kegiatan">Kegiatan</a>
               <a class="nav-link admin-link" href="/ui/sub-kegiatan"
@@ -481,6 +516,7 @@
               <a class="nav-link admin-link" href="/ui/target-realisasi"
                 >Target dan Realisasi</a
               >
+
               <div class="menu-group-label">Workflow Persetujuan</div>
               <a class="nav-link admin-link" href="/ui/clients">Clients</a>
             </nav>
@@ -530,6 +566,12 @@
                 <p id="sessionStatus" class="session-status mb-0 mt-1">
                   Status sesi: -
                 </p>
+                <div class="info-switcher">
+                  <small class="muted-note">Topik Informasi Berjalan</small>
+                  <p id="info-switcher-text" class="info-switcher-text">
+                    Memuat topik terbaru...
+                  </p>
+                </div>
               </div>
               <div class="d-flex gap-2 flex-wrap">
                 <select
@@ -1022,6 +1064,17 @@
       async function loadCurrentUserProfile() {
         const me = await fetchJSON("/api/v1/auth/me");
         currentUserProfile = me || null;
+
+        const userLabel =
+          me?.full_name ||
+          me?.nama_lengkap ||
+          me?.name ||
+          me?.email ||
+          "Pengguna";
+        const userDesktop = document.getElementById("sidebarUserDesktop");
+        const userMobile = document.getElementById("sidebarUserMobile");
+        if (userDesktop) userDesktop.textContent = userLabel;
+        if (userMobile) userMobile.textContent = userLabel;
 
         const roleLabel = me?.role ? me.role : "";
         if (roleLabel) {
@@ -1752,6 +1805,90 @@
         setSessionStatusText();
         window.setInterval(setSessionStatusText, 5000);
       });
+    </script>
+    <script>
+      (() => {
+        const informasiLatestEndpoint = "/api/v1/performance/informasi/latest";
+        const activeInfoRoute = "/dashboard";
+
+        const infoSwitcherText = document.getElementById("info-switcher-text");
+        let switcherTimerID = null;
+
+        function getAccessToken() {
+          return (
+            localStorage.getItem("AUTH_TOKEN") ||
+            localStorage.getItem("authToken") ||
+            ""
+          );
+        }
+
+        async function fetchJSON(url, options = {}) {
+          const headers = {
+            Accept: "application/json",
+            ...(options.headers || {}),
+          };
+          const token = getAccessToken();
+          if (token) {
+            headers.Authorization = `Bearer ${token}`;
+          }
+
+          const res = await fetch(url, {
+            ...options,
+            headers,
+          });
+
+          const body = await res.json();
+          if (!res.ok || !body?.success) {
+            throw new Error(body?.error || `HTTP ${res.status}`);
+          }
+          return body.data;
+        }
+
+        function showSwitcher(items) {
+          if (!infoSwitcherText) {
+            return;
+          }
+          if (switcherTimerID) {
+            clearInterval(switcherTimerID);
+            switcherTimerID = null;
+          }
+
+          if (!Array.isArray(items) || items.length === 0) {
+            infoSwitcherText.textContent = "Belum ada topik informasi";
+            return;
+          }
+
+          let index = 0;
+          infoSwitcherText.textContent = items[index].informasi;
+          if (items.length === 1) {
+            return;
+          }
+
+          switcherTimerID = setInterval(() => {
+            index = (index + 1) % items.length;
+            infoSwitcherText.textContent = items[index].informasi;
+          }, 5000);
+        }
+
+        async function loadInformasiSwitcher() {
+          try {
+            const params = new URLSearchParams();
+            params.set("limit", "2");
+            params.set("route", activeInfoRoute);
+            const data = await fetchJSON(
+              `${informasiLatestEndpoint}?${params.toString()}`,
+            );
+            const items = Array.isArray(data?.items) ? data.items : [];
+            showSwitcher(items);
+          } catch (_) {
+            if (infoSwitcherText) {
+              infoSwitcherText.textContent = "Gagal memuat topik informasi";
+            }
+          }
+        }
+
+        loadInformasiSwitcher();
+      })();
     </script>
     <script src="/assets/js/auth-client.js"></script>
   </body>

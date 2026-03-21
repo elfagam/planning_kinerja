@@ -4,6 +4,8 @@
   const LOGIN_PATH = "/ui/login";
 
   let authEnabledCache = null;
+  let actorContextCache = null;
+  let healthInfoCache = null;
   let refreshPromise = null;
   let refreshTimer = null;
 
@@ -156,9 +158,9 @@
     window.location.href = `${LOGIN_PATH}?next=${next}`;
   }
 
-  async function fetchAuthEnabled() {
-    if (authEnabledCache != null) {
-      return authEnabledCache;
+  async function fetchHealthInfo() {
+    if (healthInfoCache != null) {
+      return healthInfoCache;
     }
 
     try {
@@ -170,14 +172,41 @@
         throw new Error(`health check failed: ${res.status}`);
       }
       const body = await res.json();
-      authEnabledCache = Boolean(body?.auth_enabled);
+      healthInfoCache = {
+        authEnabled: Boolean(body?.auth_enabled),
+        actorContextEnabled: Boolean(
+          body?.auth_enabled || body?.dev_auth_actor_enabled,
+        ),
+      };
     } catch (_) {
-      // Avoid false-negative read-only mode when /health temporarily fails.
-      // We treat this as unknown and default to enabled behavior.
-      authEnabledCache = true;
+      healthInfoCache = {
+        authEnabled: true,
+        actorContextEnabled: true,
+      };
     }
 
+    return healthInfoCache;
+  }
+
+  async function fetchAuthEnabled() {
+    if (authEnabledCache != null) {
+      return authEnabledCache;
+    }
+
+    const info = await fetchHealthInfo();
+    authEnabledCache = info.authEnabled;
+
     return authEnabledCache;
+  }
+
+  async function fetchActorContextEnabled() {
+    if (actorContextCache != null) {
+      return actorContextCache;
+    }
+
+    const info = await fetchHealthInfo();
+    actorContextCache = info.actorContextEnabled;
+    return actorContextCache;
   }
 
   async function refreshAccessToken() {
@@ -307,6 +336,7 @@
     getSessionState,
     verifySession,
     isAuthEnabled: fetchAuthEnabled,
+    hasActorContext: fetchActorContextEnabled,
   };
 
   document.addEventListener("DOMContentLoaded", () => {

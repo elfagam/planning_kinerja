@@ -1,0 +1,28 @@
+== API Validation Run ==
+Base URL: http://localhost:8081
+Report TXT: ./test-results/api-validation-20260314-160408.txt
+Report JSON: ./test-results/api-validation-20260314-160408.json
+
+== Health check ==
+{"auth_enabled":true,"service":"e-plan-ai","status":"ok"}
+
+== Login valid (ambil token) ==
+TOKEN_LEN=400
+
+== 1) login tanpa password => 400 + password is required ==
+[FAIL] login_tanpa_password (code=) :: expected 400 + password is required
+== 2) login email invalid => 400 + valid email ==
+[FAIL] login_email_invalid (code=) :: expected 400 + valid email
+== 3) refresh tanpa token => 400 + refresh_token is required ==
+[FAIL] refresh_tanpa_token (code=) :: expected 400 + refresh_token is required
+== 4) create client tanpa kode => 400 + kode is required ==
+[FAIL] create_tanpa_kode (code=) :: expected 400 + kode is required
+== 5) create client nama pendek => 400 + nama minimum length is 3 ==
+[FAIL] create_nama_pendek (code=) :: expected 400 + nama minimum length is 3
+== 6) create client unit_pengusul_id=0 => 400 + must be greater than 0 ==
+[FAIL] create_unit_0 (code=) :: expected 400 + unit_pengusul_id must be greater than 0
+== 7) create client valid (setup) ==
+[FAIL] create_valid (code=) :: expected 200 and client_id
+Setup client gagal, skenario 8-10 dilewati.
+
+Summary: PASS=0 FAIL=7 TOTAL=7

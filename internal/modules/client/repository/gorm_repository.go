@@ -60,7 +60,7 @@ type historyRow struct {
 type auditLogRow struct {
 	ID             uint64    `gorm:"column:id"`
 	UserID         *uint64   `gorm:"column:user_id"`
-	UserName       *string   `gorm:"column:user_name"`
+	UserName       *string   `gorm:"column:user_name;->"`
 	Action         string    `gorm:"column:action"`
 	ResourceType   string    `gorm:"column:resource_type"`
 	ResourceID     *uint64   `gorm:"column:resource_id"`

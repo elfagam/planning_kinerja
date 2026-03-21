@@ -27,11 +27,13 @@ func AutoMigrateAll(db *gorm.DB) error {
 		&Kegiatan{},
 		&IndikatorKegiatan{},
 		&SubKegiatan{},
+		&PaguSubKegiatan{},
 		&IndikatorSubKegiatan{},
 		&RencanaKerja{},
 		&IndikatorRencanaKerja{},
 		&RealisasiRencanaKerja{},
 		&TargetDanRealisasi{},
+		&Informasi{},
 	); err != nil {
 		return fmt.Errorf("gorm automigrate all models: %w", err)
 	}
