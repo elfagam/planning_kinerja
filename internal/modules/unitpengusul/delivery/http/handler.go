@@ -64,23 +64,27 @@ func (h *Handler) List(c *gin.Context) {
 		return
 	}
 
-	q := strings.TrimSpace(c.Query("q"))
-	query := h.db.WithContext(c.Request.Context()).Model(&database.UnitPengusul{})
-	if q != "" {
-		like := "%" + q + "%"
-		query = query.Where(
-			"kode LIKE ? OR nama LIKE ? OR nama_penanggungjawab LIKE ? OR nip_penanggungjawab LIKE ?",
-			like, like, like, like,
-		)
-	}
+	       q := strings.TrimSpace(c.Query("q"))
+	       userUnitID := strings.TrimSpace(c.Query("user_unit_id"))
+	       query := h.db.WithContext(c.Request.Context()).Model(&database.UnitPengusul{})
+	       if q != "" {
+		       like := "%" + q + "%"
+		       query = query.Where(
+			       "kode LIKE ? OR nama LIKE ? OR nama_penanggungjawab LIKE ? OR nip_penanggungjawab LIKE ?",
+			       like, like, like, like,
+		       )
+	       }
+	       if userUnitID != "" {
+		       query = query.Where("id = ?", userUnitID)
+	       }
 
-	var items []database.UnitPengusul
-	if err := query.Order("id DESC").Find(&items).Error; err != nil {
-		response.Error(c, http.StatusInternalServerError, "failed to list unit_pengusul")
-		return
-	}
+	       var items []database.UnitPengusul
+	       if err := query.Order("id DESC").Find(&items).Error; err != nil {
+		       response.Error(c, http.StatusInternalServerError, "failed to list unit_pengusul")
+		       return
+	       }
 
-	response.Success(c, gin.H{"items": items, "total": len(items)})
+	       response.Success(c, gin.H{"items": items, "total": len(items)})
 }
 
 func (h *Handler) Get(c *gin.Context) {

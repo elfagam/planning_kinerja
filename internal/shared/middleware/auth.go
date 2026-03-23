@@ -12,12 +12,14 @@ import (
 )
 
 type Claims struct {
-	UserID    uint64 `json:"user_id"`
-	Username  string `json:"username"`
-	Email     string `json:"email"`
-	FullName  string `json:"full_name"`
-	Role      string `json:"role"`
-	TokenType string `json:"token_type"`
+	UserID            uint64  `json:"user_id"`
+	Username          string  `json:"username"`
+	Email             string  `json:"email"`
+	FullName          string  `json:"full_name"`
+	Role              string  `json:"role"`
+	TokenType         string  `json:"token_type"`
+	UnitPengusulID    *uint64 `json:"unit_pengusul_id"`
+	UnitPengusulNama  *string `json:"unit_pengusul_nama"`
 	jwt.RegisteredClaims
 }
 
@@ -70,6 +72,8 @@ func Auth(enabled bool, signingKey string) gin.HandlerFunc {
 		c.Set("auth.role", claims.Role)
 		c.Set("auth.subject", claims.Subject)
 		c.Set("auth.token_type", claims.TokenType)
+		c.Set("auth.unit_pengusul_id", claims.UnitPengusulID)
+		c.Set("auth.unit_pengusul_nama", claims.UnitPengusulNama)
 
 		c.Next()
 	}

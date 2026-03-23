@@ -250,6 +250,72 @@
     return refreshPromise;
   }
 
+  const ALLOWED_OPERATOR_PAGES = [
+    "/ui/rencana-kerja",
+    "/ui/indikator-kinerja",
+    "/ui/clients",
+    "/ui/target-realisasi",
+    "/ui/dokumen_pdf",
+    "/ui/dashboard",
+    "/ui/unit-pengusul"
+  ];
+
+  function applyRoleBasedAccessControl(role) {
+    if (!role || ["ADMIN", "PIMPINAN"].includes(role)) {
+      return;
+    }
+
+    if (["OPERATOR", "PERENCANA", "VERIFIKATOR"].includes(role)) {
+      const currentPath = window.location.pathname;
+      
+      // 1. Route Guard
+      if (!ALLOWED_OPERATOR_PAGES.includes(currentPath) && currentPath !== LOGIN_PATH) {
+        window.location.href = "/ui/dashboard";
+        return;
+      }
+
+      // 2. Menu Guard
+      document.querySelectorAll('.admin-link').forEach(link => {
+        const href = link.getAttribute("href");
+        if (href && !ALLOWED_OPERATOR_PAGES.includes(href.split('?')[0])) {
+          link.style.display = 'none';
+        }
+      });
+      
+      // 3. Hide Empty Group Labels
+      document.querySelectorAll(".menu-group-label").forEach((label) => {
+        let nextEl = label.nextElementSibling;
+        let hasVisibleLinks = false;
+        while(nextEl && !nextEl.classList.contains("menu-group-label")) {
+          if (nextEl.classList.contains("admin-link") && nextEl.style.display !== 'none') {
+            hasVisibleLinks = true;
+            break;
+          }
+          nextEl = nextEl.nextElementSibling;
+        }
+        if (!hasVisibleLinks) {
+          label.style.display = 'none';
+        }
+      });
+    }
+  }
+
+  async function performRoleCheck() {
+    try {
+      const token = getAccessToken();
+      const res = await window.fetch("/api/v1/auth/me", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const userData = await res.json();
+        const role = userData?.data?.role || "";
+        applyRoleBasedAccessControl(role);
+        return true;
+      }
+    } catch (_) {}
+    return false;
+  }
+
   async function verifySession() {
     const enabled = await fetchAuthEnabled();
     if (!enabled) {
@@ -268,24 +334,18 @@
       return;
     }
 
-    try {
-      const res = await window.fetch("/api/v1/auth/me", {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-        },
-      });
-      if (res.ok) {
-        scheduleProactiveRefresh();
-        return;
-      }
-    } catch (_) {
-      // ignore, continue refresh flow
+    const checkSuccess = await performRoleCheck();
+    if (checkSuccess) {
+      scheduleProactiveRefresh();
+      return;
     }
 
     const refreshed = await refreshAccessToken();
     if (!refreshed) {
       clearTokens();
       redirectToLogin();
+    } else {
+      await performRoleCheck();
     }
   }
 

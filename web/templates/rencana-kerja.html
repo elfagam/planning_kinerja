@@ -1046,16 +1046,30 @@
           return totalPages;
         }
 
+        let currentUserUnitPengusulId = 0;
         async function loadCurrentUser() {
           const me = await fetchJSON("/api/v1/auth/me");
           currentUserID = Number(me?.user_id ?? me?.userID ?? 0);
           currentUserRole = normalizeRole(me?.role ?? me?.Role ?? "");
+          currentUserUnitPengusulId = Number(
+            me?.unit_pengusul_id ?? me?.unitPengusulID ?? 0,
+          );
+          // Set default dropdown ke unit user login jika ada
+          if (unitPengusulInput && currentUserUnitPengusulId) {
+            unitPengusulInput.value = String(currentUserUnitPengusulId);
+          }
           if (!currentUserID) {
             throw new Error("ID user login tidak ditemukan");
           }
-
           dibuatOlehInput.value = String(currentUserID);
           applyRoleAccess();
+        }
+        // Event listener: filter data saat dropdown unit pengusul berubah
+        if (unitPengusulInput) {
+          unitPengusulInput.addEventListener("change", () => {
+            currentPage = 1;
+            loadList();
+          });
         }
 
         function indikatorLabel(id) {
@@ -1138,11 +1152,13 @@
 
           tr.querySelector('[data-action="edit"]').addEventListener(
             "click",
-            (() => {
+            () => {
               // --- Anggaran Tahunan Calculation ---
-              const targetTahunanInput = document.getElementById("targetTahunan");
+              const targetTahunanInput =
+                document.getElementById("targetTahunan");
               const hargaSatuanInput = document.getElementById("hargaSatuan");
-              const anggaranTahunanInput = document.getElementById("anggaranTahunan");
+              const anggaranTahunanInput =
+                document.getElementById("anggaranTahunan");
 
               function updateAnggaranTahunan() {
                 const target = Number(targetTahunanInput?.value || 0);
@@ -1153,9 +1169,19 @@
                 }
               }
 
-              if (targetTahunanInput && hargaSatuanInput && anggaranTahunanInput) {
-                targetTahunanInput.addEventListener("input", updateAnggaranTahunan);
-                hargaSatuanInput.addEventListener("input", updateAnggaranTahunan);
+              if (
+                targetTahunanInput &&
+                hargaSatuanInput &&
+                anggaranTahunanInput
+              ) {
+                targetTahunanInput.addEventListener(
+                  "input",
+                  updateAnggaranTahunan,
+                );
+                hargaSatuanInput.addEventListener(
+                  "input",
+                  updateAnggaranTahunan,
+                );
               }
               // --- End Anggaran Tahunan Calculation ---
               idInput.value = item.id;
@@ -1171,7 +1197,27 @@
                 subKegiatanInput.value,
                 item.indikatorSubKegiatanId,
               );
-              unitPengusulInput.value = String(item.unitPengusulId);
+              // Pastikan opsi unit_pengusul milik data yang diedit selalu ada di dropdown
+              const unitIdStr = String(item.unitPengusulId);
+              let found = false;
+              for (let i = 0; i < unitPengusulInput.options.length; i++) {
+                if (unitPengusulInput.options[i].value === unitIdStr) {
+                  found = true;
+                  break;
+                }
+              }
+              if (!found && unitIdStr && unitIdStr !== "0") {
+                // Tambahkan opsi dinamis jika belum ada
+                const opt = document.createElement("option");
+                opt.value = unitIdStr;
+                // Coba ambil label dari data, fallback ke "Unit #id"
+                opt.textContent =
+                  item.unitPengusulNama ||
+                  item.unitPengusulKode ||
+                  `Unit #${unitIdStr}`;
+                unitPengusulInput.appendChild(opt);
+              }
+              unitPengusulInput.value = unitIdStr;
               kodeInput.value = item.kode;
               namaInput.value = item.nama;
               tahunInput.value = String(item.tahun || "");
@@ -1340,19 +1386,53 @@
           }
 
           if (unitResult.status === "fulfilled") {
-            const unitItems = (
+            let unitItems = (
               Array.isArray(unitResult.value?.items)
                 ? unitResult.value.items
                 : []
-            )
-              .map(normalizeUnit)
-              .sort((a, b) => a.id - b.id);
-            fillSelect(
-              unitPengusulInput,
-              unitPengusulMap,
-              unitItems,
-              "Pilih unit pengusul",
-            );
+            ).map(normalizeUnit);
+
+            // Filter untuk OPERATOR dan VERIFIKATOR
+            if (
+              currentUserRole === "OPERATOR" ||
+              currentUserRole === "VERIFIKATOR"
+            ) {
+              let filtered = unitItems.filter(
+                (item) => item.id === currentUserUnitPengusulId,
+              );
+              // Jika unit milik user login tidak ada di hasil fetch, tambahkan secara dinamis
+              if (
+                filtered.length === 0 &&
+                currentUserUnitPengusulId &&
+                !unitItems.some((item) => item.id === currentUserUnitPengusulId)
+              ) {
+                filtered.push({
+                  id: currentUserUnitPengusulId,
+                  kode: "",
+                  nama: "Unit Anda",
+                });
+              }
+              fillSelect(
+                unitPengusulInput,
+                unitPengusulMap,
+                filtered,
+                "Unit Anda",
+              );
+              if (filtered.length === 1) {
+                unitPengusulInput.value = String(filtered[0].id);
+              } else {
+                unitPengusulInput.value = "";
+              }
+              unitPengusulInput.disabled = false;
+            } else {
+              fillSelect(
+                unitPengusulInput,
+                unitPengusulMap,
+                unitItems,
+                "Pilih unit pengusul",
+              );
+              unitPengusulInput.disabled = false;
+            }
           }
 
           filterSubKegiatanOptions(subKegiatanFilterInput.value);
@@ -1370,6 +1450,13 @@
             const params = new URLSearchParams();
             if (tahunAktif) {
               params.set("tahun", tahunAktif);
+            }
+            // Tambahkan filter unit_pengusul_id dari dropdown
+            const unitPengusulId = unitPengusulInput
+              ? unitPengusulInput.value
+              : "";
+            if (unitPengusulId) {
+              params.set("unit_pengusul_id", unitPengusulId);
             }
 
             const [data, indikatorRKData] = await Promise.all([

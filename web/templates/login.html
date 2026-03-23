@@ -179,7 +179,8 @@
             );
             await saveDefaultYearForCurrentUser(defaultYear);
             setStatus("Login berhasil");
-            window.location.href = nextPath();
+            // Force reload to update sidebar and user data
+            window.location.reload();
           } catch (error) {
             setStatus(error.message || "Login gagal", true);
           }

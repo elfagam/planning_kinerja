@@ -45,12 +45,14 @@ type tokenResponse struct {
 }
 
 type systemUser struct {
-	ID           uint64
-	Email        string
-	FullName     string
-	PasswordHash string
-	IsActive     bool
-	Role         string
+	ID               uint64
+	Email            string
+	FullName         string
+	PasswordHash     string
+	IsActive         bool
+	Role             string
+	UnitPengusulID   *uint64
+	UnitPengusulNama *string
 }
 
 func NewHandler(cfg config.Config) *Handler {
@@ -210,21 +212,25 @@ func (h *Handler) logout(c *gin.Context) {
 }
 
 func (h *Handler) me(c *gin.Context) {
-	userID, _ := c.Get("auth.user_id")
-	username, _ := c.Get("auth.username")
-	email, _ := c.Get("auth.email")
-	fullName, _ := c.Get("auth.full_name")
-	role, _ := c.Get("auth.role")
-	subject, _ := c.Get("auth.subject")
+	   userID, _ := c.Get("auth.user_id")
+	   username, _ := c.Get("auth.username")
+	   email, _ := c.Get("auth.email")
+	   fullName, _ := c.Get("auth.full_name")
+	   role, _ := c.Get("auth.role")
+	   subject, _ := c.Get("auth.subject")
+	   unitPengusulID, _ := c.Get("auth.unit_pengusul_id")
+	   unitPengusulNama, _ := c.Get("auth.unit_pengusul_nama")
 
-	response.Success(c, gin.H{
-		"user_id":   userID,
-		"username":  username,
-		"email":     email,
-		"full_name": fullName,
-		"role":      role,
-		"subject":   subject,
-	})
+	   response.Success(c, gin.H{
+		   "user_id":   userID,
+		   "username":  username,
+		   "email":     email,
+		   "full_name": fullName,
+		   "role":      role,
+		   "subject":   subject,
+		   "unit_pengusul_id": unitPengusulID,
+		   "unit_pengusul_nama": unitPengusulNama,
+	   })
 }
 
 func (h *Handler) generateToken(user *systemUser, tokenType string, ttl time.Duration) (string, int64, error) {
@@ -235,21 +241,23 @@ func (h *Handler) generateToken(user *systemUser, tokenType string, ttl time.Dur
 		username = user.FullName
 	}
 
-	claims := middleware.Claims{
-		UserID:    user.ID,
-		Username:  username,
-		Email:     user.Email,
-		FullName:  user.FullName,
-		Role:      user.Role,
-		TokenType: tokenType,
-		RegisteredClaims: jwt.RegisteredClaims{
-			Subject:   fmt.Sprintf("%d", user.ID),
-			Issuer:    h.cfg.JWTIssuer,
-			IssuedAt:  jwt.NewNumericDate(now),
-			ExpiresAt: jwt.NewNumericDate(exp),
-			NotBefore: jwt.NewNumericDate(now),
-		},
-	}
+	   claims := middleware.Claims{
+		   UserID:    user.ID,
+		   Username:  username,
+		   Email:     user.Email,
+		   FullName:  user.FullName,
+		   Role:      user.Role,
+		   TokenType: tokenType,
+		   UnitPengusulID:   user.UnitPengusulID,
+		   UnitPengusulNama: user.UnitPengusulNama,
+		   RegisteredClaims: jwt.RegisteredClaims{
+			   Subject:   fmt.Sprintf("%d", user.ID),
+			   Issuer:    h.cfg.JWTIssuer,
+			   IssuedAt:  jwt.NewNumericDate(now),
+			   ExpiresAt: jwt.NewNumericDate(exp),
+			   NotBefore: jwt.NewNumericDate(now),
+		   },
+	   }
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	tokenString, err := token.SignedString(h.signingKey)
@@ -287,51 +295,56 @@ func (h *Handler) findSystemUserByEmail(identifier string) (*systemUser, error) 
 		return nil, nil
 	}
 
-	queries := []string{
-		// Newer schema from gorm models (users.nama_lengkap, users.aktif, users.role).
-		// users.role is the single source of truth for authorization role.
-		`
-		SELECT
-			u.id,
-			u.email,
-			u.nama_lengkap AS full_name,
-			u.password_hash,
-			u.aktif AS is_active,
-			COALESCE(NULLIF(u.role, ''), 'PERENCANA') AS role
-		FROM users u
-		WHERE LOWER(u.email) = ?
-		LIMIT 1
-		`,
-		// Legacy column naming with inline users.role.
-		`
-		SELECT
-			u.id,
-			u.email,
-			u.full_name AS full_name,
-			u.password_hash,
-			u.is_active AS is_active,
-			COALESCE(NULLIF(u.role, ''), 'PERENCANA') AS role
-		FROM users u
-		WHERE LOWER(u.email) = ?
-		LIMIT 1
-		`,
-	}
+	   queries := []string{
+		   // Join langsung ke unit_pengusul via users.unit_pengusul_id
+		   `
+		   SELECT
+			   u.id,
+			   u.email,
+			   u.nama_lengkap AS full_name,
+			   u.password_hash,
+			   u.aktif AS is_active,
+			   COALESCE(NULLIF(u.role, ''), 'PERENCANA') AS role,
+			   u.unit_pengusul_id,
+			   up.nama AS unit_pengusul_nama
+		   FROM users u
+		   LEFT JOIN unit_pengusul up ON up.id = u.unit_pengusul_id
+		   WHERE LOWER(u.email) = ?
+		   LIMIT 1
+		   `,
+		   // Legacy column naming tanpa relasi unit_pengusul.
+		   `
+		   SELECT
+			   u.id,
+			   u.email,
+			   u.full_name AS full_name,
+			   u.password_hash,
+			   u.is_active AS is_active,
+			   COALESCE(NULLIF(u.role, ''), 'PERENCANA') AS role,
+			   NULL as unit_pengusul_id,
+			   NULL as unit_pengusul_nama
+		   FROM users u
+		   WHERE LOWER(u.email) = ?
+		   LIMIT 1
+		   `,
+	   }
 
 	var lastErr error
-	for _, query := range queries {
-		candidate := systemUser{}
-		tx := h.db.Raw(query, email).Scan(&candidate)
-		if tx.Error != nil {
-			lastErr = tx.Error
-			continue
-		}
-		if tx.RowsAffected > 0 {
-			if strings.TrimSpace(candidate.Role) == "" {
-				candidate.Role = "PERENCANA"
-			}
-			return &candidate, nil
-		}
-	}
+	   for _, query := range queries {
+		   candidate := systemUser{}
+		   tx := h.db.Raw(query, email).Scan(&candidate)
+		   fmt.Printf("[DEBUG] user struct after query: %+v\n", candidate)
+		   if tx.Error != nil {
+			   lastErr = tx.Error
+			   continue
+		   }
+		   if tx.RowsAffected > 0 {
+			   if strings.TrimSpace(candidate.Role) == "" {
+				   candidate.Role = "PERENCANA"
+			   }
+			   return &candidate, nil
+		   }
+	   }
 
 	if lastErr != nil {
 		msg := strings.ToLower(lastErr.Error())

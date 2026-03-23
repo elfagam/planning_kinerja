@@ -1,11 +1,75 @@
 (() => {
+  // --- Unit Pengusul Dropdown ---
+  const unitPengusulInput = document.getElementById("unitPengusulId");
+  let currentUserUnitPengusulId = null;
+
+  async function loadUnitPengusulOptions() {
+    if (!unitPengusulInput) return;
+    unitPengusulInput.innerHTML =
+      '<option value="">Pilih Unit Pengusul</option>';
+    try {
+      const isOperator = normalizeRole(currentUserRole) === "OPERATOR";
+      let url = "/api/v1/unit_pengusul";
+      if (isOperator && currentUserUnitPengusulId) {
+        url += `?user_unit_id=${encodeURIComponent(currentUserUnitPengusulId)}`;
+      }
+      const data = await fetchJSON(url);
+      const items = Array.isArray(data?.items) ? data.items : [];
+      let filteredItems = items;
+      if (isOperator && currentUserUnitPengusulId) {
+        filteredItems = items.filter(
+          (item) =>
+            String(item.id ?? item.ID) === String(currentUserUnitPengusulId),
+        );
+        // console.log(
+        //   "[unit_pengusul] filtered for OPERATOR (API):",
+        //   filteredItems,
+        // );
+      } else {
+        // console.log("[unit_pengusul] all items:", items);
+      }
+      filteredItems.forEach((item) => {
+        const id = item.id ?? item.ID;
+        const nama = item.nama ?? item.Nama;
+        if (id !== undefined && id !== null) {
+          const opt = document.createElement("option");
+          opt.value = id;
+          opt.textContent = nama;
+          unitPengusulInput.appendChild(opt);
+        }
+      });
+      // Set default ke unit user login jika ada
+      if (currentUserUnitPengusulId) {
+        unitPengusulInput.value = String(currentUserUnitPengusulId);
+      }
+    } catch (err) {
+      // fallback: kosongkan dropdown
+    }
+  }
+
+  async function loadCurrentUserUnitPengusul() {
+    try {
+      const me = await fetchJSON("/api/v1/auth/me");
+      // console.log("[auth/me] for unit_pengusul_id:", me);
+      currentUserUnitPengusulId =
+        me?.unit_pengusul_id ?? me?.unitPengusulID ?? null;
+    } catch (err) {
+      console.error("[auth/me] unit_pengusul error:", err);
+    }
+  }
   const endpoint = document.body.dataset.apiEndpoint;
   const rencanaKerjaEndpoint = "/api/v1/rencana_kerja";
 
   const form = document.getElementById("crud-form");
   const idInput = document.getElementById("entity-id");
   const rencanaKerjaInput = document.getElementById("rencanaKerjaId");
+  const rencanaKerjaFilterInput = document.getElementById("rencanaKerjaFilter");
   const kodeInput = document.getElementById("kode");
+  const tbStandarHargaIdInput = document.getElementById("tbStandarHargaId");
+  const btnBrowseStandarHarga = document.getElementById(
+    "btnBrowseStandarHarga",
+  );
+  const standarHargaLabel = document.getElementById("standarHargaLabel");
   const namaInput = document.getElementById("nama");
   const satuanInput = document.getElementById("satuan");
   const targetTahunanInput = document.getElementById("targetTahunan");
@@ -19,6 +83,7 @@
   const metaText = document.getElementById("meta-text");
 
   const rencanaKerjaMap = new Map();
+  let rencanaKerjaItemsCache = [];
   let currentListItems = [];
   let page = 1;
   const pageSize = window.pageSize || 5;
@@ -27,22 +92,42 @@
   const MUTATION_ROLES = new Set(["ADMIN", "PERENCANA", "OPERATOR"]);
   let currentUserRole = "";
 
-  function normalizeRole(raw) { return String(raw || "").trim().toUpperCase(); }
-  function canMutateByRole(role) { return MUTATION_ROLES.has(normalizeRole(role)); }
+  const formatCurrency = (val) =>
+    new Intl.NumberFormat("id-ID", {
+      style: "currency",
+      currency: "IDR",
+      minimumFractionDigits: 0,
+    }).format(Number(val) || 0);
+
+  function normalizeRole(raw) {
+    return String(raw || "")
+      .trim()
+      .toUpperCase();
+  }
+  function canMutateByRole(role) {
+    return MUTATION_ROLES.has(normalizeRole(role));
+  }
 
   function applyRoleAccess() {
     if (canMutateByRole(currentUserRole)) return;
-    form.querySelectorAll("input, textarea, select, button[type='submit']").forEach((el) => {
-      el.disabled = true;
-    });
+    form
+      .querySelectorAll("input, textarea, select, button[type='submit']")
+      .forEach((el) => {
+        el.disabled = true;
+      });
     const info = document.createElement("p");
     info.className = "text-warning small mt-2 mb-0";
-    info.textContent = "Mode baca saja — role Anda tidak memiliki hak untuk mengubah data.";
+    info.textContent =
+      "Mode baca saja — role Anda tidak memiliki hak untuk mengubah data.";
     form.appendChild(info);
   }
 
   function authHeader() {
-    const token = window.__AUTH__ ? window.__AUTH__.getAccessToken() : (localStorage.getItem("AUTH_TOKEN") || localStorage.getItem("authToken") || "");
+    const token = window.__AUTH__
+      ? window.__AUTH__.getAccessToken()
+      : localStorage.getItem("AUTH_TOKEN") ||
+        localStorage.getItem("authToken") ||
+        "";
     return token ? { Authorization: `Bearer ${token}` } : {};
   }
 
@@ -63,6 +148,10 @@
     return {
       id: Number(raw.id ?? raw.ID ?? 0),
       rencanaKerjaId: Number(raw.rencana_kerja_id ?? raw.RencanaKerjaID ?? 0),
+      tbStandarHargaId: Number(
+        raw.tb_standar_harga_id ?? raw.TbStandarHargaID ?? 0,
+      ),
+      standarHarga: raw.standar_harga ?? raw.StandarHarga ?? null,
       kode: raw.kode ?? raw.Kode ?? "",
       nama: raw.nama ?? raw.Nama ?? "",
       satuan: raw.satuan ?? raw.Satuan ?? "",
@@ -78,17 +167,24 @@
       headers: { ...(options.headers || {}), ...authHeader() },
     });
     const body = await res.json();
-    if (!res.ok || !body.success) throw new Error(body.error || `HTTP ${res.status}`);
+    if (!res.ok || !body.success)
+      throw new Error(body.error || `HTTP ${res.status}`);
     return body.data;
   }
 
   function isDuplicateKode(kode, editingID) {
-    const normalizedKode = String(kode || "").trim().toLowerCase();
+    const normalizedKode = String(kode || "")
+      .trim()
+      .toLowerCase();
     if (!normalizedKode) return false;
     return currentListItems.some((item) => {
       const itemID = Number(item.id || 0);
       if (editingID > 0 && itemID === editingID) return false;
-      return String(item.kode || "").trim().toLowerCase() === normalizedKode;
+      return (
+        String(item.kode || "")
+          .trim()
+          .toLowerCase() === normalizedKode
+      );
     });
   }
 
@@ -112,6 +208,9 @@
     idInput.value = "";
     rencanaKerjaInput.value = "";
     kodeInput.value = suggestNextKode();
+    tbStandarHargaIdInput.value = "";
+    standarHargaLabel.style.display = "none";
+    standarHargaLabel.textContent = "";
     namaInput.value = "";
     satuanInput.value = "";
     hargaSatuanInput.value = "0";
@@ -153,11 +252,14 @@
     tr.appendChild(tdTarget);
 
     const tdHarga = document.createElement("td");
-    tdHarga.textContent = item.hargaSatuan !== undefined ? item.hargaSatuan.toFixed(2) : "-";
+    tdHarga.className = "text-end";
+    tdHarga.textContent =
+      item.hargaSatuan !== undefined ? formatCurrency(item.hargaSatuan) : "-";
     tr.appendChild(tdHarga);
 
     const tdAnggaran = document.createElement("td");
-    tdAnggaran.textContent = item.anggaranTahunan.toFixed(2);
+    tdAnggaran.className = "text-end";
+    tdAnggaran.textContent = formatCurrency(item.anggaranTahunan);
     tr.appendChild(tdAnggaran);
 
     const tdAction = document.createElement("td");
@@ -170,11 +272,26 @@
       btnEdit.addEventListener("click", () => {
         idInput.value = item.id;
         rencanaKerjaInput.value = String(item.rencanaKerjaId);
+        tbStandarHargaIdInput.value =
+          item.tbStandarHargaId > 0 ? String(item.tbStandarHargaId) : "";
+        if (item.standarHarga && item.standarHarga.uraian_barang) {
+          standarHargaLabel.style.display = "block";
+          standarHargaLabel.textContent =
+            item.standarHarga.uraian_barang +
+            (item.standarHarga.spesifikasi
+              ? ` (${item.standarHarga.spesifikasi})`
+              : "");
+        } else {
+          standarHargaLabel.style.display = "none";
+          standarHargaLabel.textContent = "";
+        }
         kodeInput.value = item.kode;
         namaInput.value = item.nama;
         satuanInput.value = item.satuan;
         targetTahunanInput.value = String(item.targetTahunan);
-        hargaSatuanInput.value = String(item.hargaSatuan !== undefined ? item.hargaSatuan : "0");
+        hargaSatuanInput.value = String(
+          item.hargaSatuan !== undefined ? item.hargaSatuan : "0",
+        );
         anggaranTahunanInput.value = String(item.anggaranTahunan);
         setStatus(`Mode edit ID ${item.id}`);
       });
@@ -206,46 +323,137 @@
     return tr;
   }
 
+  function filterRencanaKerjaOptions(filterText = "") {
+    const selectedValue = rencanaKerjaInput.value;
+    const normalizedFilter = String(filterText || "")
+      .trim()
+      .toLowerCase();
+
+    let visibleItems = rencanaKerjaItemsCache;
+    if (normalizedFilter) {
+      visibleItems = rencanaKerjaItemsCache.filter((item) => {
+        const label = `${item.kode} ${item.nama}`.toLowerCase();
+        return label.includes(normalizedFilter);
+      });
+    }
+
+    rencanaKerjaInput.innerHTML =
+      '<option value="">Pilih rencana kerja</option>';
+    visibleItems.forEach((item) => {
+      const option = document.createElement("option");
+      option.value = String(item.id);
+      option.textContent = `${item.kode} - ${item.nama}`;
+      rencanaKerjaInput.appendChild(option);
+    });
+
+    if (
+      selectedValue &&
+      visibleItems.some((item) => String(item.id) === selectedValue)
+    ) {
+      rencanaKerjaInput.value = selectedValue;
+    } else if (!normalizedFilter) {
+      rencanaKerjaInput.value = selectedValue;
+    }
+  }
+
   async function loadRencanaKerjaOptions() {
     try {
-      const data = await fetchJSON(rencanaKerjaEndpoint);
-      const items = (Array.isArray(data?.items) ? data.items : []).map(normalizeRencanaKerja).sort((a, b) => a.id - b.id);
+      // Filter by unit_pengusul_id if selected and valid
+      let url = rencanaKerjaEndpoint;
+      const unitPengusulIdVal = unitPengusulInput && unitPengusulInput.value;
+      if (
+        unitPengusulIdVal &&
+        unitPengusulIdVal !== "undefined" &&
+        unitPengusulIdVal !== "null"
+      ) {
+        url += `?unit_pengusul_id=${encodeURIComponent(unitPengusulIdVal)}`;
+      }
+      const data = await fetchJSON(url);
+      const items = (Array.isArray(data?.items) ? data.items : [])
+        .map(normalizeRencanaKerja)
+        .sort((a, b) => {
+          const kodeCompare = String(a.kode || "").localeCompare(
+            String(b.kode || ""),
+            "id",
+            { sensitivity: "base" },
+          );
+          if (kodeCompare !== 0) return kodeCompare;
+          return String(a.nama || "").localeCompare(
+            String(b.nama || ""),
+            "id",
+            { sensitivity: "base" },
+          );
+        });
+      rencanaKerjaItemsCache = items;
       rencanaKerjaMap.clear();
-      rencanaKerjaInput.innerHTML = '<option value="">Pilih rencana kerja</option>';
       items.forEach((item) => {
-        const label = `${item.kode} - ${item.nama}`;
-        rencanaKerjaMap.set(item.id, label);
-        const option = document.createElement("option");
-        option.value = String(item.id);
-        option.textContent = label;
-        rencanaKerjaInput.appendChild(option);
+        rencanaKerjaMap.set(item.id, `${item.kode} - ${item.nama}`);
       });
+      filterRencanaKerjaOptions(
+        rencanaKerjaFilterInput ? rencanaKerjaFilterInput.value : "",
+      );
     } catch (error) {
-      setStatus(`Pilihan rencana kerja tidak ditemukan: ${error.message}`, true);
+      setStatus(
+        `Pilihan rencana kerja tidak ditemukan: ${error.message}`,
+        true,
+      );
     }
   }
 
   async function loadList() {
-    tableBody.innerHTML = '<tr><td colspan="9" class="text-center text-muted py-4">Memuat...</td></tr>';
+    tableBody.innerHTML =
+      '<tr><td colspan="9" class="text-center text-muted py-4">Memuat...</td></tr>';
     try {
       const params = new URLSearchParams();
       const q = queryInput.value.trim();
-      const selectedRencanaKerjaID = Number(rencanaKerjaInput.value || 0);
+      const selectedRencanaKerjaID =
+        rencanaKerjaInput && rencanaKerjaInput.value;
+      const selectedUnitPengusulID =
+        unitPengusulInput && unitPengusulInput.value;
       if (q) params.set("q", q);
+      if (
+        selectedUnitPengusulID &&
+        selectedUnitPengusulID !== "undefined" &&
+        selectedUnitPengusulID !== "null"
+      ) {
+        params.set("unit_pengusul_id", selectedUnitPengusulID);
+      }
+      if (
+        selectedRencanaKerjaID &&
+        selectedRencanaKerjaID !== "undefined" &&
+        selectedRencanaKerjaID !== "null"
+      ) {
+        params.set("rencana_kerja_id", selectedRencanaKerjaID);
+      }
 
       const url = params.size ? `${endpoint}?${params.toString()}` : endpoint;
       const data = await fetchJSON(url);
-      const allItems = (Array.isArray(data?.items) ? data.items : []).map(normalizeItem);
+      const allItems = (Array.isArray(data?.items) ? data.items : []).map(
+        normalizeItem,
+      );
       currentListItems = allItems;
-      const items = selectedRencanaKerjaID
-        ? allItems.filter((item) => item.rencanaKerjaId === selectedRencanaKerjaID)
-        : allItems;
+      const items = allItems;
 
       const qLower = queryInput.value.trim().toLowerCase();
       const itemsFiltered = items.filter((item) => {
         const rkLabel = rencanaKerjaLabel(item.rencanaKerjaId).toLowerCase();
-        return (!qLower || item.kode.toLowerCase().includes(qLower) || item.nama.toLowerCase().includes(qLower) || rkLabel.includes(qLower));
+        return (
+          !qLower ||
+          item.kode.toLowerCase().includes(qLower) ||
+          item.nama.toLowerCase().includes(qLower) ||
+          rkLabel.includes(qLower)
+        );
       });
+
+      // Log filter and filtered data array
+      // console.log(
+      //   "[filter] unit_pengusul_id:",
+      //   selectedUnitPengusulID,
+      //   "rencana_kerja_id:",
+      //   selectedRencanaKerjaID,
+      //   "| data:",
+      //   itemsFiltered,
+      // );
 
       totalItems = itemsFiltered.length;
       const ps = window.pageSize || 5;
@@ -264,10 +472,13 @@
         return;
       }
 
-      paginatedItems.sort((a, b) => a.id - b.id).forEach((item) => tableBody.appendChild(rowTemplate(item)));
+      paginatedItems
+        .sort((a, b) => a.id - b.id)
+        .forEach((item) => tableBody.appendChild(rowTemplate(item)));
       renderPaginationControls(ps);
     } catch (error) {
-      tableBody.innerHTML = '<tr><td colspan="9" class="text-center text-danger py-4">Gagal memuat data</td></tr>';
+      tableBody.innerHTML =
+        '<tr><td colspan="9" class="text-center text-danger py-4">Gagal memuat data</td></tr>';
       setStatus(error.message, true);
     }
   }
@@ -277,21 +488,22 @@
     if (!paginationDiv) {
       paginationDiv = document.createElement("div");
       paginationDiv.id = "pagination-controls";
-      paginationDiv.className = "d-flex flex-column flex-md-row justify-content-between align-items-md-center mt-3 gap-3";
-      
+      paginationDiv.className =
+        "d-flex flex-column flex-md-row justify-content-between align-items-md-center mt-3 gap-3";
+
       // Inject after table-responsive, not inside table
-      const tableContainer = tableBody.closest('.table-responsive');
+      const tableContainer = tableBody.closest(".table-responsive");
       if (tableContainer) {
-        tableContainer.insertAdjacentElement('afterend', paginationDiv);
+        tableContainer.insertAdjacentElement("afterend", paginationDiv);
       } else {
         tableBody.parentElement.appendChild(paginationDiv);
       }
     }
     paginationDiv.innerHTML = "";
-    
+
     // Hide the existing text meta text if it exists since we show it here
     if (metaText) metaText.style.display = "none";
-    
+
     const totalPages = Math.ceil(totalItems / ps);
     if (totalPages <= 1) return;
 
@@ -304,7 +516,8 @@
     pageSizeLabel.setAttribute("for", "pageSizeSelect");
     const pageSizeSelect = document.createElement("select");
     pageSizeSelect.id = "pageSizeSelect";
-    pageSizeSelect.className = "form-select form-select-sm w-auto cursor-pointer";
+    pageSizeSelect.className =
+      "form-select form-select-sm w-auto cursor-pointer";
     [5, 10, 20, 50].forEach((size) => {
       const opt = document.createElement("option");
       opt.value = size;
@@ -314,7 +527,11 @@
     });
     pageSizeSelect.addEventListener("change", (e) => {
       const val = Number(e.target.value);
-      if (val > 0) { window.pageSize = val; page = 1; loadList(); }
+      if (val > 0) {
+        window.pageSize = val;
+        page = 1;
+        loadList();
+      }
     });
     pageSizeDiv.appendChild(pageSizeLabel);
     pageSizeDiv.appendChild(pageSizeSelect);
@@ -325,7 +542,7 @@
     const ul = document.createElement("ul");
     ul.className = "pagination pagination-sm mb-0 justify-content-center";
     navDiv.appendChild(ul);
-    
+
     const createPageItem = (content, disabled, active, onClick) => {
       const li = document.createElement("li");
       li.className = `page-item ${disabled ? "disabled" : ""} ${active ? "active" : ""}`;
@@ -338,19 +555,43 @@
       return li;
     };
 
-    ul.appendChild(createPageItem("&laquo;", page <= 1, false, () => { if (page > 1) { page--; loadList(); } }));
+    ul.appendChild(
+      createPageItem("&laquo;", page <= 1, false, () => {
+        if (page > 1) {
+          page--;
+          loadList();
+        }
+      }),
+    );
 
     for (let i = 1; i <= totalPages; i++) {
-      if (totalPages > 7 && i !== 1 && i !== totalPages && Math.abs(i - page) > 2) {
+      if (
+        totalPages > 7 &&
+        i !== 1 &&
+        i !== totalPages &&
+        Math.abs(i - page) > 2
+      ) {
         if (i === page - 3 || i === page + 3) {
           ul.appendChild(createPageItem("...", true, false, null));
         }
         continue;
       }
-      ul.appendChild(createPageItem(i, false, i === page, () => { page = i; loadList(); }));
+      ul.appendChild(
+        createPageItem(i, false, i === page, () => {
+          page = i;
+          loadList();
+        }),
+      );
     }
 
-    ul.appendChild(createPageItem("&raquo;", page >= totalPages, false, () => { if (page < totalPages) { page++; loadList(); } }));
+    ul.appendChild(
+      createPageItem("&raquo;", page >= totalPages, false, () => {
+        if (page < totalPages) {
+          page++;
+          loadList();
+        }
+      }),
+    );
 
     // Kanan: Teks Info Data Total
     const infoDiv = document.createElement("div");
@@ -365,10 +606,14 @@
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
     if (!canMutateByRole(currentUserRole)) {
-      setStatus("Anda tidak memiliki hak akses untuk menyimpan perubahan", true);
+      setStatus(
+        "Anda tidak memiliki hak akses untuk menyimpan perubahan",
+        true,
+      );
       return;
     }
 
+    const tbShId = Number(tbStandarHargaIdInput.value) || 0;
     const payload = {
       rencana_kerja_id: Number(rencanaKerjaInput.value),
       kode: kodeInput.value.trim(),
@@ -378,6 +623,7 @@
       harga_satuan: Number(hargaSatuanInput.value || 0),
       anggaran_tahunan: Number(anggaranTahunanInput.value || 0),
     };
+    if (tbShId > 0) payload.tb_standar_harga_id = tbShId;
 
     if (!payload.rencana_kerja_id || !payload.kode || !payload.nama) {
       setStatus("Rencana Kerja, kode, dan nama wajib diisi", true);
@@ -389,7 +635,10 @@
     if (isDuplicateKode(payload.kode, editingID)) {
       const suggestedKode = suggestNextKode();
       kodeInput.value = suggestedKode;
-      setStatus(`Kode indikator_rencana_kerja sudah digunakan. Saran kode: ${suggestedKode}`, true);
+      setStatus(
+        `Kode indikator_rencana_kerja sudah digunakan. Saran kode: ${suggestedKode}`,
+        true,
+      );
       kodeInput.focus();
       return;
     }
@@ -405,7 +654,9 @@
         body: JSON.stringify(payload),
       });
 
-      setStatus(isEdit ? "Data berhasil diperbarui" : "Data berhasil ditambahkan");
+      setStatus(
+        isEdit ? "Data berhasil diperbarui" : "Data berhasil ditambahkan",
+      );
       resetForm();
       await loadList();
     } catch (error) {
@@ -418,19 +669,159 @@
     setStatus("Form direset");
   });
 
-  rencanaKerjaInput.addEventListener("change", () => { page = 1; loadList(); });
-  queryInput.addEventListener("keydown", (event) => { if (event.key === "Enter") { event.preventDefault(); page = 1; loadList(); } });
-  btnSearch.addEventListener("click", () => { page = 1; loadList(); });
+  rencanaKerjaInput.addEventListener("change", () => {
+    page = 1;
+    loadList();
+  });
+  queryInput.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      page = 1;
+      loadList();
+    }
+  });
+  btnSearch.addEventListener("click", () => {
+    page = 1;
+    loadList();
+  });
+
+  if (rencanaKerjaFilterInput) {
+    rencanaKerjaFilterInput.addEventListener("input", () => {
+      filterRencanaKerjaOptions(rencanaKerjaFilterInput.value);
+    });
+  }
+
+  let modalStandarHargaInstance = null;
+  const tbodyStandarHarga = document.getElementById("tbodyStandarHarga");
+  const queryStandarHarga = document.getElementById("queryStandarHarga");
+  const metaStandarHarga = document.getElementById("metaStandarHarga");
+  const paginationStandarHarga = document.getElementById(
+    "paginationStandarHarga",
+  );
+  let shPage = 1;
+  const shPageSize = 5;
+
+  async function loadStandarHargaList() {
+    tbodyStandarHarga.innerHTML =
+      '<tr><td colspan="5" class="text-center text-muted">Memuat...</td></tr>';
+    try {
+      const q = queryStandarHarga.value.trim();
+      const params = new URLSearchParams({ page: shPage, limit: shPageSize });
+      if (q) params.set("q", q);
+      const data = await fetchJSON(
+        `/api/v1/standar_harga?${params.toString()}`,
+      );
+
+      tbodyStandarHarga.innerHTML = "";
+      if (!data.items || data.items.length === 0) {
+        tbodyStandarHarga.innerHTML =
+          '<tr><td colspan="5" class="text-center text-muted">Tidak ada data standar harga</td></tr>';
+        metaStandarHarga.textContent = "";
+        paginationStandarHarga.innerHTML = "";
+        return;
+      }
+
+      data.items.forEach((sh) => {
+        const tr = document.createElement("tr");
+        const tdUraian = document.createElement("td");
+        tdUraian.textContent = sh.uraian_barang || "-";
+        const tdSpek = document.createElement("td");
+        tdSpek.textContent = sh.spesifikasi || "-";
+        const tdSatuan = document.createElement("td");
+        tdSatuan.textContent = sh.satuan || "-";
+        const tdHarga = document.createElement("td");
+        tdHarga.className = "text-end text-nowrap";
+        const hargaVal = Number(sh.harga_satuan || 0);
+        tdHarga.textContent = formatCurrency(hargaVal);
+
+        const tdAksi = document.createElement("td");
+        const btnPilih = document.createElement("button");
+        btnPilih.className = "btn btn-sm btn-primary";
+        btnPilih.textContent = "Pilih";
+        btnPilih.onclick = () => {
+          tbStandarHargaIdInput.value = sh.id;
+          const suggestedName =
+            `${sh.uraian_barang || ""} ${sh.spesifikasi ? "(" + sh.spesifikasi + ")" : ""}`.trim();
+          standarHargaLabel.textContent = suggestedName;
+          standarHargaLabel.style.display = "block";
+          namaInput.value = suggestedName;
+          satuanInput.value = sh.satuan || "";
+          hargaSatuanInput.value = hargaVal;
+          hargaSatuanInput.dispatchEvent(new Event("input"));
+          modalStandarHargaInstance.hide();
+        };
+        tdAksi.appendChild(btnPilih);
+        tr.append(tdUraian, tdSpek, tdSatuan, tdHarga, tdAksi);
+        tbodyStandarHarga.appendChild(tr);
+      });
+
+      metaStandarHarga.textContent = `Total ${data.total} data`;
+
+      paginationStandarHarga.innerHTML = "";
+      if (data.total_pages > 1) {
+        const btnPrev = document.createElement("button");
+        btnPrev.className = "btn btn-sm btn-outline-secondary me-1";
+        btnPrev.textContent = "Mundur";
+        btnPrev.disabled = shPage <= 1;
+        btnPrev.onclick = () => {
+          shPage--;
+          loadStandarHargaList();
+        };
+
+        const btnNext = document.createElement("button");
+        btnNext.className = "btn btn-sm btn-outline-secondary";
+        btnNext.textContent = "Maju";
+        btnNext.disabled = shPage >= data.total_pages;
+        btnNext.onclick = () => {
+          shPage++;
+          loadStandarHargaList();
+        };
+
+        paginationStandarHarga.append(btnPrev, btnNext);
+      }
+    } catch (err) {
+      tbodyStandarHarga.innerHTML = `<tr><td colspan="5" class="text-center text-danger">Gagal memuat: ${err.message}</td></tr>`;
+    }
+  }
+
+  if (btnBrowseStandarHarga) {
+    btnBrowseStandarHarga.addEventListener("click", () => {
+      if (!modalStandarHargaInstance) {
+        modalStandarHargaInstance = new bootstrap.Modal(
+          document.getElementById("modalStandarHarga"),
+        );
+        queryStandarHarga.addEventListener("keydown", (e) => {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            shPage = 1;
+            loadStandarHargaList();
+          }
+        });
+      }
+      shPage = 1;
+      loadStandarHargaList();
+      modalStandarHargaInstance.show();
+    });
+  }
 
   async function loadCurrentUser() {
     try {
-      const token = window.__AUTH__ ? window.__AUTH__.getAccessToken() : (localStorage.getItem("AUTH_TOKEN") || localStorage.getItem("authToken") || "");
+      const token = window.__AUTH__
+        ? window.__AUTH__.getAccessToken()
+        : localStorage.getItem("AUTH_TOKEN") ||
+          localStorage.getItem("authToken") ||
+          "";
       if (!token) return;
-      const res = await fetch("/api/v1/auth/me", { headers: { Authorization: `Bearer ${token}` } });
+      const res = await fetch("/api/v1/auth/me", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
       if (!res.ok) return;
       const body = await res.json();
+      // console.log("[auth/me] user data:", body?.data);
       currentUserRole = normalizeRole(body?.data?.role ?? "");
-    } catch (_) {}
+    } catch (err) {
+      console.error("[auth/me] error:", err);
+    }
   }
 
   (async () => {
@@ -446,10 +837,21 @@
     }
 
     anggaranTahunanInput.readOnly = true;
+
+    // Load user, then unit_pengusul, then rencana kerja
     await loadCurrentUser();
+    await loadCurrentUserUnitPengusul();
+    await loadUnitPengusulOptions();
     applyRoleAccess();
     await loadRencanaKerjaOptions();
     await loadList();
     setStatus("Data siap dikelola");
+    // Event listener: reload rencana kerja & list saat unit pengusul berubah
+    if (unitPengusulInput) {
+      unitPengusulInput.addEventListener("change", async () => {
+        await loadRencanaKerjaOptions();
+        await loadList();
+      });
+    }
   })();
 })();

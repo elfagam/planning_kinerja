@@ -498,6 +498,13 @@ func (h *Handler) list(rc resourceConfig) gin.HandlerFunc {
 				query = query.Joins("JOIN rencana_kerja rk ON rk.id = indikator_rencana_kerja.rencana_kerja_id").
 					Where("rk.status = ?", "DISETUJUI")
 			}
+			// Tambahkan filter eksplisit rencana_kerja_id
+			if rkIDRaw := strings.TrimSpace(c.Query("rencana_kerja_id")); rkIDRaw != "" {
+				rkID, err := strconv.ParseUint(rkIDRaw, 10, 64)
+				if err == nil && rkID > 0 {
+					query = query.Where("rencana_kerja_id = ?", rkID)
+				}
+			}
 		}
 		if rc.path == "realisasi_rencana_kerja" && isTruthy(c.Query("final_only")) {
 			query = query.Joins("JOIN indikator_rencana_kerja irk ON irk.id = realisasi_rencana_kerja.indikator_rencana_kerja_id").
@@ -1652,6 +1659,7 @@ func planningResources() []resourceConfig {
 		{path: "pagu_sub_kegiatan", name: "pagu_sub_kegiatan", requiredKeys: []string{"sub_kegiatan_id", "tahun", "pagu_tahun_sebelumnya", "pagu_tahun_ini"}, searchFields: []string{"CAST(sub_kegiatan_id AS CHAR)", "CAST(tahun AS CHAR)"}, newModel: func() any { return &database.PaguSubKegiatan{} }, newSlice: func() any { return &[]database.PaguSubKegiatan{} }},
 		{path: "indikator_sub_kegiatan", name: "indikator_sub_kegiatan", requiredKeys: []string{"indikator_kegiatan_id", "sub_kegiatan_id", "kode", "nama"}, searchFields: []string{"kode", "nama"}, newModel: func() any { return &database.IndikatorSubKegiatan{} }, newSlice: func() any { return &[]database.IndikatorSubKegiatan{} }},
 		{path: "rencana_kerja", name: "rencana_kerja", requiredKeys: []string{"indikator_sub_kegiatan_id", "kode", "nama", "tahun", "unit_pengusul_id", "status", "dibuat_oleh"}, searchFields: []string{"kode", "nama"}, newModel: func() any { return &database.RencanaKerja{} }, newSlice: func() any { return &[]database.RencanaKerja{} }},
+		{path: "standar_harga", name: "standar_harga", requiredKeys: []string{}, searchFields: []string{"jenis_standar", "uraian_barang", "spesifikasi", "id_rekening"}, newModel: func() any { return &database.StandarHarga{} }, newSlice: func() any { return &[]database.StandarHarga{} }},
 		{path: "indikator_rencana_kerja", name: "indikator_rencana_kerja", requiredKeys: []string{"rencana_kerja_id", "kode", "nama"}, searchFields: []string{"kode", "nama"}, newModel: func() any { return &database.IndikatorRencanaKerja{} }, newSlice: func() any { return &[]database.IndikatorRencanaKerja{} }},
 		{path: "realisasi_rencana_kerja", name: "realisasi_rencana_kerja", requiredKeys: []string{"indikator_rencana_kerja_id", "tahun", "nilai_realisasi", "realisasi_anggaran", "diinput_oleh"}, searchFields: []string{"keterangan"}, newModel: func() any { return &database.RealisasiRencanaKerja{} }, newSlice: func() any { return &[]database.RealisasiRencanaKerja{} }},
 		{path: "users", name: "users", requiredKeys: []string{"nama_lengkap", "email", "role"}, searchFields: []string{"nama_lengkap", "email"}, newModel: func() any { return &database.User{} }, newSlice: func() any { return &[]database.User{} }},
