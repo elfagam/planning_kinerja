@@ -1,4 +1,14 @@
 (() => {
+  // --- JWT check & redirect to login if not present ---
+  const accessToken =
+    localStorage.getItem("AUTH_TOKEN") ||
+    localStorage.getItem("authToken") ||
+    "";
+  if (!accessToken) {
+    window.location.href = "/login";
+    return;
+  }
+
   let userRole = "";
   async function fetchUserProfile() {
     try {
@@ -22,15 +32,9 @@
   const statusText = document.getElementById("dokumen-status");
   const tableBody = document.getElementById("dokumen-table-body");
   const metaText = document.getElementById("dokumen-meta-text");
-  
-  const accessToken =
-    localStorage.getItem("AUTH_TOKEN") ||
-    localStorage.getItem("authToken") ||
-    "";
-    
+
   const dokumenEndpoint =
-    document.body.getAttribute("data-api-endpoint") ||
-    "/api/v1/dokumen_pdf";
+    document.body.getAttribute("data-api-endpoint") || "/api/v1/dokumen_pdf";
 
   async function fetchDokumenPDFs() {
     try {
@@ -79,19 +83,23 @@
   tableBody.addEventListener("click", async function (e) {
     const btn = e.target.closest("button[data-delete]");
     if (!btn) return;
-    
+
     const id = btn.getAttribute("data-delete");
     const row = btn.closest("tr");
     const nama = row ? row.children[2].textContent.trim() : "";
-    const filePDF = row && row.children[3].querySelector("a") ? "Lihat PDF" : "Tidak ada file";
-    
+    const filePDF =
+      row && row.children[3].querySelector("a")
+        ? "Lihat PDF"
+        : "Tidak ada file";
+
     if (!id) {
       alert("ID dokumen tidak ditemukan.");
       return;
     }
-    
-    if (!confirm(`Yakin hapus dokumen ini?\nNama: ${nama}\nFile: ${filePDF}`)) return;
-    
+
+    if (!confirm(`Yakin hapus dokumen ini?\nNama: ${nama}\nFile: ${filePDF}`))
+      return;
+
     btn.disabled = true;
     statusText.textContent = "Menghapus...";
     try {
@@ -130,24 +138,26 @@
     const nama = namaInput.value;
     const file = fileInput.files[0];
     const id = document.getElementById("dokumen-id").value;
-    
+
     if (!tahun || !nama || (!file && !id)) {
       alert("Tahun, nama, dan file PDF harus diisi!");
       return;
     }
-    
+
     // Batas maksimal file 5MB
     if (file && file.size > 5 * 1024 * 1024) {
-      alert("Ukuran file PDF maksimal 5MB. Silakan pilih file yang lebih kecil.");
+      alert(
+        "Ukuran file PDF maksimal 5MB. Silakan pilih file yang lebih kecil.",
+      );
       statusText.textContent = "Ukuran file terlalu besar";
       return;
     }
-    
+
     const formData = new FormData();
     formData.append("tahun", tahun);
     formData.append("nama", nama);
     if (file) formData.append("file", file);
-    
+
     try {
       statusText.textContent = id ? "Mengupdate..." : "Mengunggah...";
       const url = id ? `${dokumenEndpoint}/${id}` : dokumenEndpoint;
@@ -159,9 +169,10 @@
         },
         body: formData,
       });
-      
-      if (!response.ok) throw new Error(id ? "Gagal mengupdate" : "Gagal mengunggah");
-      
+
+      if (!response.ok)
+        throw new Error(id ? "Gagal mengupdate" : "Gagal mengunggah");
+
       await loadDokumenPDFs();
       form.reset();
       document.getElementById("dokumen-id").value = "";

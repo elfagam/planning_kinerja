@@ -1,4 +1,16 @@
 (() => {
+  // --- JWT check & redirect to login if not present ---
+  const accessToken =
+    (window.__AUTH__ &&
+      window.__AUTH__.getAccessToken &&
+      window.__AUTH__.getAccessToken()) ||
+    localStorage.getItem("AUTH_TOKEN") ||
+    localStorage.getItem("authToken") ||
+    "";
+  if (!accessToken) {
+    window.location.href = "/login";
+    return;
+  }
   // --- Unit Pengusul Dropdown ---
   const unitPengusulInput = document.getElementById("unitPengusulId");
   let currentUserUnitPengusulId = null;
