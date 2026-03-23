@@ -120,6 +120,50 @@
     return MUTATION_ROLES.has(normalizeRole(role));
   }
 
+  // --- Export CSV Logic ---
+  const btnExportCSV = document.getElementById("btn-export-csv");
+  if (btnExportCSV) {
+    btnExportCSV.addEventListener("click", async function () {
+      const rencanaKerjaId = document.getElementById("rencanaKerjaId")?.value;
+      const unitPengusulId = document.getElementById("unitPengusulId")?.value;
+      if (!rencanaKerjaId || !unitPengusulId) {
+        alert("Pilih Rencana Kerja dan Unit Pengusul terlebih dahulu.");
+        return;
+      }
+      const url = `/api/v1/renja/export/indikator-csv?rencana_kerja_id=${encodeURIComponent(rencanaKerjaId)}&unit_pengusul_id=${encodeURIComponent(unitPengusulId)}`;
+      try {
+        const token =
+          (window.__AUTH__ &&
+            window.__AUTH__.getAccessToken &&
+            window.__AUTH__.getAccessToken()) ||
+          localStorage.getItem("AUTH_TOKEN") ||
+          localStorage.getItem("authToken") ||
+          "";
+        const resp = await fetch(url, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!resp.ok) {
+          const errText = await resp.text();
+          alert("Gagal mengunduh CSV: " + errText);
+          return;
+        }
+        const blob = await resp.blob();
+        const downloadUrl = window.URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = downloadUrl;
+        a.download = "indikator_kinerja.csv";
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(() => {
+          window.URL.revokeObjectURL(downloadUrl);
+          a.remove();
+        }, 100);
+      } catch (err) {
+        alert("Terjadi kesalahan saat mengunduh CSV");
+      }
+    });
+  }
+
   function applyRoleAccess() {
     if (canMutateByRole(currentUserRole)) return;
     form
@@ -648,7 +692,7 @@
       const suggestedKode = suggestNextKode();
       kodeInput.value = suggestedKode;
       setStatus(
-        `Kode indikator_rencana_kerja sudah digunakan. Saran kode: ${suggestedKode}`,
+        `Kode rincian rencana kerja sudah digunakan, saran kode: ${suggestedKode}`,
         true,
       );
       kodeInput.focus();
@@ -660,6 +704,7 @@
     const method = isEdit ? "PUT" : "POST";
 
     try {
+      // console.log("Payload kirim:", payload);
       await fetchJSON(url, {
         method,
         headers: { "Content-Type": "application/json" },
@@ -798,16 +843,24 @@
 
   if (btnBrowseStandarHarga) {
     btnBrowseStandarHarga.addEventListener("click", () => {
+      const modalEl = document.getElementById("modalStandarHarga");
       if (!modalStandarHargaInstance) {
-        modalStandarHargaInstance = new bootstrap.Modal(
-          document.getElementById("modalStandarHarga"),
-        );
+        modalStandarHargaInstance = new bootstrap.Modal(modalEl);
         queryStandarHarga.addEventListener("keydown", (e) => {
           if (e.key === "Enter") {
             e.preventDefault();
             shPage = 1;
             loadStandarHargaList();
           }
+        });
+        // Set aria-hidden to false on show, true on hide
+        modalEl.addEventListener("show.bs.modal", () => {
+          modalEl.setAttribute("aria-hidden", "false");
+        });
+        modalEl.addEventListener("hide.bs.modal", () => {
+          modalEl.setAttribute("aria-hidden", "true");
+          // Kembalikan fokus ke tombol pembuka modal
+          btnBrowseStandarHarga.focus();
         });
       }
       shPage = 1;

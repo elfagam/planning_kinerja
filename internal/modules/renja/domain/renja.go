@@ -5,6 +5,34 @@ import (
 	"time"
 )
 
+// ExportIndikatorCSVFlatDTO is a flat DTO for exporting Indikator Kinerja CSV.
+type ExportIndikatorCSVFlatDTO struct {
+	// Top Layout
+	ProgramNama              string
+	KegiatanNama             string
+	SubKegiatanNama          string
+	UnitPengusulKode         string
+	UnitPengusulNama         string
+	RencanaKerjaTahun        int16
+
+	// Detail Data
+	RencanaKerjaKode         string
+	RencanaKerjaNama         string
+	StandarHargaIdRekening   string
+	StandarHargaId           int
+	IndikatorKode            string
+	IndikatorNama            string
+	HargaSatuan              float64
+	Satuan                   string
+	TargetTahunan            float64
+	AnggaranTahunan          float64
+
+	// Bottom Layout
+	JabatanPenanggungJawab   string
+	NamaPenanggungJawab      string
+	NipPenanggungJawab       string
+}
+
 var (
 	ErrInvalidTransition      = errors.New("invalid renja status transition")
 	ErrRejectionReasonMissing = errors.New("rejection reason is required")

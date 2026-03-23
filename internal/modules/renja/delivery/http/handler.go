@@ -47,6 +47,31 @@ func (h *Handler) RegisterRoutes(v1 *gin.RouterGroup) {
 	renja.POST("/:id/submit", h.Submit)
 	renja.POST("/:id/approve", h.Approve)
 	renja.POST("/:id/reject", h.Reject)
+	renja.GET("/export/indikator-csv", h.ExportIndikatorKinerjaCSV)
+}
+// ExportIndikatorKinerjaCSV handles CSV export for Indikator Kinerja.
+func (h *Handler) ExportIndikatorKinerjaCSV(c *gin.Context) {
+	rkIDStr := c.Query("rencana_kerja_id")
+	unitIDStr := c.Query("unit_pengusul_id")
+	if rkIDStr == "" || unitIDStr == "" {
+		response.Error(c, http.StatusBadRequest, "rencana_kerja_id and unit_pengusul_id are required")
+		return
+	}
+	rkID, err1 := strconv.ParseUint(rkIDStr, 10, 64)
+	unitID, err2 := strconv.ParseUint(unitIDStr, 10, 64)
+	if err1 != nil || err2 != nil || rkID == 0 || unitID == 0 {
+		response.Error(c, http.StatusBadRequest, "invalid rencana_kerja_id or unit_pengusul_id")
+		return
+	}
+
+	csvBytes, err := h.service.GenerateIndikatorCSV(c.Request.Context(), uint(rkID), uint(unitID))
+	if err != nil {
+		response.Error(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+	c.Header("Content-Disposition", "attachment; filename=indikator_kinerja.csv")
+	c.Header("Content-Type", "text/csv")
+	c.Data(http.StatusOK, "text/csv", csvBytes)
 }
 
 func (h *Handler) GetRenjaOverview(c *gin.Context) {
