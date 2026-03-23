@@ -11,7 +11,7 @@ cp .env.example .env
 go run ./cmd/api
 ```
 
-Lalu buka `http://localhost:8080/ui`.
+Lalu buka `http://localhost:8081/ui`.
 
 ## Kredensial Demo (Development)
 
@@ -50,6 +50,35 @@ web/assets                  # static assets
 ```
 
 ## Menjalankan Aplikasi
+
+## Fitur Export CSV Indikator Kinerja
+
+Ekspor laporan Indikator Kinerja ke format CSV dengan layout terstruktur (top info, tabel, tanda tangan) melalui endpoint berikut:
+
+- **Endpoint:**
+
+  `/api/v1/renja/export/indikator-csv?rencana_kerja_id={ID}&unit_pengusul_id={ID}`
+
+- **Metode:** `GET` (wajib login/JWT)
+
+- **Query Parameter:**
+  - `rencana_kerja_id` (wajib)
+  - `unit_pengusul_id` (wajib)
+
+- **Contoh cURL:**
+
+```bash
+curl -X GET "http://localhost:8080/api/v1/renja/export/indikator-csv?rencana_kerja_id=1&unit_pengusul_id=1" \
+  -H "Authorization: Bearer <TOKEN-ANDA>" -o indikator_kinerja.csv
+```
+
+- **Layout CSV:**
+  - Top Info: Program, Kegiatan, Sub Kegiatan, Unit Pengusul, Tahun
+  - Tabel: Kode Rencana, Nama Rencana, ID Rekening, ID Standar Harga, Kode Indikator, **Nama Indikator**, Satuan, Harga Satuan, Target, Anggaran
+  - Bawah: Tanda tangan penanggung jawab
+
+- **Akses dari UI:**
+  - Klik tombol "Export CSV" pada halaman Indikator Kinerja, pilih filter yang sesuai, file akan terunduh otomatis.
 
 1. Install dependency:
 
@@ -123,16 +152,18 @@ curl -X POST http://localhost:8080/api/v1/clients \
   }'
 ```
 
-3. Update client:
-
 ```bash
-curl -X PUT http://localhost:8080/api/v1/clients/1 \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer change-me-in-production" \
-  -d '{
-    "nama": "Client Unit Pelayanan A (Revisi)"
-  }'
+curl http://localhost:8081/health
 ```
+
+curl -X PUT http://localhost:8080/api/v1/clients/1 \
+ -H "Content-Type: application/json" \
+ -H "Authorization: Bearer change-me-in-production" \
+ -d '{
+"nama": "Client Unit Pelayanan A (Revisi)"
+}'
+
+````
 
 4. Submit client:
 
@@ -141,7 +172,7 @@ curl -X POST http://localhost:8080/api/v1/clients/1/submit \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer change-me-in-production" \
   -d '{"note":"siap diajukan"}'
-```
+````
 
 5. Reject client:
 
@@ -412,34 +443,37 @@ curl -X DELETE http://localhost:8080/api/v1/unit-pengusul/1 \
 
 Contoh response sukses list:
 
-```json
+````json
 {
-  "success": true,
-  "data": {
-    "items": [
+```bash
+open http://localhost:8081/ui
+````
+
       {
-        "ID": 1,
-        "Kode": "UP-001",
-        "Nama": "Unit Pengusul Umum",
+      ```bash
+      curl "http://localhost:8081/api/v1/clients?q=unit&status=DRAFT&page=1&limit=10" \
+        -H "Authorization: Bearer change-me-in-production"
         "Keterangan": "Layanan umum",
         "Aktif": true,
         "CreatedAt": "2026-03-08T10:00:00Z",
         "UpdatedAt": "2026-03-08T10:00:00Z"
       }
-    ],
-    "total": 1
-  }
-}
-```
+      ```bash
+      curl http://localhost:8081/api/v1/performance/dashboard-summary \
+        -H "Authorization: Bearer change-me-in-production"
 
-Contoh response gagal:
+}
+
+````bash
+curl http://localhost:8081/api/v1/performance/statistics \
+  -H "Authorization: Bearer change-me-in-production"
 
 ```json
 {
-  "success": false,
-  "error": "kode and nama are required"
-}
-```
+```bash
+curl http://localhost:8081/api/v1/performance/chart-target-vs-realisasi \
+  -H "Authorization: Bearer change-me-in-production"
+````
 
 Status code error yang mungkin:
 
@@ -491,34 +525,34 @@ curl -X DELETE http://localhost:8080/api/v1/unit-pelaksana/1 \
 
 Contoh response sukses list:
 
-```json
+````json
 {
-  "success": true,
-  "data": {
-    "items": [
+```bash
+curl http://localhost:8081/api/v1/performance/yearly-summary \
+  -H "Authorization: Bearer change-me-in-production"
       {
-        "ID": 1,
-        "Kode": "UPL-001",
-        "Nama": "Unit Pelaksana Bedah",
+      ```bash
+      curl http://localhost:8081/api/v1/performance/program-ranking \
+        -H "Authorization: Bearer change-me-in-production"
         "Keterangan": "Pelaksana layanan bedah",
         "Aktif": true,
         "CreatedAt": "2026-03-08T10:00:00Z",
         "UpdatedAt": "2026-03-08T10:00:00Z"
       }
-    ],
-    "total": 1
-  }
+      ```bash
+      curl "http://localhost:8081/api/v1/unit-pengusul?q=umum" \
+        -H "Authorization: Bearer change-me-in-production"
 }
-```
-
-Contoh response gagal:
+```bash
+curl http://localhost:8081/api/v1/unit-pengusul/1 \
+  -H "Authorization: Bearer change-me-in-production"
 
 ```json
 {
-  "success": false,
-  "error": "kode and nama are required"
-}
-```
+```bash
+curl "http://localhost:8081/api/v1/unit-pelaksana?q=bedah" \
+  -H "Authorization: Bearer change-me-in-production"
+````
 
 Status code error yang mungkin:
 
@@ -595,26 +629,26 @@ Gunakan field minimum berikut untuk request `POST` dan `PUT`:
 
 Contoh payload minimum `rencana_kerja`:
 
-```json
+````json
 {
-  "indikator_sub_kegiatan_id": 1,
-  "kode": "RK-2026-001",
-  "nama": "Rencana Kerja Unit A",
+```bash
+curl http://localhost:8081/api/v1/unit-pelaksana/1 \
+  -H "Authorization: Bearer change-me-in-production"
   "tahun": 2026,
   "unit_pengusul_id": 1,
   "status": "DRAFT",
   "dibuat_oleh": 101
 }
-```
-
-## Contoh Endpoint Renja Workflow
+```bash
+curl "http://localhost:8081/api/v1/misi?q=layanan" \
+  -H "Authorization: Bearer change-me-in-production"
 
 1. Cek overview modul Renja:
 
 ```bash
 curl http://localhost:8080/api/v1/renja/overview \
 	-H "Authorization: Bearer change-me-in-production"
-```
+````
 
 2. Submit Renja:
 
@@ -652,29 +686,29 @@ Catatan:
 
 1. Response sukses `GET /api/v1/renja/overview`:
 
-```json
+````json
 {
-  "success": true,
-  "data": {
-    "module": "Renja",
+```bash
+curl -X POST http://localhost:8081/api/v1/misi \
+  -H "Content-Type: application/json" \
     "scope": "Perencanaan kerja tahunan RSUD",
     "status": "OK",
     "storage": "mysql"
   }
-}
-```
-
+  ```bash
+  curl http://localhost:8081/api/v1/renja/overview \
+    -H "Authorization: Bearer change-me-in-production"
 2. Response sukses `POST /api/v1/renja/:id/submit`:
 
 ```json
 {
-  "success": true,
-  "data": {
-    "id": 1,
+```bash
+curl -X GET "http://localhost:8081/api/v1/renja/export/indikator-csv?rencana_kerja_id=1&unit_pengusul_id=1" \
+  -H "Authorization: Bearer <TOKEN-ANDA>" -o indikator_kinerja.csv
     "action": "submit"
   }
 }
-```
+````
 
 3. Response sukses `POST /api/v1/renja/:id/approve`:
 

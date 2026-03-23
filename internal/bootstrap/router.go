@@ -91,7 +91,6 @@ func NewRouter(cfg config.Config) *gin.Engine {
 	v1.GET("/dokumen_pdf/latest", dokumenPDFHandler.GetLatestDokumenPDF)
 	dokumenPDFHandler.RegisterRoutes(v1)
 
-	r.GET("/ui/dokumen_pdf", middleware.Auth(cfg.AuthEnabled, cfg.AuthToken), dokumenpdfhttp.DokumenPDFPageHandler(cfg))
 
 	return r
 

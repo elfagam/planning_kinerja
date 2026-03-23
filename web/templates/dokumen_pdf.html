@@ -17,7 +17,6 @@
     data-api-endpoint="/api/v1/dokumen_pdf"
   >
     <main class="container py-4">
-      <!-- Edit button removed -->
       <header
         class="mb-4 p-4 card shadow-sm border-0 header-gradient text-white"
       >
@@ -25,6 +24,12 @@
         <p class="mb-0 opacity-75">
           Kelola dokumen PDF per tahun dan upload file PDF.
         </p>
+        <div class="info-switcher">
+          <small class="opacity-75">Topik Informasi Berjalan</small>
+          <p id="info-switcher-text" class="info-switcher-text">
+            Memuat topik terbaru...
+          </p>
+        </div>
       </header>
 
       <div class="row g-4">
@@ -98,17 +103,11 @@
                   class="btn btn-sm btn-outline-dark"
                   id="dashboardBtn"
                   href="/ui/dashboard"
-                  onclick="
-                    window.location.href = '/ui/dashboard';
-                    return false;
-                  "
                   >Kembali ke Dashboard</a
                 >
               </div>
               <div class="small text-muted mb-2">
-                <span id="dokumen-meta-text"
-                  >Total {{len .DokumenPDFs}} dokumen</span
-                >
+                <span id="dokumen-meta-text">Total 0 dokumen</span>
               </div>
               <div class="table-responsive">
                 <table class="table table-striped align-middle">
@@ -122,45 +121,11 @@
                     </tr>
                   </thead>
                   <tbody id="dokumen-table-body">
-                    {{range .DokumenPDFs}}
-                    <tr>
-                      <td>{{.ID}}</td>
-                      <td>{{.Tahun}}</td>
-                      <td>
-                        {{if .Nama}}
-                        <span class="fw-semibold text-dark">{{.Nama}}</span>
-                        {{else}}
-                        <span class="text-muted">Tidak ada nama</span>
-                        {{end}}
-                      </td>
-                      <td>
-                        {{if .FilePath}}
-                        <a
-                          href="{{.FilePath}}"
-                          target="_blank"
-                          class="text-primary fw-semibold"
-                          >Lihat PDF</a
-                        >
-                        {{else}}
-                        <span class="text-muted">Tidak ada file</span>
-                        {{end}}
-                      </td>
-                      <td>
-                        <button
-                          class="btn btn-sm btn-danger"
-                          data-delete="{{.ID}}"
-                        >
-                          Hapus
-                        </button>
-                      </td>
-                    </tr>
-                    {{else}}
                     <tr>
                       <td colspan="5" class="text-center text-muted">
-                        Tidak ada dokumen
+                        Memuat data...
                       </td>
                     </tr>
-                    {{end}}
                   </tbody>
                 </table>
               </div>
@@ -169,7 +134,7 @@
         </section>
       </div>
     </main>
+    <script src="/assets/js/auth-client.js"></script>
     <script src="/assets/js/dokumen_pdf.js"></script>
-    <!-- Native anchor navigation, JS event removed for reliability -->
   </body>
 </html>

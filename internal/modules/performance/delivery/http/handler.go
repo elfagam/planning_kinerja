@@ -1435,6 +1435,8 @@ func normalizeInformasiRoute(route string) (string, error) {
 		return "/dashboard", nil
 	case "/rencana-kerja":
 		return "/rencana-kerja", nil
+	case "/dokumen_pdf":
+		return "/dokumen_pdf", nil
 	case "/target-evaluasi", "/target-realisasi":
 		return "/target-evaluasi", nil
 	default:
