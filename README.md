@@ -11,7 +11,7 @@ cp .env.example .env
 go run ./cmd/api
 ```
 
-Lalu buka `http://localhost:8081/ui`.
+Lalu buka `http://192.168.20.1:7002/ui`.
 
 ## Kredensial Demo (Development)
 
@@ -153,7 +153,7 @@ curl -X POST http://localhost:8080/api/v1/clients \
 ```
 
 ```bash
-curl http://localhost:8081/health
+curl http://192.168.20.1:7002/health
 ```
 
 curl -X PUT http://localhost:8080/api/v1/clients/1 \
@@ -446,12 +446,12 @@ Contoh response sukses list:
 ````json
 {
 ```bash
-open http://localhost:8081/ui
+open http://192.168.20.1:7002/ui
 ````
 
       {
       ```bash
-      curl "http://localhost:8081/api/v1/clients?q=unit&status=DRAFT&page=1&limit=10" \
+      curl "http://192.168.20.1:7002/api/v1/clients?q=unit&status=DRAFT&page=1&limit=10" \
         -H "Authorization: Bearer change-me-in-production"
         "Keterangan": "Layanan umum",
         "Aktif": true,
@@ -459,19 +459,19 @@ open http://localhost:8081/ui
         "UpdatedAt": "2026-03-08T10:00:00Z"
       }
       ```bash
-      curl http://localhost:8081/api/v1/performance/dashboard-summary \
+      curl http://192.168.20.1:7002/api/v1/performance/dashboard-summary \
         -H "Authorization: Bearer change-me-in-production"
 
 }
 
 ````bash
-curl http://localhost:8081/api/v1/performance/statistics \
+curl http://192.168.20.1:7002/api/v1/performance/statistics \
   -H "Authorization: Bearer change-me-in-production"
 
 ```json
 {
 ```bash
-curl http://localhost:8081/api/v1/performance/chart-target-vs-realisasi \
+curl http://192.168.20.1:7002/api/v1/performance/chart-target-vs-realisasi \
   -H "Authorization: Bearer change-me-in-production"
 ````
 
@@ -528,11 +528,11 @@ Contoh response sukses list:
 ````json
 {
 ```bash
-curl http://localhost:8081/api/v1/performance/yearly-summary \
+curl http://192.168.20.1:7002/api/v1/performance/yearly-summary \
   -H "Authorization: Bearer change-me-in-production"
       {
       ```bash
-      curl http://localhost:8081/api/v1/performance/program-ranking \
+      curl http://192.168.20.1:7002/api/v1/performance/program-ranking \
         -H "Authorization: Bearer change-me-in-production"
         "Keterangan": "Pelaksana layanan bedah",
         "Aktif": true,
@@ -540,17 +540,17 @@ curl http://localhost:8081/api/v1/performance/yearly-summary \
         "UpdatedAt": "2026-03-08T10:00:00Z"
       }
       ```bash
-      curl "http://localhost:8081/api/v1/unit-pengusul?q=umum" \
+      curl "http://192.168.20.1:7002/api/v1/unit-pengusul?q=umum" \
         -H "Authorization: Bearer change-me-in-production"
 }
 ```bash
-curl http://localhost:8081/api/v1/unit-pengusul/1 \
+curl http://192.168.20.1:7002/api/v1/unit-pengusul/1 \
   -H "Authorization: Bearer change-me-in-production"
 
 ```json
 {
 ```bash
-curl "http://localhost:8081/api/v1/unit-pelaksana?q=bedah" \
+curl "http://192.168.20.1:7002/api/v1/unit-pelaksana?q=bedah" \
   -H "Authorization: Bearer change-me-in-production"
 ````
 
@@ -632,7 +632,7 @@ Contoh payload minimum `rencana_kerja`:
 ````json
 {
 ```bash
-curl http://localhost:8081/api/v1/unit-pelaksana/1 \
+curl http://192.168.20.1:7002/api/v1/unit-pelaksana/1 \
   -H "Authorization: Bearer change-me-in-production"
   "tahun": 2026,
   "unit_pengusul_id": 1,
@@ -640,7 +640,7 @@ curl http://localhost:8081/api/v1/unit-pelaksana/1 \
   "dibuat_oleh": 101
 }
 ```bash
-curl "http://localhost:8081/api/v1/misi?q=layanan" \
+curl "http://192.168.20.1:7002/api/v1/misi?q=layanan" \
   -H "Authorization: Bearer change-me-in-production"
 
 1. Cek overview modul Renja:
@@ -689,21 +689,21 @@ Catatan:
 ````json
 {
 ```bash
-curl -X POST http://localhost:8081/api/v1/misi \
+curl -X POST http://192.168.20.1:7002/api/v1/misi \
   -H "Content-Type: application/json" \
     "scope": "Perencanaan kerja tahunan RSUD",
     "status": "OK",
     "storage": "mysql"
   }
   ```bash
-  curl http://localhost:8081/api/v1/renja/overview \
+  curl http://192.168.20.1:7002/api/v1/renja/overview \
     -H "Authorization: Bearer change-me-in-production"
 2. Response sukses `POST /api/v1/renja/:id/submit`:
 
 ```json
 {
 ```bash
-curl -X GET "http://localhost:8081/api/v1/renja/export/indikator-csv?rencana_kerja_id=1&unit_pengusul_id=1" \
+curl -X GET "http://192.168.20.1:7002/api/v1/renja/export/indikator-csv?rencana_kerja_id=1&unit_pengusul_id=1" \
   -H "Authorization: Bearer <TOKEN-ANDA>" -o indikator_kinerja.csv
     "action": "submit"
   }

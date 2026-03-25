@@ -114,8 +114,15 @@
         return;
       }
 
-      scheduleProactiveRefresh();
-    }, waitMs);
+      // If refresh succeeded but expiry is still too close (e.g. clock sync issue),
+      // we must avoid a 0ms tight loop. Add a small intentional delay.
+      const newState = getSessionState();
+      if (newState.status === "refresh_soon" && newState.secondsRemaining <= 5) {
+        setTimeout(scheduleProactiveRefresh, 5000);
+      } else {
+        scheduleProactiveRefresh();
+      }
+    }, Math.max(waitMs, 1000)); // Ensure at least 1s wait
   }
 
   function getAccessToken() {
@@ -330,7 +337,13 @@
     }
 
     if (current === LOGIN_PATH) {
-      window.location.href = "/ui/dashboard";
+      const url = new URL(window.location.href);
+      const next = url.searchParams.get("next");
+      if (next && next.startsWith("/") && next !== LOGIN_PATH) {
+        window.location.href = next;
+      } else {
+        window.location.href = "/ui/dashboard";
+      }
       return;
     }
 

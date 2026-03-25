@@ -36,5 +36,7 @@ func isAllowedOrigin(origin string) bool {
 	return strings.HasPrefix(origin, "http://localhost:") ||
 		strings.HasPrefix(origin, "https://localhost:") ||
 		strings.HasPrefix(origin, "http://127.0.0.1:") ||
-		strings.HasPrefix(origin, "https://127.0.0.1:")
+		strings.HasPrefix(origin, "https://127.0.0.1:") ||
+		strings.HasPrefix(origin, "http://192.168.20.1:") ||
+		strings.HasPrefix(origin, "https://192.168.20.1:")
 }

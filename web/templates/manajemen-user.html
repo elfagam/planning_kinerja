@@ -465,6 +465,7 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="/assets/js/auth-client.js"></script>
     <script>
       (() => {
         const endpoint = document.body.dataset.apiEndpoint;
@@ -625,59 +626,20 @@
           return primaryToken || secondaryToken || "";
         }
 
-        function getAccessToken() {
-          const primary = localStorage.getItem("AUTH_TOKEN") || "";
-          const secondary = localStorage.getItem("authToken") || "";
-          const chosen = chooseLatestToken(primary, secondary);
-
-          // Heal mismatched keys to avoid role resolution using stale token.
-          if (chosen) {
-            if (primary !== chosen) {
-              localStorage.setItem("AUTH_TOKEN", chosen);
-            }
-            if (secondary !== chosen) {
-              localStorage.setItem("authToken", chosen);
-            }
-          }
-
-          return chosen;
-        }
-
-        function redirectToLogin() {
-          const next = encodeURIComponent(
-            window.location.pathname + window.location.search,
-          );
-          window.location.href = `/ui/login?next=${next}`;
-        }
-
-        function authHeader() {
-          const token = getAccessToken();
-          return token ? { Authorization: `Bearer ${token}` } : {};
-        }
-
-        function resolveRoleFromToken() {
-          const payload = decodeJwtPayload(getAccessToken());
-          const tokenRole = normalizeRole(payload?.role ?? "");
-          if (!tokenRole) {
-            return;
-          }
-          currentUserRole = tokenRole;
-          roleResolved = true;
-        }
-
         async function fetchJSON(url, options = {}) {
+          const auth = window.__AUTH__;
           const res = await fetch(url, {
             ...options,
             headers: {
               ...(options.headers || {}),
-              ...authHeader(),
+              Authorization: `Bearer ${auth.getAccessToken()}`,
             },
           });
 
           const body = await res.json();
           if (!res.ok || !body.success) {
             if (res.status === 401) {
-              redirectToLogin();
+              auth.verifySession(); // This will handle redirect/refresh
               throw new Error("Sesi login berakhir, silakan login ulang");
             }
             throw new Error(body.error || `HTTP ${res.status}`);
@@ -694,9 +656,13 @@
               roleResolved = true;
             }
           } catch (error) {
-            // Keep role from token when /auth/me is temporarily unavailable.
-            if (!roleResolved) {
-              resolveRoleFromToken();
+            // Role fallback is handled by auth-client if needed, 
+            // but we can also try to decode from token.
+            const payload = decodeJwtPayload(window.__AUTH__.getAccessToken());
+            const tokenRole = normalizeRole(payload?.role ?? "");
+            if (tokenRole) {
+              currentUserRole = tokenRole;
+              roleResolved = true;
             }
           }
         }
@@ -1130,9 +1096,6 @@
 
         Promise.all([loadCurrentUser(), loadUnits(), loadUsers()])
           .then(() => {
-            if (!roleResolved) {
-              resolveRoleFromToken();
-            }
             applyRoleAccess();
             renderTable();
           })
