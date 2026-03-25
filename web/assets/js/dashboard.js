@@ -137,15 +137,6 @@
         yearFilter.value = preferredYear;
       }
 
-      async function fetchJSON(url, options = {}) {
-        try {
-          return await window.__AUTH__.fetchJSON(url, options);
-        } catch (err) {
-          // If it's a 401, window.__AUTH__.fetchJSON already calls verifySession
-          // which will handle the redirect. We just rethrow to let the caller handle UI state.
-          throw err;
-        }
-      }
 
       async function loadCurrentUserProfile() {
         const me = await fetchJSON("/api/v1/auth/me");

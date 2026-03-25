@@ -626,30 +626,10 @@
           return primaryToken || secondaryToken || "";
         }
 
-        async function fetchJSON(url, options = {}) {
-          const auth = window.__AUTH__;
-          const res = await fetch(url, {
-            ...options,
-            headers: {
-              ...(options.headers || {}),
-              Authorization: `Bearer ${auth.getAccessToken()}`,
-            },
-          });
-
-          const body = await res.json();
-          if (!res.ok || !body.success) {
-            if (res.status === 401) {
-              auth.verifySession(); // This will handle redirect/refresh
-              throw new Error("Sesi login berakhir, silakan login ulang");
-            }
-            throw new Error(body.error || `HTTP ${res.status}`);
-          }
-          return body.data;
-        }
-
         async function loadCurrentUser() {
           try {
-            const me = await fetchJSON("/api/v1/auth/me");
+            // fetchJSON is now provided globally by auth-client.js
+            const me = await window.__AUTH__.fetchJSON("/api/v1/auth/me");
             const apiRole = normalizeRole(me?.role ?? me?.Role ?? "");
             if (apiRole) {
               currentUserRole = apiRole;

@@ -61,6 +61,7 @@ func (Visi) TableName() string { return "visi" }
 type Misi struct {
 	ID        uint64    `gorm:"primaryKey;autoIncrement"`
 	VisiID    uint64    `gorm:"not null;index:idx_misi_visi"`
+	Visi      *Visi     `gorm:"foreignKey:VisiID;references:ID;constraint:fk_gorm_misi_visi"`
 	Kode      string    `gorm:"size:30;not null;uniqueIndex:uq_misi_kode"`
 	Nama      string    `gorm:"size:255;not null"`
 	Deskripsi string    `gorm:"type:text"`
@@ -73,6 +74,7 @@ func (Misi) TableName() string { return "misi" }
 type Tujuan struct {
 	ID        uint64    `gorm:"primaryKey;autoIncrement"`
 	MisiID    uint64    `gorm:"not null;index:idx_tujuan_misi"`
+	Misi      *Misi     `gorm:"foreignKey:MisiID;references:ID;constraint:fk_gorm_tujuan_misi"`
 	Kode      string    `gorm:"size:30;not null;uniqueIndex:uq_tujuan_kode"`
 	Nama      string    `gorm:"size:255;not null"`
 	Deskripsi string    `gorm:"type:text"`
@@ -136,8 +138,8 @@ func (Program) TableName() string { return "program" }
 type IndikatorProgram struct {
 	ID        uint64    `gorm:"primaryKey;autoIncrement"`
 	SasaranID uint64    `gorm:"not null"`
-	ProgramID uint64    `gorm:"not null;index:idx_indikator_program_program"`
-	Program   *Program  `gorm:"foreignKey:ProgramID;references:ID"`
+	ProgramID uint64    `gorm:"not null;index:idx_indikator_program_program_id"`
+	Program   *Program  `gorm:"foreignKey:ProgramID;references:ID;constraint:fk_gorm_indikator_program_program"`
 	Kode      string    `gorm:"size:40;not null;uniqueIndex:uq_indikator_program_kode"`
 	Nama      string    `gorm:"size:255;not null"`
 	Formula   string    `gorm:"type:text"`
@@ -151,10 +153,8 @@ func (IndikatorProgram) TableName() string { return "indikator_program" }
 
 type Kegiatan struct {
 	ID        uint64    `gorm:"primaryKey;autoIncrement"`
-	ProgramID uint64    `gorm:"not null;index:idx_kegiatan_program"`
-	Program   *Program  `gorm:"not null;index:idx_kegiatan_program"`
-	Kegiatan  *Kegiatan `gorm:"foreignKey:ProgramID;references:ID"`
-	// UnitPelaksanaID uint64    `gorm:"not null;index:idx_kegiatan_unit_pelaksana;index:idx_kegiatan_unit_program,priority:1"`
+	ProgramID uint64    `gorm:"not null;index:idx_kegiatan_program_id"`
+	Program   *Program  `gorm:"foreignKey:ProgramID;references:ID;constraint:fk_gorm_kegiatan_program"`
 	Kode      string    `gorm:"size:40;not null;uniqueIndex:uq_kegiatan_kode"`
 	Nama      string    `gorm:"size:255;not null"`
 	Deskripsi string    `gorm:"type:text"`
@@ -168,8 +168,8 @@ type IndikatorKegiatan struct {
 	ID                 uint64            `gorm:"primaryKey;autoIncrement"`
 	IndikatorProgramID *uint64           `gorm:"index:idx_indikator_kegiatan_program"`
 	IndikatorProgram   *IndikatorProgram `gorm:"foreignKey:IndikatorProgramID"`
-	KegiatanID         uint64            `gorm:"not null;index:idx_indikator_kegiatan_kegiatan"`
-	Kegiatan           *Kegiatan         `gorm:"foreignKey:KegiatanID"`
+	KegiatanID         uint64            `gorm:"not null;index:idx_indikator_kegiatan_kegiatan_id"`
+	Kegiatan           *Kegiatan         `gorm:"foreignKey:KegiatanID;constraint:fk_gorm_indikator_kegiatan_kegiatan"`
 	Kode               string            `gorm:"size:40;not null;uniqueIndex:uq_indikator_kegiatan_kode"`
 	Nama               string            `gorm:"size:255;not null"`
 	Formula            string            `gorm:"type:text"`
@@ -183,8 +183,8 @@ func (IndikatorKegiatan) TableName() string { return "indikator_kegiatan" }
 
 type SubKegiatan struct {
 	ID         uint64    `gorm:"primaryKey;autoIncrement"`
-	KegiatanID uint64    `gorm:"not null;index:idx_sub_kegiatan_kegiatan"`
-	Kegiatan   *Kegiatan `gorm:"not null;index:idx_sub_kegiatan_kegiatan"`
+	KegiatanID uint64    `gorm:"not null;index:idx_sub_kegiatan_kegiatan_id"`
+	Kegiatan   *Kegiatan `gorm:"foreignKey:KegiatanID;references:ID;constraint:fk_gorm_sub_kegiatan_kegiatan"`
 	Kode       string    `gorm:"size:40;not null;uniqueIndex:uq_sub_kegiatan_kode"`
 	Nama       string    `gorm:"size:255;not null"`
 	Deskripsi  string    `gorm:"type:text"`
@@ -208,9 +208,9 @@ func (PaguSubKegiatan) TableName() string { return "pagu_sub_kegiatan" }
 type IndikatorSubKegiatan struct {
 	ID                  uint64             `gorm:"primaryKey;autoIncrement"`
 	IndikatorKegiatanID uint64             `gorm:"not null;index:idx_indikator_sub_kegiatan_indikator_kegiatan"`
-	IndikatorKegiatan   *IndikatorKegiatan `gorm:"foreignKey:IndikatorKegiatanID"`
+	IndikatorKegiatan   *IndikatorKegiatan `gorm:"foreignKey:IndikatorKegiatanID;constraint:fk_gorm_indikator_sub_kegiatan_ind_keg"`
 	SubKegiatanID       uint64             `gorm:"not null;index:idx_indikator_sub_kegiatan_sub_kegiatan"`
-	SubKegiatan         *SubKegiatan       `gorm:"foreignKey:SubKegiatanID"`
+	SubKegiatan         *SubKegiatan       `gorm:"foreignKey:SubKegiatanID;constraint:fk_gorm_indikator_sub_kegiatan_sub_keg"`
 	Kode                string             `gorm:"size:40;not null;uniqueIndex:uq_indikator_sub_kegiatan_kode"`
 	Nama                string             `gorm:"size:255;not null"`
 	Formula             string             `gorm:"type:text"`
@@ -227,13 +227,13 @@ func (IndikatorSubKegiatan) TableName() string { return "indikator_sub_kegiatan"
 type RencanaKerja struct {
 	ID                     uint64                `gorm:"primaryKey;autoIncrement"`
 	IndikatorSubKegiatanID uint64                `gorm:"not null;index:idx_rencana_kerja_indikator_sub_kegiatan"`
-	IndikatorSubKegiatan   *IndikatorSubKegiatan `gorm:"foreignKey:IndikatorSubKegiatanID"`
+	IndikatorSubKegiatan   *IndikatorSubKegiatan `gorm:"foreignKey:IndikatorSubKegiatanID;constraint:fk_gorm_rencana_kerja_ind_sub_keg"`
 	Kode                   string                `gorm:"size:50;not null;uniqueIndex:uq_rencana_kerja_kode"`
 	Nama                   string                `gorm:"size:255;not null"`
 	Tahun                  int16                 `gorm:"not null;index:idx_rencana_kerja_tahun;index:idx_rencana_kerja_periode_status,priority:1;index:idx_rencana_kerja_unit_periode,priority:2"`
 	Triwulan               *int8                 `gorm:"index:idx_rencana_kerja_periode_status,priority:2;index:idx_rencana_kerja_unit_periode,priority:3"`
 	UnitPengusulID         uint64                `gorm:"not null;index:idx_rencana_kerja_unit_periode,priority:1"`
-	UnitPengusul           *UnitPengusul         `gorm:"foreignKey:UnitPengusulID"`
+	UnitPengusul           *UnitPengusul         `gorm:"foreignKey:UnitPengusulID;constraint:fk_gorm_rencana_kerja_unit_pengusul"`
 	Status                 string                `gorm:"type:enum('DRAFT','DIAJUKAN','DISETUJUI','DITOLAK');not null;default:'DRAFT';index:idx_rencana_kerja_status;index:idx_rencana_kerja_periode_status,priority:3"`
 	Catatan                string                `gorm:"type:text"`
 	DibuatOleh             uint64                `gorm:"not null"`
@@ -249,7 +249,7 @@ type IndikatorRencanaKerja struct {
 	ID               uint64        `gorm:"primaryKey;autoIncrement"`
 	RencanaKerjaID   uint64        `gorm:"not null;index:idx_indikator_rk_rk;index:idx_indikator_rk_rk_kode,priority:1"`
 	TbStandarHargaID *int          `json:"tb_standar_harga_id" gorm:"column:tb_standar_harga_id"`
-	StandarHarga     *StandarHarga `json:"standar_harga" gorm:"foreignKey:TbStandarHargaID"`
+	StandarHarga     *StandarHarga `json:"standar_harga" gorm:"foreignKey:TbStandarHargaID;constraint:fk_gorm_indikator_rk_tb_sh"`
 	Kode             string        `gorm:"size:50;not null;uniqueIndex:uq_indikator_rk_kode;index:idx_indikator_rk_rk_kode,priority:2"`
 	Nama            string    `gorm:"size:255;not null"`
 	Satuan          string    `gorm:"size:60"`
@@ -281,6 +281,7 @@ func (RealisasiRencanaKerja) TableName() string { return "realisasi_rencana_kerj
 type TargetDanRealisasi struct {
 	ID                      uint64     `gorm:"primaryKey;autoIncrement"`
 	IndikatorRencanaKerjaID uint64     `gorm:"not null;uniqueIndex:uq_target_realisasi_periode,priority:1"`
+	IndikatorRencanaKerja   *IndikatorRencanaKerja `gorm:"foreignKey:IndikatorRencanaKerjaID;constraint:fk_gorm_target_realisasi_ind_rk"`
 	Tahun                   int16      `gorm:"not null;index:idx_target_realisasi_periode_status,priority:1;index:idx_target_realisasi_verifikator_periode,priority:2;uniqueIndex:uq_target_realisasi_periode,priority:2"`
 	Triwulan                int8       `gorm:"not null;index:idx_target_realisasi_periode_status,priority:2;index:idx_target_realisasi_verifikator_periode,priority:3;uniqueIndex:uq_target_realisasi_periode,priority:3"`
 	TargetNilai             float64    `gorm:"type:decimal(18,2);not null;default:0"`

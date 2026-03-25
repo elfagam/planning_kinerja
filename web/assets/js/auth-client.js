@@ -10,12 +10,38 @@
   let refreshTimer = null;
 
   async function fetchJSON(url, options = {}) {
-    const res = await window.fetch(url, options);
-    const data = await res.json();
-    if (!res.ok) {
-      throw new Error(data?.error || "Request failed");
+    window.fetchJSON = fetchJSON; // Keep it available globally
+
+    const token = getAccessToken();
+    const headers = {
+      Accept: "application/json",
+      ...(options.headers || {}),
+    };
+
+    if (token) {
+      headers.Authorization = `Bearer ${token}`;
     }
-    return data;
+
+    const res = await window.fetch(url, {
+      ...options,
+      headers,
+    });
+
+    const body = await res.json();
+
+    if (!res.ok) {
+      if (res.status === 401) {
+        verifySession(); // Redirect or refresh
+        throw new Error("Sesi login berakhir, silakan login ulang");
+      }
+      throw new Error(body?.error || `HTTP ${res.status}`);
+    }
+
+    if (body && body.success === false) {
+      throw new Error(body.error || "Operasi gagal");
+    }
+
+    return body.data;
   }
 
   function decodeJwtPayload(token) {

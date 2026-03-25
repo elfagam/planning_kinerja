@@ -443,36 +443,6 @@
           }
         }
 
-        async function fetchJSON(url, options = {}) {
-          const res = await fetch(url, {
-            headers: {
-              "Content-Type": "application/json",
-              ...authHeader(),
-              ...(options.headers || {}),
-            },
-            ...options,
-          });
-          let body = null;
-          try {
-            body = await res.json();
-          } catch (_) {}
-
-          if (res.status === 401) {
-            const authEnabled = await (window.__AUTH__?.isAuthEnabled?.() ||
-              Promise.resolve(false));
-            if (authEnabled) {
-              window.location.href = "/ui/login";
-              return null;
-            }
-          }
-
-          if (!res.ok || body?.success === false) {
-            const msg = body?.error || `Request gagal (${res.status})`;
-            throw new Error(friendlyErrorMessage(msg));
-          }
-          return body?.data ?? body;
-        }
-
         function statusBadge(status) {
           const cls =
             status === "DRAFT"
