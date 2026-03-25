@@ -1,5 +1,137 @@
-import { getAccessToken, redirectToLogin } from "../../core/api.js";
-import { readUrlState, writeUrlState } from "../../core/router.js";
+(() => {
+  const fetchJSON = window.fetchJSON || window.__AUTH__?.fetchJSON;
+  const getAccessToken = window.__AUTH__?.getAccessToken || (() => localStorage.getItem("AUTH_TOKEN") || localStorage.getItem("authToken") || "");
+  const redirectToLogin = () => { window.location.href = '/ui/login?next=' + encodeURIComponent(window.location.pathname + window.location.search); };
+
+// --- router.js ---
+function readUrlState(defaults) {
+  const params = new URLSearchParams(window.location.search);
+  const next = { ...defaults };
+
+  Object.keys(defaults).forEach((key) => {
+    const v = params.get(key);
+    if (v != null && v !== "") {
+      next[key] = v;
+    }
+  });
+
+  return next;
+}
+
+function writeUrlState(state, { replace = false } = {}) {
+  const params = new URLSearchParams();
+  Object.entries(state).forEach(([key, value]) => {
+    if (value == null || value === "") {
+      return;
+    }
+    params.set(key, String(value));
+  });
+
+  const url = `${window.location.pathname}?${params.toString()}`;
+  if (replace) {
+    window.history.replaceState(state, "", url);
+    return;
+  }
+  window.history.pushState(state, "", url);
+}
+
+
+// --- service.js ---
+
+async function getCurrentUserID() {
+  const me = await fetchJSON("/api/v1/auth/me");
+  return Number(me?.user_id ?? me?.userID ?? 0);
+}
+
+async function listUnitPengusul() {
+  const data = await fetchJSON("/api/v1/unit_pengusul");
+  return Array.isArray(data?.items) ? data.items : [];
+}
+
+async function listIndikatorSubKegiatan() {
+  const data = await fetchJSON("/api/v1/indikator_sub_kegiatan?all=true");
+  return Array.isArray(data?.items) ? data.items : [];
+}
+
+async function listSubKegiatan() {
+  const data = await fetchJSON("/api/v1/sub_kegiatan?all=true");
+  return Array.isArray(data?.items) ? data.items : [];
+}
+
+async function listPaguSubKegiatan() {
+  const data = await fetchJSON("/api/v1/pagu_sub_kegiatan?all=true");
+  return Array.isArray(data?.items) ? data.items : [];
+}
+
+async function listRencanaKerja({ q = "", tahun = "" } = {}) {
+  const params = new URLSearchParams();
+  params.set("all", "true");
+  if (q) params.set("q", q);
+  if (tahun) params.set("tahun", tahun);
+  const url = params.size
+    ? `/api/v1/rencana_kerja?${params.toString()}`
+    : "/api/v1/rencana_kerja";
+
+  const data = await fetchJSON(url);
+  return Array.isArray(data?.items) ? data.items : [];
+}
+
+async function listIndikatorByRencanaKerjaID(rencanaKerjaID) {
+  if (!rencanaKerjaID) return [];
+
+  const data = await fetchJSON("/api/v1/indikator_rencana_kerja?all=true");
+  const items = Array.isArray(data?.items) ? data.items : [];
+  const rkID = Number(rencanaKerjaID);
+
+  return items.filter(
+    (item) =>
+      Number(item.rencana_kerja_id ?? item.RencanaKerjaID ?? 0) === rkID,
+  );
+}
+
+async function listAllIndikatorRencanaKerja() {
+  const data = await fetchJSON("/api/v1/indikator_rencana_kerja?all=true");
+  return Array.isArray(data?.items) ? data.items : [];
+}
+
+async function saveRencanaKerja(payload, id = "") {
+  const isEdit = Boolean(id);
+  const url = isEdit ? `/api/v1/rencana_kerja/${id}` : "/api/v1/rencana_kerja";
+  const method = isEdit ? "PUT" : "POST";
+
+  return fetchJSON(url, {
+    method,
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+}
+
+async function deleteRencanaKerja(id) {
+  return fetchJSON(`/api/v1/rencana_kerja/${id}`, { method: "DELETE" });
+}
+
+async function saveIndikator(payload, id = "") {
+  const isEdit = Boolean(id);
+  const url = isEdit
+    ? `/api/v1/indikator_rencana_kerja/${id}`
+    : "/api/v1/indikator_rencana_kerja";
+  const method = isEdit ? "PUT" : "POST";
+
+  return fetchJSON(url, {
+    method,
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+}
+
+async function deleteIndikator(id) {
+  return fetchJSON(`/api/v1/indikator_rencana_kerja/${id}`, {
+    method: "DELETE",
+  });
+}
+
+
+// --- index.js ---
 import {
   deleteIndikator,
   deleteRencanaKerja,
@@ -1034,4 +1166,6 @@ function bindEvents() {
   }
 
   void reloadAll();
+})();
+
 })();
