@@ -2,6 +2,7 @@
 services:
   app:
     build: .
+    restart: unless-stopped
     ports:
       - "7002:8080"
     environment:
@@ -9,6 +10,7 @@ services:
       - MYSQL_DSN=root:rootpassword@tcp(db:3306)/e-plan-ai?parseTime=true
       - AUTH_ENABLED=true
       - AUTH_TOKEN=change-me-in-production
+      - TZ=Asia/Jakarta
     depends_on:
       db:
         condition: service_healthy
