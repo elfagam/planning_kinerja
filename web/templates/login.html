@@ -21,15 +21,17 @@
                 Masuk menggunakan akun yang dikonfigurasi di server.
               </p>
 
-              <form id="login-form" class="vstack gap-3" autocomplete="off">
+              <form id="login-form" class="vstack gap-3">
                 <div>
                   <label class="form-label" for="username"
                     >Email / Username</label
                   >
                   <input
                     id="username"
+                    name="username"
                     class="form-control"
                     placeholder="Masukkan email atau username"
+                    autocomplete="username"
                     required
                   />
                 </div>
@@ -38,9 +40,11 @@
                   <label class="form-label" for="password">Password</label>
                   <input
                     id="password"
+                    name="password"
                     type="password"
                     class="form-control"
                     placeholder="Masukkan password"
+                    autocomplete="current-password"
                     required
                   />
                 </div>
