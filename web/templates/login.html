@@ -146,12 +146,7 @@
         }
 
         function nextPath() {
-          const url = new URL(window.location.href);
-          const next = url.searchParams.get("next");
-          if (!next || !next.startsWith("/")) {
-            return "/ui/dashboard";
-          }
-          return next;
+          return "/ui/dashboard";
         }
 
         defaultYearInput.value = resolveDefaultYear();
