@@ -271,11 +271,12 @@
     const role = String(rawRole || "").trim().toUpperCase();
     
     // Admins and Pimpinan see everything
-    if (!role || role === "ADMIN" || role === "PIMPINAN") {
+    if (role === "ADMIN" || role === "PIMPINAN") {
       return;
     }
 
-    const restrictedRoles = ["OPERATOR", "PERENCANA", "VERIFIKATOR"];
+    // Treat empty/unknown roles as restricted
+    const restrictedRoles = ["OPERATOR", "PERENCANA", "VERIFIKATOR", ""];
     if (restrictedRoles.includes(role)) {
       const currentPath = window.location.pathname.replace(/\/$/, ""); // Strip trailing slash for matching
       const loginPath = LOGIN_PATH.replace(/\/$/, "");
@@ -283,8 +284,10 @@
       const allowedPaths = ALLOWED_OPERATOR_PAGES.map(p => p.replace(/\/$/, ""));
 
       // 1. Route Guard
-      if (!allowedPaths.includes(currentPath) && currentPath !== loginPath) {
-        window.location.href = "/ui/dashboard";
+      const isAllowed = allowedPaths.some((p) => currentPath.endsWith(p));
+      const isLogin = currentPath.endsWith(loginPath);
+      if (!isAllowed && !isLogin) {
+        window.location.href = "dashboard";
         return;
       }
 
@@ -293,7 +296,8 @@
         const rawHref = link.getAttribute("href");
         if (rawHref) {
           const href = rawHref.split('?')[0].replace(/\/$/, "");
-          if (!allowedPaths.includes(href)) {
+          const isAllowedLink = allowedPaths.some((p) => href.endsWith(p));
+          if (!isAllowedLink) {
             link.style.display = 'none';
           }
         }
