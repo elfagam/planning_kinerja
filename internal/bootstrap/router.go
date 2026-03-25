@@ -30,7 +30,7 @@ func NewRouter(cfg config.Config) *gin.Engine {
 		c.Status(204)
 	})
 	r.GET("/", func(c *gin.Context) {
-		c.Redirect(302, "/ui/dashboard")
+		c.Redirect(302, "/ui/login")
 	})
 	uihttp.NewHandler().RegisterRoutes(r)
 
