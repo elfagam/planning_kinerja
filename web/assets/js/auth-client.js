@@ -267,25 +267,35 @@
     "/ui/unit-pengusul"
   ];
 
-  function applyRoleBasedAccessControl(role) {
-    if (!role || ["ADMIN", "PIMPINAN"].includes(role)) {
+  function applyRoleBasedAccessControl(rawRole) {
+    const role = String(rawRole || "").trim().toUpperCase();
+    
+    // Admins and Pimpinan see everything
+    if (!role || role === "ADMIN" || role === "PIMPINAN") {
       return;
     }
 
-    if (["OPERATOR", "PERENCANA", "VERIFIKATOR"].includes(role)) {
-      const currentPath = window.location.pathname;
+    const restrictedRoles = ["OPERATOR", "PERENCANA", "VERIFIKATOR"];
+    if (restrictedRoles.includes(role)) {
+      const currentPath = window.location.pathname.replace(/\/$/, ""); // Strip trailing slash for matching
+      const loginPath = LOGIN_PATH.replace(/\/$/, "");
       
+      const allowedPaths = ALLOWED_OPERATOR_PAGES.map(p => p.replace(/\/$/, ""));
+
       // 1. Route Guard
-      if (!ALLOWED_OPERATOR_PAGES.includes(currentPath) && currentPath !== LOGIN_PATH) {
+      if (!allowedPaths.includes(currentPath) && currentPath !== loginPath) {
         window.location.href = "/ui/dashboard";
         return;
       }
 
       // 2. Menu Guard
       document.querySelectorAll('.admin-link').forEach(link => {
-        const href = link.getAttribute("href");
-        if (href && !ALLOWED_OPERATOR_PAGES.includes(href.split('?')[0])) {
-          link.style.display = 'none';
+        const rawHref = link.getAttribute("href");
+        if (rawHref) {
+          const href = rawHref.split('?')[0].replace(/\/$/, "");
+          if (!allowedPaths.includes(href)) {
+            link.style.display = 'none';
+          }
         }
       });
       
