@@ -1148,9 +1148,14 @@
               // --- End Anggaran Tahunan Calculation ---
               idInput.value = item.id;
               const indikatorItem = indikatorDetailMap.get(
-                item.indikatorSubKegiatanId,
+                Number(item.indikatorSubKegiatanId),
               );
               const subKegiatanId = indikatorItem?.subKegiatanId ?? 0;
+
+              // Reset sub-kegiatan filter to ensure the target sub-kegiatan exists in the select options
+              subKegiatanFilterInput.value = "";
+              filterSubKegiatanOptions("");
+
               subKegiatanInput.value = subKegiatanId
                 ? String(subKegiatanId)
                 : "";
@@ -1327,6 +1332,12 @@
             )
               .map(normalizeIndikator)
               .sort((a, b) => a.id - b.id);
+
+            // Populate maps globally to support edit mode lookup
+            indikatorItemsCache.forEach((item) => {
+              indikatorMap.set(item.id, `${item.kode} - ${item.nama}`);
+              indikatorDetailMap.set(item.id, item);
+            });
           } else {
             indikatorItemsCache = [];
             setStatus("Gagal memuat indikator sub kegiatan", true);
