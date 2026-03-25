@@ -8,7 +8,7 @@
     localStorage.getItem("authToken") ||
     "";
   if (!accessToken) {
-    window.location.href = "/login";
+    window.location.href = "/ui/login";
     return;
   }
   // --- Unit Pengusul Dropdown ---
