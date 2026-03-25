@@ -10,8 +10,6 @@
   let refreshTimer = null;
 
   async function fetchJSON(url, options = {}) {
-    window.fetchJSON = fetchJSON; // Keep it available globally
-
     const token = getAccessToken();
     const headers = {
       Accept: "application/json",
@@ -463,6 +461,9 @@
     isAuthEnabled: fetchAuthEnabled,
     hasActorContext: fetchActorContextEnabled,
   };
+
+  // Keep fetchJSON available globally for legacy compatibility
+  window.fetchJSON = fetchJSON;
 
   document.addEventListener("DOMContentLoaded", () => {
     document.querySelectorAll("[data-auth-logout]").forEach((el) => {

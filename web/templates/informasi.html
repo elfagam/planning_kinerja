@@ -182,6 +182,8 @@
       </div>
     </main>
 
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="/assets/js/auth-client.js?v=20260326"></script>
     <script>
       (() => {
         const informasiEndpoint = "/api/v1/performance/informasi";
@@ -203,26 +205,6 @@
         let currentUserRole = "";
         let canMutate = false;
         let switcherTimerID = null;
-
-        function getAccessToken() {
-          return (
-            localStorage.getItem("AUTH_TOKEN") ||
-            localStorage.getItem("authToken") ||
-            ""
-          );
-        }
-
-        function authHeader() {
-          const token = getAccessToken();
-          return token ? { Authorization: `Bearer ${token}` } : {};
-        }
-
-        function redirectToLogin() {
-          const next = encodeURIComponent(
-            window.location.pathname + window.location.search,
-          );
-          window.location.href = `/ui/login?next=${next}`;
-        }
 
         function normalizeRole(raw) {
           return String(raw || "")
