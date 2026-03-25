@@ -1,12 +1,11 @@
 package bootstrap
 
 import (
-	dokumenpdfhttp "e-plan-ai/internal/modules/dokumen_pdf/delivery/http"
-
 	"e-plan-ai/internal/config"
 	authhttp "e-plan-ai/internal/modules/auth/delivery/http"
 	clienthttp "e-plan-ai/internal/modules/client/delivery/http"
 	crudhttp "e-plan-ai/internal/modules/crud/delivery/http"
+	dokumenpdfhttp "e-plan-ai/internal/modules/dokumen_pdf/delivery/http"
 	performancehttp "e-plan-ai/internal/modules/performance/delivery/http"
 	planninghttp "e-plan-ai/internal/modules/planning/delivery/http"
 	planninggormhttp "e-plan-ai/internal/modules/planninggorm/delivery/http"

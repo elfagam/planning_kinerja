@@ -149,6 +149,8 @@
 
       async function loadCurrentUserProfile() {
         const me = await fetchJSON("/api/v1/auth/me");
+        console.log("Current User Role:", me?.role);
+        console.log("Is Admin?", me?.role === 'ADMIN');
         currentUserProfile = me || null;
 
         const userLabel =
