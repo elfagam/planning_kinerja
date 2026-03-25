@@ -402,6 +402,7 @@
   window.__AUTH__ = {
     login,
     logout,
+    fetchJSON,
     getAccessToken,
     getRefreshToken,
     setTokens,

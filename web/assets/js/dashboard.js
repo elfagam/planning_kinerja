@@ -55,20 +55,6 @@
         return `${DEFAULT_YEAR_USER_PREFIX}${userID}`;
       }
 
-      function getAccessToken() {
-        return (
-          localStorage.getItem("AUTH_TOKEN") ||
-          localStorage.getItem("authToken") ||
-          ""
-        );
-      }
-
-      function redirectToLogin() {
-        const next = encodeURIComponent(
-          window.location.pathname + window.location.search,
-        );
-        window.location.href = `/ui/login?next=${next}`;
-      }
 
       function getStoredDefaultYear() {
         return normalizeYearValue(localStorage.getItem(DEFAULT_YEAR_KEY) || "");
@@ -151,24 +137,14 @@
         yearFilter.value = preferredYear;
       }
 
-      async function fetchJSON(url) {
-        const headers = { Accept: "application/json" };
-        const token = getAccessToken();
-        if (token) {
-          headers.Authorization = `Bearer ${token}`;
+      async function fetchJSON(url, options = {}) {
+        try {
+          return await window.__AUTH__.fetchJSON(url, options);
+        } catch (err) {
+          // If it's a 401, window.__AUTH__.fetchJSON already calls verifySession
+          // which will handle the redirect. We just rethrow to let the caller handle UI state.
+          throw err;
         }
-
-        const r = await fetch(url, { headers });
-        if (r.status === 401) {
-          redirectToLogin();
-          throw new Error("Sesi login berakhir, silakan login ulang");
-        }
-        if (!r.ok) throw new Error(`HTTP ${r.status}`);
-        const payload = await r.json();
-        if (!payload?.success) {
-          throw new Error(payload?.error || "respons API tidak valid");
-        }
-        return payload.data;
       }
 
       async function loadCurrentUserProfile() {
@@ -769,8 +745,9 @@
       }
 
       async function loadDashboard() {
-        if (!getAccessToken()) {
-          redirectToLogin();
+        const auth = window.__AUTH__;
+        if (auth && auth.getSessionState().status === "expired") {
+          auth.verifySession();
           return;
         }
 
@@ -872,8 +849,9 @@
       );
 
       async function initDashboard() {
-        if (!getAccessToken()) {
-          redirectToLogin();
+        const auth = window.__AUTH__;
+        if (auth && auth.getSessionState().status === "expired") {
+          auth.verifySession();
           return;
         }
 
@@ -930,35 +908,7 @@
         const infoSwitcherText = document.getElementById("info-switcher-text");
         let switcherTimerID = null;
 
-        function getAccessToken() {
-          return (
-            localStorage.getItem("AUTH_TOKEN") ||
-            localStorage.getItem("authToken") ||
-            ""
-          );
-        }
-
-        async function fetchJSON(url, options = {}) {
-          const headers = {
-            Accept: "application/json",
-            ...(options.headers || {}),
-          };
-          const token = getAccessToken();
-          if (token) {
-            headers.Authorization = `Bearer ${token}`;
-          }
-
-          const res = await fetch(url, {
-            ...options,
-            headers,
-          });
-
-          const body = await res.json();
-          if (!res.ok || !body?.success) {
-            throw new Error(body?.error || `HTTP ${res.status}`);
-          }
-          return body.data;
-        }
+        // Using the outer fetchJSON which handles auth via window.__AUTH__
 
         function showSwitcher(items) {
           if (!infoSwitcherText) {
