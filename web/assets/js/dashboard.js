@@ -844,8 +844,10 @@
       async function initDashboard() {
         const auth = window.__AUTH__;
         if (auth && auth.getSessionState().status === "expired") {
-          auth.verifySession();
-          return;
+          await auth.verifySession();
+          if (auth.getSessionState().status === "expired") {
+            return;
+          }
         }
 
         try {
@@ -894,4 +896,8 @@
         setSessionStatusText();
         window.setInterval(setSessionStatusText, 5000);
       });
-      window.__AUTH__.initInformasiSwitcher("/dashboard");
+      if (window.__AUTH__ && typeof window.__AUTH__.initInformasiSwitcher === "function") {
+        window.__AUTH__.initInformasiSwitcher("/dashboard");
+      } else {
+        console.warn("window.__AUTH__ is undefined or initInformasiSwitcher is missing on Dashboard load");
+      }
