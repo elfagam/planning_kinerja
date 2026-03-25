@@ -717,49 +717,8 @@
           applyIndikatorFilter("", "");
         }
 
-        function showSwitcher(items) {
-          if (!infoSwitcherText) {
-            return;
-          }
-          if (switcherTimerID) {
-            clearInterval(switcherTimerID);
-            switcherTimerID = null;
-          }
-
-          if (!Array.isArray(items) || items.length === 0) {
-            infoSwitcherText.textContent = "Belum ada topik informasi";
-            return;
-          }
-
-          let index = 0;
-          infoSwitcherText.textContent = items[index].informasi;
-          if (items.length === 1) {
-            return;
-          }
-
-          switcherTimerID = setInterval(() => {
-            index = (index + 1) % items.length;
-            infoSwitcherText.textContent = items[index].informasi;
-          }, 5000);
-        }
-
-        async function loadInformasiSwitcher() {
-          try {
-            const params = new URLSearchParams();
-            params.set("limit", "2");
-            params.set("route", activeInfoRoute);
-            const data = await fetchJSON(
-              `${informasiLatestEndpoint}?${params.toString()}`,
-            );
-            const items = Array.isArray(data?.items) ? data.items : [];
-            showSwitcher(items);
-          } catch (_) {
-            if (infoSwitcherText) {
-              infoSwitcherText.textContent = "Gagal memuat topik informasi";
-            }
-          }
-        }
-
+        window.__AUTH__.initInformasiSwitcher("/rencana-kerja");
+      })();
         function filterSubKegiatanOptions(filterText = "") {
           const selectedValue = subKegiatanInput.value;
           const normalizedFilter = String(filterText || "")
@@ -1650,12 +1609,12 @@
             await loadCurrentUser();
             resetForm();
             await loadReferenceOptions();
-            await Promise.all([loadList(), loadInformasiSwitcher()]);
+            await Promise.all([loadList()]);
+            window.__AUTH__.initInformasiSwitcher("/rencana-kerja");
           } catch (error) {
             setStatus(`Gagal inisialisasi form: ${error.message}`, true);
           }
         })();
-      })();
     </script>
     
   </body>

@@ -401,24 +401,7 @@
         }
 
         async function loadInformasiSwitcher() {
-          try {
-            const params = new URLSearchParams();
-            params.set("limit", "2");
-            const routeFilter = resolveRouteFilter();
-            if (routeFilter) {
-              params.set("route", routeFilter);
-            }
-
-            const data = await fetchJSON(
-              `${informasiLatestEndpoint}?${params.toString()}`,
-            );
-            const items = Array.isArray(data?.items) ? data.items : [];
-            showSwitcher(items);
-          } catch (_) {
-            if (infoSwitcherText) {
-              infoSwitcherText.textContent = "Gagal memuat topik informasi";
-            }
-          }
+          window.__AUTH__.initInformasiSwitcher("/informasi");
         }
 
         infoForm.addEventListener("submit", async (event) => {

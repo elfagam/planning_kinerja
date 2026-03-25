@@ -527,7 +527,7 @@ func (h *Handler) list(rc resourceConfig) gin.HandlerFunc {
 			}
 			query = query.Preload("SubKegiatan")
 		}
-		if err := query.Order("id DESC").Find(items).Error; err != nil {
+		if err := query.Order(rc.name + ".id DESC").Find(items).Error; err != nil {
 			response.Error(c, http.StatusInternalServerError, mapReadError(rc, "list", err))
 			return
 		}

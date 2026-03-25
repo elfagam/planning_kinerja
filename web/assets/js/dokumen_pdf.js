@@ -176,42 +176,6 @@
     }
   });
 
-  // Info Switcher Logic
-  function showSwitcher(items) {
-    if (!infoSwitcherText) return;
-    if (switcherTimerID) clearInterval(switcherTimerID);
-
-    if (!Array.isArray(items) || items.length === 0) {
-      infoSwitcherText.textContent = "Belum ada topik informasi";
-      return;
-    }
-
-    let index = 0;
-    infoSwitcherText.textContent = items[index].informasi;
-    if (items.length === 1) return;
-
-    switcherTimerID = setInterval(() => {
-      index = (index + 1) % items.length;
-      infoSwitcherText.textContent = items[index].informasi;
-    }, 5000);
-  }
-
-  async function loadInformasiSwitcher() {
-    try {
-      const res = await fetch(`${informasiLatestEndpoint}?limit=2&route=${activeInfoRoute}`, {
-        headers: authHeader(),
-      });
-      if (res.ok) {
-        const body = await res.json();
-        const items = Array.isArray(body?.data?.items) ? body.data.items : [];
-        showSwitcher(items);
-      }
-    } catch (_) {
-      if (infoSwitcherText) infoSwitcherText.textContent = "Gagal memuat topik informasi";
-    }
-  }
-
-  // Initialization
   (async () => {
     const token = getAccessToken();
     if (!token) {
@@ -224,9 +188,7 @@
     }
 
     await fetchUserProfile();
-    await Promise.all([
-      loadDokumenPDFs(),
-      loadInformasiSwitcher()
-    ]);
+    await loadDokumenPDFs();
+    window.__AUTH__.initInformasiSwitcher("/dokumen_pdf");
   })();
 })();

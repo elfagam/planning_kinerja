@@ -134,12 +134,10 @@ func (h *Handler) GetInformasi(c *gin.Context) {
 
 	q := h.db.WithContext(c.Request.Context()).Model(&database.Informasi{})
 	if routeQ := strings.TrimSpace(c.Query("route")); routeQ != "" {
-		route, err := normalizeInformasiRoute(routeQ)
-		if err != nil {
-			response.Error(c, http.StatusBadRequest, err.Error())
-			return
+		route := normalizeInformasiRoute(routeQ)
+		if route != "" {
+			q = q.Where("pilihan_route_halaman_tujuan = ?", route)
 		}
-		q = q.Where("pilihan_route_halaman_tujuan = ?", route)
 	}
 
 	var total int64
@@ -180,12 +178,10 @@ func (h *Handler) GetInformasiLatest(c *gin.Context) {
 
 	q := h.db.WithContext(c.Request.Context()).Model(&database.Informasi{})
 	if routeQ := strings.TrimSpace(c.Query("route")); routeQ != "" {
-		route, err := normalizeInformasiRoute(routeQ)
-		if err != nil {
-			response.Error(c, http.StatusBadRequest, err.Error())
-			return
+		route := normalizeInformasiRoute(routeQ)
+		if route != "" {
+			q = q.Where("pilihan_route_halaman_tujuan = ?", route)
 		}
-		q = q.Where("pilihan_route_halaman_tujuan = ?", route)
 	}
 
 	var items []database.Informasi
@@ -229,9 +225,9 @@ func (h *Handler) CreateInformasi(c *gin.Context) {
 		return
 	}
 
-	route, err := normalizeInformasiRoute(req.PilihanRouteHalamanTujuan)
-	if err != nil {
-		response.Error(c, http.StatusBadRequest, err.Error())
+	route := normalizeInformasiRoute(req.PilihanRouteHalamanTujuan)
+	if route == "" {
+		response.Error(c, http.StatusBadRequest, "invalid route")
 		return
 	}
 
@@ -279,9 +275,9 @@ func (h *Handler) UpdateInformasi(c *gin.Context) {
 		return
 	}
 
-	route, err := normalizeInformasiRoute(req.PilihanRouteHalamanTujuan)
-	if err != nil {
-		response.Error(c, http.StatusBadRequest, err.Error())
+	route := normalizeInformasiRoute(req.PilihanRouteHalamanTujuan)
+	if route == "" {
+		response.Error(c, http.StatusBadRequest, "invalid route")
 		return
 	}
 
@@ -1430,20 +1426,52 @@ func queryValueOrText(value string) any {
 	return trimmed
 }
 
-func normalizeInformasiRoute(route string) (string, error) {
-	normalized := strings.TrimSpace(route)
-	switch normalized {
-	case "/dashboard":
-		return "/dashboard", nil
-	case "/rencana-kerja":
-		return "/rencana-kerja", nil
-	case "/dokumen_pdf":
-		return "/dokumen_pdf", nil
-	case "/target-evaluasi", "/target-realisasi":
-		return "/target-evaluasi", nil
-	default:
-		return "", errors.New("pilihan_route_halaman_tujuan is invalid")
+func normalizeInformasiRoute(route string) string {
+	normalized := strings.TrimRight(strings.TrimSpace(route), "/")
+	if normalized == "" {
+		return ""
 	}
+
+	// List of recognized routes that have specific information topics
+	recognized := map[string]bool{
+		"/dashboard":               true,
+		"/rencana-kerja":           true,
+		"/dokumen_pdf":             true,
+		"/target-evaluasi":         true,
+		"/target-realisasi":        true,
+		"/informasi":               true,
+		"/visi":                    true,
+		"/misi":                    true,
+		"/tujuan":                  true,
+		"/sasaran":                 true,
+		"/program":                 true,
+		"/kegiatan":                true,
+		"/sub-kegiatan":            true,
+		"/pagu-sub-kegiatan":       true,
+		"/unit-pengusul":           true,
+		"/indikator-tujuan":        true,
+		"/indikator-sasaran":       true,
+		"/indikator-program":       true,
+		"/indikator-kegiatan":      true,
+		"/indikator-sub-kegiatan":  true,
+		"/manajemen-user":          true,
+		"/rencana-kerja-spa":       true,
+	}
+
+	if recognized[normalized] {
+		if normalized == "/target-realisasi" {
+			return "/target-evaluasi"
+		}
+		return normalized
+	}
+
+	// If not recognized specifically, still return it if it starts with /
+	// This allows future-proofing and doesn't break if a new page is added without updating this list.
+	if strings.HasPrefix(normalized, "/") {
+		return normalized
+	}
+
+	return ""
 }
 
 func (h *Handler) ensureReady(c *gin.Context) bool {

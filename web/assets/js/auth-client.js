@@ -448,6 +448,50 @@
     window.location.href = LOGIN_PATH;
   }
 
+  let infoSwitcherTimerID = null;
+
+  async function initInformasiSwitcher(activeRoute = "") {
+    const infoSwitcherText = document.getElementById("info-switcher-text");
+    if (!infoSwitcherText) return;
+
+    if (infoSwitcherTimerID) {
+      clearInterval(infoSwitcherTimerID);
+      infoSwitcherTimerID = null;
+    }
+
+    try {
+      const params = new URLSearchParams();
+      params.set("limit", "5");
+      if (activeRoute) {
+        params.set("route", activeRoute);
+      }
+
+      const data = await fetchJSON(
+        `/api/v1/performance/informasi/latest?${params.toString()}`,
+      );
+      const items = Array.isArray(data?.items) ? data.items : [];
+
+      if (items.length === 0) {
+        infoSwitcherText.textContent = "Belum ada topik informasi";
+        return;
+      }
+
+      let index = 0;
+      const updateText = () => {
+        const item = items[index];
+        infoSwitcherText.textContent = item.informasi || "No info";
+        index = (index + 1) % items.length;
+      };
+
+      updateText();
+      if (items.length > 1) {
+        infoSwitcherTimerID = setInterval(updateText, 5000);
+      }
+    } catch (_) {
+      infoSwitcherText.textContent = "Gagal memuat topik informasi";
+    }
+  }
+
   window.__AUTH__ = {
     login,
     logout,
@@ -460,6 +504,7 @@
     verifySession,
     isAuthEnabled: fetchAuthEnabled,
     hasActorContext: fetchActorContextEnabled,
+    initInformasiSwitcher,
   };
 
   // Keep fetchJSON available globally for legacy compatibility
