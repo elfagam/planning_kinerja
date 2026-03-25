@@ -9,6 +9,15 @@
   let refreshPromise = null;
   let refreshTimer = null;
 
+  async function fetchJSON(url, options = {}) {
+    const res = await window.fetch(url, options);
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(data?.error || "Request failed");
+    }
+    return data;
+  }
+
   function decodeJwtPayload(token) {
     try {
       const parts = token.split(".");
