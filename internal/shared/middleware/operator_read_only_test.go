@@ -28,10 +28,10 @@ func performOperatorMiddlewareRequest(t *testing.T, authEnabled bool, method str
 	return w
 }
 
-func TestOperatorReadOnly_AllowsPlanningWrite(t *testing.T) {
+func TestOperatorReadOnly_BlocksPlanningWrite(t *testing.T) {
 	w := performOperatorMiddlewareRequest(t, true, http.MethodPost, "/api/v1/program")
-	if w.Code != http.StatusNoContent {
-		t.Fatalf("expected status %d, got %d", http.StatusNoContent, w.Code)
+	if w.Code != http.StatusForbidden {
+		t.Fatalf("expected status %d, got %d", http.StatusForbidden, w.Code)
 	}
 }
 
