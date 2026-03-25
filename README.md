@@ -2,32 +2,54 @@
 
 [![Go CI](https://github.com/elfagam/planning_kinerja/actions/workflows/go-ci.yml/badge.svg)](https://github.com/elfagam/planning_kinerja/actions/workflows/go-ci.yml)
 
-Blueprint awal aplikasi e-Planning RSUD berbasis Golang + Gin + MySQL + Bootstrap.
+Blueprint awal aplikasi e-Planning RSUD berbasis Golang + Gin + MySQL + HTML Bootstrap murni.
 
 ## Quick Start
+
+### Opsi 1: Menggunakan Docker Compose (Direkomendasikan)
+Cara paling mudah untuk menjalankan aplikasi beserta databasenya adalah menggunakan Docker Compose.
+
+```bash
+cp .env.example .env
+docker-compose up -d --build
+```
+Aplikasi akan tersedia di `http://localhost:7002/ui`.
+
+### Opsi 2: Menggunakan Golang CLI (Development Lokal)
 
 ```bash
 cp .env.example .env
 go run ./cmd/api
 ```
-
-Lalu buka `http://192.168.20.1:7002/ui`.
+Untuk opsi lokal, pastikan Anda memiliki database MySQL berjalan dan mengonfigurasi string koneksi `MYSQL_DSN` di dalam `.env`!
 
 ## Kredensial Demo (Development)
 
-Setelah menjalankan migrasi terbaru, gunakan akun berikut:
+Setelah proyek berjalan, gunakan akun berikut untuk masuk. Tiap akun memiliki akses terbatas (*Role-Based Access Control* / RBAC):
 
-- Username/Email: `superadmin@rsudcontoh.go.id`
-- Password: `Admin123!`
+- **ADMIN** (Akses Penuh)
+  Username: `superadmin@rsudcontoh.go.id`
+  Password: `Admin123!`
+  
+- **PERENCANA & OPERATOR** (Akses Terbatas: Renja, Kinerja, Target Realisasi)
+  Username: `planner.med@rsudcontoh.go.id`
+  Username: `operator@rsudcontoh.go.id`
 
-Akun demo lain yang tersedia:
+- **VERIFIKATOR**
+  Username: `verifier@rsudcontoh.go.id`
+  Username: `reviewer.nur@rsudcontoh.go.id`
 
-- `planner.med@rsudcontoh.go.id`
-- `reviewer.nur@rsudcontoh.go.id`
-- `approver@rsudcontoh.go.id`
-- `verifier@rsudcontoh.go.id`
+- **PIMPINAN** (Read-Only Akses Penuh)
+  Username: `approver@rsudcontoh.go.id`
 
 Semua akun demo di atas menggunakan password yang sama: `Admin123!`.
+
+## Fitur Keamanan Modern (RBAC Backend & Frontend)
+
+Aplikasi ini telah diperkeras dengan keamanan berlapis:
+- **Client-Side Guard (JavaScript):** File `auth-client.js` secara mandiri membaca token JWT pengguna dan secara dinamis menyembunyikan navigasi (*Menu Guard*) serta melindungi halaman (*Route Guard*) jika peran anggota memindai halaman diluar akses (seperti `/ui/manajemen-user` untuk Operator). Perlindungan path bersifat *subfolder proxy-safe*.
+- **Server-Side API Shield (Golang):** Di-*backup* oleh global *middleware* Golang `OperatorReadOnly`. Setiap *request* manipulasi data (POST/PUT/DELETE) ke grup API `/api/v1` akan dimoderasi ketat. Peran terbatas (seperti `OPERATOR`) hanya diizinkan memodifikasi rujukan API yang ditetapkan dalam profil mereka secara absolut (misal `/api/v1/rencana_kerja`). Pelanggaran luar rute tersebut otomatis dijatuhkan dengan kode `403 Forbidden`.
+- **Mitigasi *Clock Drift*:** Deteksi JWT Refresh Token pintar untuk memitigasi selisih waktu sistem antara Docker kontainer (backend) dan Jam perangkat (*browser*) klien, mencegah terjadinya malfungsi *infinite reload loop*.
 
 ## Struktur Folder
 
