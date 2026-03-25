@@ -168,6 +168,16 @@
           setStatus("Memproses login...");
 
           try {
+            if (
+              !window.__AUTH__ ||
+              typeof window.__AUTH__.login !== "function"
+            ) {
+              setStatus(
+                "Fitur login tidak tersedia. Pastikan file auth-client.js termuat dengan benar.",
+                true,
+              );
+              return;
+            }
             await window.__AUTH__.login(
               usernameInput.value.trim(),
               passwordInput.value,

@@ -1,3 +1,11 @@
+async function fetchJSON(url, options = {}) {
+  const res = await window.fetch(url, options);
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(data?.error || "Request failed");
+  }
+  return data;
+}
 (() => {
   const ACCESS_KEY = "AUTH_TOKEN";
   const REFRESH_KEY = "REFRESH_TOKEN";
@@ -101,28 +109,34 @@
     const refreshBeforeMs = 60 * 1000;
     const waitMs = Math.max(0, expiryMs - nowMs - refreshBeforeMs);
 
-    refreshTimer = setTimeout(async () => {
-      const enabled = await fetchAuthEnabled();
-      if (!enabled) {
-        return;
-      }
+    refreshTimer = setTimeout(
+      async () => {
+        const enabled = await fetchAuthEnabled();
+        if (!enabled) {
+          return;
+        }
 
-      const refreshed = await refreshAccessToken();
-      if (!refreshed) {
-        clearTokens();
-        redirectToLogin();
-        return;
-      }
+        const refreshed = await refreshAccessToken();
+        if (!refreshed) {
+          clearTokens();
+          redirectToLogin();
+          return;
+        }
 
-      // If refresh succeeded but expiry is still too close (e.g. clock sync issue),
-      // we must avoid a 0ms tight loop. Add a small intentional delay.
-      const newState = getSessionState();
-      if (newState.status === "refresh_soon" && newState.secondsRemaining <= 5) {
-        setTimeout(scheduleProactiveRefresh, 5000);
-      } else {
-        scheduleProactiveRefresh();
-      }
-    }, Math.max(waitMs, 1000)); // Ensure at least 1s wait
+        // If refresh succeeded but expiry is still too close (e.g. clock sync issue),
+        // we must avoid a 0ms tight loop. Add a small intentional delay.
+        const newState = getSessionState();
+        if (
+          newState.status === "refresh_soon" &&
+          newState.secondsRemaining <= 5
+        ) {
+          setTimeout(scheduleProactiveRefresh, 5000);
+        } else {
+          scheduleProactiveRefresh();
+        }
+      },
+      Math.max(waitMs, 1000),
+    ); // Ensure at least 1s wait
   }
 
   function getAccessToken() {
@@ -264,12 +278,14 @@
     "/ui/target-realisasi",
     "/ui/dokumen_pdf",
     "/ui/dashboard",
-    "/ui/unit-pengusul"
+    "/ui/unit-pengusul",
   ];
 
   function applyRoleBasedAccessControl(rawRole) {
-    const role = String(rawRole || "").trim().toUpperCase();
-    
+    const role = String(rawRole || "")
+      .trim()
+      .toUpperCase();
+
     // Admins and Pimpinan see everything
     if (!role || role === "ADMIN" || role === "PIMPINAN") {
       return;
@@ -279,8 +295,10 @@
     if (restrictedRoles.includes(role)) {
       const currentPath = window.location.pathname.replace(/\/$/, ""); // Strip trailing slash for matching
       const loginPath = LOGIN_PATH.replace(/\/$/, "");
-      
-      const allowedPaths = ALLOWED_OPERATOR_PAGES.map(p => p.replace(/\/$/, ""));
+
+      const allowedPaths = ALLOWED_OPERATOR_PAGES.map((p) =>
+        p.replace(/\/$/, ""),
+      );
 
       // 1. Route Guard
       if (!allowedPaths.includes(currentPath) && currentPath !== loginPath) {
@@ -289,29 +307,32 @@
       }
 
       // 2. Menu Guard
-      document.querySelectorAll('.admin-link').forEach(link => {
+      document.querySelectorAll(".admin-link").forEach((link) => {
         const rawHref = link.getAttribute("href");
         if (rawHref) {
-          const href = rawHref.split('?')[0].replace(/\/$/, "");
+          const href = rawHref.split("?")[0].replace(/\/$/, "");
           if (!allowedPaths.includes(href)) {
-            link.style.display = 'none';
+            link.style.display = "none";
           }
         }
       });
-      
+
       // 3. Hide Empty Group Labels
       document.querySelectorAll(".menu-group-label").forEach((label) => {
         let nextEl = label.nextElementSibling;
         let hasVisibleLinks = false;
-        while(nextEl && !nextEl.classList.contains("menu-group-label")) {
-          if (nextEl.classList.contains("admin-link") && nextEl.style.display !== 'none') {
+        while (nextEl && !nextEl.classList.contains("menu-group-label")) {
+          if (
+            nextEl.classList.contains("admin-link") &&
+            nextEl.style.display !== "none"
+          ) {
             hasVisibleLinks = true;
             break;
           }
           nextEl = nextEl.nextElementSibling;
         }
         if (!hasVisibleLinks) {
-          label.style.display = 'none';
+          label.style.display = "none";
         }
       });
     }
