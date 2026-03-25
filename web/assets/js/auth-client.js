@@ -157,11 +157,11 @@
   }
 
   function redirectToLogin() {
-    const current = window.location.pathname;
-    if (current === LOGIN_PATH) {
-      return;
+    const currentPath = window.location.pathname;
+    if (currentPath === LOGIN_PATH) {
+      return; // Already here, stop recursion
     }
-    const next = encodeURIComponent(current + window.location.search);
+    const next = encodeURIComponent(currentPath + window.location.search);
     window.location.href = `${LOGIN_PATH}?next=${next}`;
   }
 
@@ -342,7 +342,9 @@
     const current = window.location.pathname;
     const accessToken = getAccessToken();
     if (!accessToken) {
-      redirectToLogin();
+      if (current !== LOGIN_PATH) {
+        redirectToLogin();
+      }
       return;
     }
 

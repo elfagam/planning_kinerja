@@ -20,6 +20,14 @@ var auditReaderRoles = map[string]struct{}{
 	RoleAdmin: {},
 }
 
+var readerRoles = map[string]struct{}{
+	RoleAdmin:       {},
+	RoleOperator:    {},
+	RolePerencana:   {},
+	RoleVerifikator: {},
+	RolePimpinan:    {},
+}
+
 var actionRolePolicy = map[string]map[string]struct{}{
 	"submit": {
 		RoleAdmin:     {},
@@ -58,6 +66,11 @@ func canRoleWriteClient(role string) bool {
 
 func canRoleReadClientAudit(role string) bool {
 	_, ok := auditReaderRoles[role]
+	return ok
+}
+
+func canRoleReadClient(role string) bool {
+	_, ok := readerRoles[role]
 	return ok
 }
 

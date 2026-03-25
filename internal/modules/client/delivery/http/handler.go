@@ -129,7 +129,12 @@ func (h *Handler) List(c *gin.Context) {
 		filter.UnitPengusulID = &v
 	}
 
-	items, total, err := h.service.List(c.Request.Context(), filter)
+	actor, ok := actorFromContext(c)
+	if !ok {
+		return
+	}
+
+	items, total, err := h.service.List(c.Request.Context(), actor, filter)
 	if err != nil {
 		h.handleError(c, err)
 		return
@@ -187,7 +192,12 @@ func (h *Handler) Get(c *gin.Context) {
 		return
 	}
 
-	item, err := h.service.Get(c.Request.Context(), id)
+	actor, ok := actorFromContext(c)
+	if !ok {
+		return
+	}
+
+	item, err := h.service.Get(c.Request.Context(), actor, id)
 	if err != nil {
 		h.handleError(c, err)
 		return

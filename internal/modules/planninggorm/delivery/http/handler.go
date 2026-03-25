@@ -87,6 +87,10 @@ func (h *Handler) list(rc resourceConfig) gin.HandlerFunc {
 			return
 		}
 
+		if !allowedToReadPlanningData(c, rc.path) {
+			return
+		}
+
 		q := strings.TrimSpace(c.Query("q"))
 		query := h.db.WithContext(c.Request.Context()).Model(rc.newModel())
 		if q != "" && len(rc.searchFields) > 0 {
@@ -545,6 +549,10 @@ func (h *Handler) list(rc resourceConfig) gin.HandlerFunc {
 func (h *Handler) get(rc resourceConfig) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		if !h.ensureReady(c) {
+			return
+		}
+
+		if !allowedToReadPlanningData(c, rc.path) {
 			return
 		}
 
@@ -1135,6 +1143,21 @@ func allowedToMutatePlanningData(c *gin.Context, resourcePath string) bool {
 	if !planningMutationAllowedRoles[role] {
 		response.Error(c, http.StatusForbidden, "anda tidak memiliki hak akses untuk melakukan perubahan data perencanaan")
 		return false
+	}
+	return true
+}
+
+// allowedToReadPlanningData returns false (with 403) when the caller's role
+// is not authorized to read the given resource. For "users", only ADMIN
+// is allowed.
+func allowedToReadPlanningData(c *gin.Context, resourcePath string) bool {
+	rawRole, _ := c.Get("auth.role")
+	role := strings.ToUpper(strings.TrimSpace(fmt.Sprintf("%v", rawRole)))
+	if resourcePath == "users" {
+		if role != "ADMIN" {
+			response.Error(c, http.StatusForbidden, "hanya ADMIN yang dapat melihat data pengguna")
+			return false
+		}
 	}
 	return true
 }

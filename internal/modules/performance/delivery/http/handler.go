@@ -790,6 +790,8 @@ func (h *Handler) respondAchievementCalculation(c *gin.Context, target, realisas
 	})
 }
 
+// GetDashboardSummary returns a summary for the dashboard.
+// This endpoint is explicitly allowed for all authenticated roles.
 func (h *Handler) GetDashboardSummary(c *gin.Context) {
 	if !h.ensureReady(c) {
 		return

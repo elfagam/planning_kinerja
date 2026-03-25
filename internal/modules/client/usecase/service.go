@@ -8,7 +8,15 @@ import (
 	"e-plan-ai/internal/modules/client/domain"
 )
 
-func (s *Service) List(ctx context.Context, filter ListFilter) ([]domain.Client, int64, error) {
+func (s *Service) List(ctx context.Context, actor Actor, filter ListFilter) ([]domain.Client, int64, error) {
+	role := normalizeActorRole(actor.Role)
+	if actor.ID == 0 || !isValidActorRole(role) {
+		return nil, 0, domain.ErrForbiddenOperation
+	}
+	if !canRoleReadClient(role) {
+		return nil, 0, domain.ErrForbiddenOperation
+	}
+
 	if filter.Page <= 0 {
 		filter.Page = 1
 	}
@@ -29,7 +37,14 @@ func (s *Service) List(ctx context.Context, filter ListFilter) ([]domain.Client,
 	return s.repo.List(ctx, filter)
 }
 
-func (s *Service) Get(ctx context.Context, id uint64) (domain.Client, error) {
+func (s *Service) Get(ctx context.Context, actor Actor, id uint64) (domain.Client, error) {
+	role := normalizeActorRole(actor.Role)
+	if actor.ID == 0 || !isValidActorRole(role) {
+		return domain.Client{}, domain.ErrForbiddenOperation
+	}
+	if !canRoleReadClient(role) {
+		return domain.Client{}, domain.ErrForbiddenOperation
+	}
 	return s.repo.GetByID(ctx, id)
 }
 
