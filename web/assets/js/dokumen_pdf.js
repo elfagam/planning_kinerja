@@ -11,6 +11,9 @@
   const tableBody = document.getElementById("dokumen-table-body");
   const metaText = document.getElementById("dokumen-meta-text");
   const infoSwitcherText = document.getElementById("info-switcher-text");
+  const submitBtn = form.querySelector('button[type="submit"]');
+  const resetBtn = document.getElementById("dokumen-reset");
+  const fileLabel = document.querySelector('label[for="dokumen-file"]');
 
   let userRole = "";
   let switcherTimerID = null;
@@ -69,9 +72,14 @@
     data.forEach((dokumen) => {
       const row = document.createElement("tr");
       let aksiCell = "";
-      // Hanya ADMIN, OPERATOR, PERENCANA yang bisa hapus
+      // Hanya ADMIN, OPERATOR, PERENCANA yang bisa hapus/edit
       if (["ADMIN", "OPERATOR", "PERENCANA"].includes(userRole)) {
-        aksiCell = `<button class="btn btn-sm btn-danger" data-delete="${dokumen.id}">Hapus</button>`;
+        aksiCell = `
+          <div class="btn-group">
+            <button class="btn btn-sm btn-outline-primary" data-edit="${dokumen.id}">Edit</button>
+            <button class="btn btn-sm btn-outline-danger" data-delete="${dokumen.id}">Hapus</button>
+          </div>
+        `;
       } else {
         aksiCell = `<span class="text-muted">Tidak diizinkan</span>`;
       }
@@ -95,33 +103,65 @@
   }
 
   tableBody.addEventListener("click", async function (e) {
-    const btn = e.target.closest("button[data-delete]");
-    if (!btn) return;
+    // Delete Handle
+    const deleteBtn = e.target.closest("button[data-delete]");
+    if (deleteBtn) {
+      const id = deleteBtn.getAttribute("data-delete");
+      if (!id) return;
+      if (!confirm("Yakin hapus dokumen ini?")) return;
 
-    const id = btn.getAttribute("data-delete");
-    if (!id) return;
-
-    if (!confirm("Yakin hapus dokumen ini?")) return;
-
-    btn.disabled = true;
-    statusText.textContent = "Menghapus...";
-    try {
-      const response = await fetch(`${dokumenEndpoint}/${id}`, {
-        method: "DELETE",
-        headers: authHeader(),
-      });
-      if (!response.ok) throw new Error("Gagal menghapus");
-      
-      statusText.textContent = "Berhasil dihapus";
-      await loadDokumenPDFs();
-    } catch (error) {
-      alert("Error: " + error.message);
-      statusText.textContent = "Gagal menghapus";
-    } finally {
-      if (document.body.contains(btn)) {
-        btn.disabled = false;
+      deleteBtn.disabled = true;
+      statusText.textContent = "Menghapus...";
+      try {
+        const response = await fetch(`${dokumenEndpoint}/${id}`, {
+          method: "DELETE",
+          headers: authHeader(),
+        });
+        if (!response.ok) throw new Error("Gagal menghapus");
+        
+        statusText.textContent = "Berhasil dihapus";
+        await loadDokumenPDFs();
+      } catch (error) {
+        alert("Error: " + error.message);
+        statusText.textContent = "Gagal menghapus";
+      } finally {
+        if (document.body.contains(deleteBtn)) {
+          deleteBtn.disabled = false;
+        }
       }
+      return;
     }
+
+    // Edit Handle
+    const editBtn = e.target.closest("button[data-edit]");
+    if (editBtn) {
+      const id = editBtn.getAttribute("data-edit");
+      if (!id) return;
+      
+      const row = editBtn.closest("tr");
+      const tahunVal = row.cells[1].innerText;
+      const namaVal = row.cells[2].innerText;
+
+      document.getElementById("dokumen-id").value = id;
+      tahunInput.value = tahunVal;
+      namaInput.value = namaVal;
+      fileInput.required = false;
+      fileLabel.innerHTML = 'File PDF <span class="text-muted">(Kosongkan jika tidak ingin ubah file)</span>';
+      submitBtn.textContent = "Update Dokumen";
+      submitBtn.className = "btn btn-info btn-sm";
+      statusText.textContent = "Mode Edit: " + namaVal;
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  });
+
+  resetBtn.addEventListener("click", () => {
+    form.reset();
+    document.getElementById("dokumen-id").value = "";
+    fileInput.required = true;
+    fileLabel.textContent = "File PDF";
+    submitBtn.textContent = "Upload";
+    submitBtn.className = "btn btn-primary btn-sm";
+    statusText.textContent = "Siap";
   });
 
   async function loadDokumenPDFs() {
@@ -164,12 +204,11 @@
         body: formData,
       });
 
-      if (!response.ok) throw new Error("Gagal mengunggah");
+      if (!response.ok) throw new Error("Gagal mengunggah/update");
 
-      form.reset();
-      document.getElementById("dokumen-id").value = "";
+      resetBtn.click();
       await loadDokumenPDFs();
-      statusText.textContent = "Berhasil diunggah";
+      statusText.textContent = id ? "Berhasil diperbarui" : "Berhasil diunggah";
     } catch (error) {
       alert("Error: " + error.message);
       statusText.textContent = "Gagal";

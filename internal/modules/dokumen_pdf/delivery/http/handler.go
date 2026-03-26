@@ -1,15 +1,14 @@
 package http
 
 import (
-	"e-plan-ai/internal/config"
 	"e-plan-ai/internal/modules/dokumen_pdf/model"
 	"e-plan-ai/internal/modules/dokumen_pdf/repository"
-	"e-plan-ai/internal/shared/database"
 	"fmt"
-	"html/template"
 	"net/http"
 	"os"
 	"strconv"
+	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -19,12 +18,12 @@ type Handler struct {
     repo *repository.DokumenPDFRepository
 }
 
-// Handler untuk endpoint /latest
+// GetLatestDokumenPDF returns the latest PDF document.
 func (h *Handler) GetLatestDokumenPDF(c *gin.Context) {
     var doc model.DokumenPDF
     err := h.repo.FindLatest(c.Request.Context(), &doc)
     if err != nil {
-        c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": "Gagal mengambil dokumen terbaru"})
+        c.JSON(http.StatusOK, gin.H{"success": false, "error": "Belum ada dokumen yang diunggah"})
         return
     }
     c.JSON(http.StatusOK, gin.H{"success": true, "data": doc})
@@ -60,23 +59,39 @@ func (h *Handler) Create(c *gin.Context) {
         c.JSON(http.StatusBadRequest, gin.H{"error": "file PDF wajib diupload"})
         return
     }
+
+    // Validasi ekstensi
+    if !strings.HasSuffix(strings.ToLower(file.Filename), ".pdf") {
+        c.JSON(http.StatusBadRequest, gin.H{"error": "Hanya file PDF yang diizinkan"})
+        return
+    }
+
     // Validasi tahun
     tahunInt, err := strconv.Atoi(tahun)
     if tahun == "" || err != nil {
         c.JSON(http.StatusBadRequest, gin.H{"error": "tahun wajib diisi dan harus berupa angka"})
         return
     }
-    // Simpan file PDF ke server
-    savePath := "web/assets/pdf/" + file.Filename
+
+    // Pastikan direktori ada
+    uploadDir := "web/assets/pdf/"
+    if _, err := os.Stat(uploadDir); os.IsNotExist(err) {
+        os.MkdirAll(uploadDir, 0755)
+    }
+
+    // Simpan file PDF ke server dengan nama unik
+    uniqueFilename := fmt.Sprintf("%d_%s", time.Now().Unix(), file.Filename)
+    savePath := uploadDir + uniqueFilename
     if err := c.SaveUploadedFile(file, savePath); err != nil {
         c.JSON(http.StatusInternalServerError, gin.H{"error": "gagal menyimpan file PDF"})
         return
     }
+
     // Simpan ke database
     doc := model.DokumenPDF{
-        Tahun:     tahunInt,
-        Nama:      nama,
-        FilePath:  "/assets/pdf/" + file.Filename,
+        Tahun:    tahunInt,
+        Nama:     nama,
+        FilePath: "/assets/pdf/" + uniqueFilename,
     }
     if err := h.repo.Create(c.Request.Context(), &doc); err != nil {
         c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -107,17 +122,48 @@ func (h *Handler) Update(c *gin.Context) {
         c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
         return
     }
-    var doc model.DokumenPDF
-    if err := c.ShouldBindJSON(&doc); err != nil {
-        c.JSON(http.StatusBadRequest, gin.H{"error": "invalid payload"})
+
+    existing, err := h.repo.GetByID(c.Request.Context(), id)
+    if err != nil {
+        c.JSON(http.StatusNotFound, gin.H{"error": "dokumen tidak ditemukan"})
         return
     }
-    doc.ID = id
-    if err := h.repo.Update(c.Request.Context(), &doc); err != nil {
+
+    tahun := c.PostForm("tahun")
+    nama := c.PostForm("nama")
+    file, _ := c.FormFile("file") // File opsional di update
+
+    if tahun != "" {
+        if t, err := strconv.Atoi(tahun); err == nil {
+            existing.Tahun = t
+        }
+    }
+    if nama != "" {
+        existing.Nama = nama
+    }
+
+    // Jika ada file baru yang diupload
+    if file != nil {
+        // Hapus file lama jika ada
+        if existing.FilePath != "" {
+            _ = removeFile("web" + existing.FilePath)
+        }
+
+        // Simpan file baru
+        uniqueFilename := fmt.Sprintf("%d_%s", time.Now().Unix(), file.Filename)
+        savePath := "web/assets/pdf/" + uniqueFilename
+        if err := c.SaveUploadedFile(file, savePath); err != nil {
+            c.JSON(http.StatusInternalServerError, gin.H{"error": "gagal menyimpan file PDF baru"})
+            return
+        }
+        existing.FilePath = "/assets/pdf/" + uniqueFilename
+    }
+
+    if err := h.repo.Update(c.Request.Context(), existing); err != nil {
         c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
         return
     }
-    c.JSON(http.StatusOK, doc)
+    c.JSON(http.StatusOK, existing)
 }
 
 func (h *Handler) Delete(c *gin.Context) {
@@ -151,18 +197,4 @@ func (h *Handler) Delete(c *gin.Context) {
 // Helper hapus file
 func removeFile(path string) error {
     return os.Remove(path)
-}
-
-func DokumenPDFPageHandler(cfg config.Config) gin.HandlerFunc {
-    return func(c *gin.Context) {
-        db, _ := database.NewGormMySQL(cfg)
-        var dokumenPDFs []model.DokumenPDF
-        db.Find(&dokumenPDFs)
-
-        tmpl := template.Must(template.ParseFiles("web/templates/dokumen_pdf.html"))
-        c.Status(http.StatusOK)
-        tmpl.Execute(c.Writer, map[string]interface{}{
-            "DokumenPDFs": dokumenPDFs,
-        })
-    }
 }
