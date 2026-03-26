@@ -142,6 +142,7 @@
 
       const refreshed = await refreshAccessToken();
       if (!refreshed) {
+        console.warn("Proactive refresh failed, redirecting to login");
         clearTokens();
         redirectToLogin();
         return;
@@ -195,6 +196,7 @@
       return; // Already here, stop recursion
     }
     const next = encodeURIComponent(currentPath + window.location.search);
+    console.log(`Redirecting to login: ${LOGIN_PATH}?next=${next}`);
     window.location.href = `${LOGIN_PATH}?next=${next}`;
   }
 
@@ -320,7 +322,8 @@
       const isAllowed = allowedPaths.some((p) => currentPath.endsWith(p));
       const isLogin = currentPath.endsWith(loginPath);
       if (!isAllowed && !isLogin) {
-        window.location.href = "dashboard";
+        console.warn(`RBAC: Path not allowed (${currentPath}), redirecting to dashboard`);
+        window.location.href = "/ui/dashboard";
         return;
       }
 
@@ -370,46 +373,67 @@
     return false;
   }
 
+  let verifySessionPromise = null;
+
   async function verifySession() {
-    const enabled = await fetchAuthEnabled();
-    if (!enabled) {
-      return;
+    if (verifySessionPromise) {
+      return verifySessionPromise;
     }
 
-    const current = window.location.pathname;
-    const accessToken = getAccessToken();
-    if (!accessToken) {
-      if (current !== LOGIN_PATH) {
-        redirectToLogin();
+    verifySessionPromise = (async () => {
+      try {
+        const enabled = await fetchAuthEnabled();
+        if (!enabled) {
+          console.log("Auth is disabled via health check");
+          return;
+        }
+
+        const current = window.location.pathname;
+        const accessToken = getAccessToken();
+        if (!accessToken) {
+          if (current !== LOGIN_PATH) {
+            console.log("No access token, redirecting to login");
+            redirectToLogin();
+          }
+          return;
+        }
+
+        if (current === LOGIN_PATH) {
+          const url = new URL(window.location.href);
+          const next = url.searchParams.get("next");
+          if (next && next.startsWith("/") && next !== LOGIN_PATH) {
+            console.log(`Logged in visiting login path, redirecting to next: ${next}`);
+            window.location.href = next;
+          } else {
+            console.log("Logged in visiting login path, redirecting to dashboard");
+            window.location.href = "/ui/dashboard";
+          }
+          return;
+        }
+
+        const checkSuccess = await performRoleCheck();
+        if (!checkSuccess) {
+          return;
+        }
+
+        // Proactive refresh check
+        const state = getSessionState();
+        if (state.status === "refresh_soon") {
+          console.log("Session needs proactive refresh during init");
+          await performRefresh();
+        }
+      } catch (err) {
+        console.error("RBAC: verifySession failed:", err);
+      } finally {
+        // We keep the promise so subsequent calls can still use it, 
+        // but we might want to clear it if we want to allow re-verification later.
+        // For now, let's keep it as a singleton initialization promise.
       }
-      return;
-    }
+    })();
 
-    if (current === LOGIN_PATH) {
-      const url = new URL(window.location.href);
-      const next = url.searchParams.get("next");
-      if (next && next.startsWith("/") && next !== LOGIN_PATH) {
-        window.location.href = next;
-      } else {
-        window.location.href = "/ui/dashboard";
-      }
-      return;
-    }
-
-    const checkSuccess = await performRoleCheck();
-    if (checkSuccess) {
-      scheduleProactiveRefresh();
-      return;
-    }
-
-    const refreshed = await refreshAccessToken();
-    if (!refreshed) {
-      clearTokens();
-      redirectToLogin();
-    } else {
-      await performRoleCheck();
-    }
+    return verifySessionPromise;
   }
+
 
   async function login(username, password) {
     const res = await window.fetch("/api/v1/auth/login", {
@@ -487,7 +511,8 @@
       if (items.length > 1) {
         infoSwitcherTimerID = setInterval(updateText, 5000);
       }
-    } catch (_) {
+    } catch (err) {
+      console.error("RBAC: initInformasiSwitcher failed:", err);
       infoSwitcherText.textContent = "Gagal memuat topik informasi";
     }
   }

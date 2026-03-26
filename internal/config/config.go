@@ -48,7 +48,7 @@ func Load() Config {
 		DBConnMaxIdleTimeMins:    getenvInt("DB_CONN_MAX_IDLE_TIME_MINUTES", 10),
 		GinMode:                  getenv("GIN_MODE", "debug"),
 		LogLevel:                 getenv("LOG_LEVEL", "info"),
-		AuthEnabled:              getenvBool("AUTH_ENABLED", false),
+		AuthEnabled:              getenvBool("AUTH_ENABLED", true),
 		AuthToken:                getenv("AUTH_TOKEN", "change-me-in-production"),
 		DevAuthUserEmail:         getenv("DEV_AUTH_USER_EMAIL", "superadmin@rsudcontoh.go.id"),
 		JWTIssuer:                getenv("JWT_ISSUER", "e-plan-ai"),

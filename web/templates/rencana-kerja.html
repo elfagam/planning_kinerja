@@ -405,649 +405,663 @@
     </main>
 
     <script>
-      (() => {
-        const informasiLatestEndpoint = "/api/v1/performance/informasi/latest";
-        const activeInfoRoute = "/rencana-kerja";
-        const endpoint = document.body.dataset.apiEndpoint;
-        const subKegiatanEndpoint = "/api/v1/sub_kegiatan";
-        const indikatorEndpoint = "/api/v1/indikator_sub_kegiatan?all=true";
-        const indikatorRencanaKerjaEndpoint =
-          "/api/v1/indikator_rencana_kerja?all=true";
-        const paguSubKegiatanEndpoint = "/api/v1/pagu_sub_kegiatan?all=true";
-        const unitPengusulEndpoint = "/api/v1/unit_pengusul";
-        const DEFAULT_YEAR_KEY = "DEFAULT_YEAR";
+      document.addEventListener("DOMContentLoaded", function () {
+        (async () => {
+          const informasiLatestEndpoint =
+            "/api/v1/performance/informasi/latest";
+          const activeInfoRoute = "/rencana-kerja";
+          const endpoint = document.body.dataset.apiEndpoint;
+          const subKegiatanEndpoint = "/api/v1/sub_kegiatan";
+          const indikatorEndpoint = "/api/v1/indikator_sub_kegiatan?all=true";
+          const indikatorRencanaKerjaEndpoint =
+            "/api/v1/indikator_rencana_kerja?all=true";
+          const paguSubKegiatanEndpoint = "/api/v1/pagu_sub_kegiatan?all=true";
+          const unitPengusulEndpoint = "/api/v1/unit_pengusul";
+          const DEFAULT_YEAR_KEY = "DEFAULT_YEAR";
 
-        const form = document.getElementById("crud-form");
-        const idInput = document.getElementById("entity-id");
-        const subKegiatanFilterInput =
-          document.getElementById("subKegiatanFilter");
-        const subKegiatanInput = document.getElementById("subKegiatanId");
-        const paguTahunSebelumnyaInput = document.getElementById(
-          "paguTahunSebelumnya",
-        );
-        const paguTahunIniInput = document.getElementById("paguTahunIni");
-        const indikatorInput = document.getElementById(
-          "indikatorSubKegiatanId",
-        );
-        const unitPengusulInput = document.getElementById("unitPengusulId");
-        const kodeInput = document.getElementById("kode");
-        const namaInput = document.getElementById("nama");
-        const tahunInput = document.getElementById("tahun");
-        const triwulanInput = document.getElementById("triwulan");
-        const statusInput = document.getElementById("status");
-        const dibuatOlehInput = document.getElementById("dibuatOleh");
-        const catatanInput = document.getElementById("catatan");
-        const statusText = document.getElementById("status-text");
-        const queryInput = document.getElementById("query");
-        const btnSearch = document.getElementById("btn-search");
-        const btnSearchReset = document.getElementById("btn-search-reset");
-        const btnReset = document.getElementById("btn-reset");
-        const tableBody = document.getElementById("table-body");
-        const metaText = document.getElementById("meta-text");
-        const pagePrevBtn = document.getElementById("page-prev");
-        const pageNextBtn = document.getElementById("page-next");
-        const pageText = document.getElementById("page-text");
-        const tahunAktifLabel = document.getElementById("tahunAktifLabel");
-        const akumulasiPaguN1 = document.getElementById("akumulasiPaguN1");
-        const akumulasiPaguN = document.getElementById("akumulasiPaguN");
-        const akumulasiStatusDraft = document.getElementById(
-          "akumulasiStatusDraft",
-        );
-        const akumulasiStatusDiajukan = document.getElementById(
-          "akumulasiStatusDiajukan",
-        );
-        const akumulasiStatusDisetujui = document.getElementById(
-          "akumulasiStatusDisetujui",
-        );
-        const akumulasiStatusDitolak = document.getElementById(
-          "akumulasiStatusDitolak",
-        );
-        const akumulasiByKodeBody = document.getElementById(
-          "akumulasiByKodeBody",
-        );
-        const akumulasiByKodeMeta = document.getElementById(
-          "akumulasiByKodeMeta",
-        );
-        const infoSwitcherText = document.getElementById("info-switcher-text");
-
-        const subKegiatanMap = new Map();
-        const indikatorMap = new Map();
-        const indikatorDetailMap = new Map();
-        const paguSubKegiatanMap = new Map();
-        const unitPengusulMap = new Map();
-        const DEFAULT_PAGE_SIZE = 2;
-        const MUTATION_ROLES = new Set(["ADMIN", "PERENCANA", "OPERATOR"]);
-        let subKegiatanItemsCache = [];
-        let indikatorItemsCache = [];
-        let currentListItems = [];
-        let currentUserID = 0;
-        let currentUserRole = "";
-        let currentPage = 1;
-        let switcherTimerID = null;
-
-        function getAccessToken() {
-          return (
-            localStorage.getItem("AUTH_TOKEN") ||
-            localStorage.getItem("authToken") ||
-            ""
+          const form = document.getElementById("crud-form");
+          const idInput = document.getElementById("entity-id");
+          const subKegiatanFilterInput =
+            document.getElementById("subKegiatanFilter");
+          const subKegiatanInput = document.getElementById("subKegiatanId");
+          const paguTahunSebelumnyaInput = document.getElementById(
+            "paguTahunSebelumnya",
           );
-        }
-
-        function redirectToLogin() {
-          const next = encodeURIComponent(
-            window.location.pathname + window.location.search,
+          const paguTahunIniInput = document.getElementById("paguTahunIni");
+          const indikatorInput = document.getElementById(
+            "indikatorSubKegiatanId",
           );
-          window.location.href = `/ui/login?next=${next}`;
-        }
-
-        function authHeader() {
-          const token = getAccessToken();
-          return token ? { Authorization: `Bearer ${token}` } : {};
-        }
-
-        function setStatus(message, isError = false) {
-          statusText.textContent = message;
-          statusText.className = isError
-            ? "text-danger small"
-            : "text-success small";
-        }
-
-        function normalizeRole(raw) {
-          return String(raw || "")
-            .trim()
-            .toUpperCase();
-        }
-
-        function canMutateByRole(role) {
-          return MUTATION_ROLES.has(normalizeRole(role));
-        }
-
-        function applyRoleAccess() {
-          const canMutate = canMutateByRole(currentUserRole);
-          const fields = form.querySelectorAll(
-            "input, select, textarea, button[type='submit'], #btn-reset",
+          const unitPengusulInput = document.getElementById("unitPengusulId");
+          const kodeInput = document.getElementById("kode");
+          const namaInput = document.getElementById("nama");
+          const tahunInput = document.getElementById("tahun");
+          const triwulanInput = document.getElementById("triwulan");
+          const statusInput = document.getElementById("status");
+          const dibuatOlehInput = document.getElementById("dibuatOleh");
+          const catatanInput = document.getElementById("catatan");
+          const statusText = document.getElementById("status-text");
+          const queryInput = document.getElementById("query");
+          const btnSearch = document.getElementById("btn-search");
+          const btnSearchReset = document.getElementById("btn-search-reset");
+          const btnReset = document.getElementById("btn-reset");
+          const tableBody = document.getElementById("table-body");
+          const metaText = document.getElementById("meta-text");
+          const pagePrevBtn = document.getElementById("page-prev");
+          const pageNextBtn = document.getElementById("page-next");
+          const pageText = document.getElementById("page-text");
+          const tahunAktifLabel = document.getElementById("tahunAktifLabel");
+          const akumulasiPaguN1 = document.getElementById("akumulasiPaguN1");
+          const akumulasiPaguN = document.getElementById("akumulasiPaguN");
+          const akumulasiStatusDraft = document.getElementById(
+            "akumulasiStatusDraft",
           );
+          const akumulasiStatusDiajukan = document.getElementById(
+            "akumulasiStatusDiajukan",
+          );
+          const akumulasiStatusDisetujui = document.getElementById(
+            "akumulasiStatusDisetujui",
+          );
+          const akumulasiStatusDitolak = document.getElementById(
+            "akumulasiStatusDitolak",
+          );
+          const akumulasiByKodeBody = document.getElementById(
+            "akumulasiByKodeBody",
+          );
+          const akumulasiByKodeMeta = document.getElementById(
+            "akumulasiByKodeMeta",
+          );
+          const infoSwitcherText =
+            document.getElementById("info-switcher-text");
 
-          fields.forEach((field) => {
-            if (field && field.id !== "status-text") {
-              field.disabled = !canMutate;
-            }
-          });
+          const subKegiatanMap = new Map();
+          const indikatorMap = new Map();
+          const indikatorDetailMap = new Map();
+          const paguSubKegiatanMap = new Map();
+          const unitPengusulMap = new Map();
+          const DEFAULT_PAGE_SIZE = 2;
+          const MUTATION_ROLES = new Set(["ADMIN", "PERENCANA", "OPERATOR"]);
+          let subKegiatanItemsCache = [];
+          let indikatorItemsCache = [];
+          let currentListItems = [];
+          let currentUserID = 0;
+          let currentUserRole = "";
+          let currentPage = 1;
+          let switcherTimerID = null;
 
-          if (!canMutate) {
-            setStatus(
-              `Role ${currentUserRole || "UNKNOWN"} hanya dapat melihat data rencana kerja`,
+          function getAccessToken() {
+            return (
+              localStorage.getItem("AUTH_TOKEN") ||
+              localStorage.getItem("authToken") ||
+              ""
             );
           }
-        }
 
-        function defaultTahun() {
-          const stored = String(
-            localStorage.getItem(DEFAULT_YEAR_KEY) || "",
-          ).trim();
-          const year = Number(stored);
-          if (Number.isInteger(year) && year >= 2000 && year <= 2100) {
-            return String(year);
-          }
-          return String(new Date().getFullYear());
-        }
-
-        function setTahunAktifLabel(year) {
-          if (!tahunAktifLabel) {
-            return;
-          }
-          tahunAktifLabel.textContent = String(year || "-");
-        }
-
-        function normalizeSubKegiatan(raw) {
-          return {
-            id: Number(raw.id ?? raw.ID ?? 0),
-            kode: raw.kode ?? raw.Kode ?? "",
-            nama: raw.nama ?? raw.Nama ?? "",
-          };
-        }
-
-        function normalizeIndikator(raw) {
-          return {
-            id: Number(raw.id ?? raw.ID ?? 0),
-            subKegiatanId: Number(
-              raw.sub_kegiatan_id ?? raw.SubKegiatanID ?? 0,
-            ),
-            kode: raw.kode ?? raw.Kode ?? "",
-            nama: raw.nama ?? raw.Nama ?? "",
-          };
-        }
-
-        function normalizeUnit(raw) {
-          return {
-            id: Number(raw.id ?? raw.ID ?? 0),
-            kode: raw.kode ?? raw.Kode ?? "",
-            nama: raw.nama ?? raw.Nama ?? "",
-          };
-        }
-
-        function normalizePagu(raw) {
-          const tahunRaw = raw.tahun ?? raw.Tahun ?? null;
-          return {
-            subKegiatanId: Number(
-              raw.sub_kegiatan_id ?? raw.SubKegiatanID ?? 0,
-            ),
-            tahun: tahunRaw != null ? Number(tahunRaw) : null,
-            paguN1: Number(
-              raw.pagu_tahun_sebelumnya ?? raw.PaguTahunSebelumnya ?? 0,
-            ),
-            paguN: Number(raw.pagu_tahun_ini ?? raw.PaguTahunIni ?? 0),
-          };
-        }
-
-        function normalizeIndikatorRencanaKerja(raw) {
-          return {
-            rencanaKerjaId: Number(
-              raw.rencana_kerja_id ?? raw.RencanaKerjaID ?? 0,
-            ),
-            anggaranTahunan: Number(
-              raw.anggaran_tahunan ?? raw.AnggaranTahunan ?? 0,
-            ),
-          };
-        }
-
-        function money(value) {
-          return new Intl.NumberFormat("id-ID", {
-            minimumFractionDigits: 2,
-            maximumFractionDigits: 2,
-          }).format(Number(value || 0));
-        }
-
-        function paguToneClass(value) {
-          return Number(value || 0) > 0
-            ? "text-success fw-semibold"
-            : "text-muted";
-        }
-
-        function normalizeItem(raw) {
-          const indikatorSubKegiatan =
-            raw.indikator_sub_kegiatan ?? raw.IndikatorSubKegiatan ?? null;
-          const unitPengusul = raw.unit_pengusul ?? raw.UnitPengusul ?? null;
-
-          return {
-            id: Number(raw.id ?? raw.ID ?? 0),
-            indikatorSubKegiatanId: Number(
-              raw.indikator_sub_kegiatan_id ?? raw.IndikatorSubKegiatanID ?? 0,
-            ),
-            unitPengusulId: Number(
-              raw.unit_pengusul_id ?? raw.UnitPengusulID ?? 0,
-            ),
-            kode: raw.kode ?? raw.Kode ?? "",
-            nama: raw.nama ?? raw.Nama ?? "",
-            tahun: Number(raw.tahun ?? raw.Tahun ?? 0),
-            triwulan: raw.triwulan ?? raw.Triwulan ?? null,
-            status: raw.status ?? raw.Status ?? "DRAFT",
-            dibuatOleh: Number(raw.dibuat_oleh ?? raw.DibuatOleh ?? 0),
-            catatan: raw.catatan ?? raw.Catatan ?? "",
-            indikatorSubKegiatanKode:
-              indikatorSubKegiatan?.kode ?? indikatorSubKegiatan?.Kode ?? "",
-            indikatorSubKegiatanNama:
-              indikatorSubKegiatan?.nama ?? indikatorSubKegiatan?.Nama ?? "",
-            unitPengusulKode: unitPengusul?.kode ?? unitPengusul?.Kode ?? "",
-            unitPengusulNama: unitPengusul?.nama ?? unitPengusul?.Nama ?? "",
-          };
-        }
-
-
-        function isDuplicateKode(kode, editingID) {
-          const normalizedKode = String(kode || "")
-            .trim()
-            .toLowerCase();
-          if (!normalizedKode) {
-            return false;
+          function redirectToLogin() {
+            const next = encodeURIComponent(
+              window.location.pathname + window.location.search,
+            );
+            window.location.href = `/ui/login?next=${next}`;
           }
 
-          return currentListItems.some((item) => {
-            const itemID = Number(item.id || 0);
-            if (editingID > 0 && itemID === editingID) {
+          function authHeader() {
+            const token = getAccessToken();
+            return token ? { Authorization: `Bearer ${token}` } : {};
+          }
+
+          function setStatus(message, isError = false) {
+            statusText.textContent = message;
+            statusText.className = isError
+              ? "text-danger small"
+              : "text-success small";
+          }
+
+          function normalizeRole(raw) {
+            return String(raw || "")
+              .trim()
+              .toUpperCase();
+          }
+
+          function canMutateByRole(role) {
+            return MUTATION_ROLES.has(normalizeRole(role));
+          }
+
+          function applyRoleAccess() {
+            const canMutate = canMutateByRole(currentUserRole);
+            const fields = form.querySelectorAll(
+              "input, select, textarea, button[type='submit'], #btn-reset",
+            );
+
+            fields.forEach((field) => {
+              if (field && field.id !== "status-text") {
+                field.disabled = !canMutate;
+              }
+            });
+
+            if (!canMutate) {
+              setStatus(
+                `Role ${currentUserRole || "UNKNOWN"} hanya dapat melihat data rencana kerja`,
+              );
+            }
+          }
+
+          function defaultTahun() {
+            const stored = String(
+              localStorage.getItem(DEFAULT_YEAR_KEY) || "",
+            ).trim();
+            const year = Number(stored);
+            if (Number.isInteger(year) && year >= 2000 && year <= 2100) {
+              return String(year);
+            }
+            return String(new Date().getFullYear());
+          }
+
+          function setTahunAktifLabel(year) {
+            if (!tahunAktifLabel) {
+              return;
+            }
+            tahunAktifLabel.textContent = String(year || "-");
+          }
+
+          function normalizeSubKegiatan(raw) {
+            return {
+              id: Number(raw.id ?? raw.ID ?? 0),
+              kode: raw.kode ?? raw.Kode ?? "",
+              nama: raw.nama ?? raw.Nama ?? "",
+            };
+          }
+
+          function normalizeIndikator(raw) {
+            return {
+              id: Number(raw.id ?? raw.ID ?? 0),
+              subKegiatanId: Number(
+                raw.sub_kegiatan_id ?? raw.SubKegiatanID ?? 0,
+              ),
+              kode: raw.kode ?? raw.Kode ?? "",
+              nama: raw.nama ?? raw.Nama ?? "",
+            };
+          }
+
+          function normalizeUnit(raw) {
+            return {
+              id: Number(raw.id ?? raw.ID ?? 0),
+              kode: raw.kode ?? raw.Kode ?? "",
+              nama: raw.nama ?? raw.Nama ?? "",
+            };
+          }
+
+          function normalizePagu(raw) {
+            const tahunRaw = raw.tahun ?? raw.Tahun ?? null;
+            return {
+              subKegiatanId: Number(
+                raw.sub_kegiatan_id ?? raw.SubKegiatanID ?? 0,
+              ),
+              tahun: tahunRaw != null ? Number(tahunRaw) : null,
+              paguN1: Number(
+                raw.pagu_tahun_sebelumnya ?? raw.PaguTahunSebelumnya ?? 0,
+              ),
+              paguN: Number(raw.pagu_tahun_ini ?? raw.PaguTahunIni ?? 0),
+            };
+          }
+
+          function normalizeIndikatorRencanaKerja(raw) {
+            return {
+              rencanaKerjaId: Number(
+                raw.rencana_kerja_id ?? raw.RencanaKerjaID ?? 0,
+              ),
+              anggaranTahunan: Number(
+                raw.anggaran_tahunan ?? raw.AnggaranTahunan ?? 0,
+              ),
+            };
+          }
+
+          function money(value) {
+            return new Intl.NumberFormat("id-ID", {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2,
+            }).format(Number(value || 0));
+          }
+
+          function paguToneClass(value) {
+            return Number(value || 0) > 0
+              ? "text-success fw-semibold"
+              : "text-muted";
+          }
+
+          function normalizeItem(raw) {
+            const indikatorSubKegiatan =
+              raw.indikator_sub_kegiatan ?? raw.IndikatorSubKegiatan ?? null;
+            const unitPengusul = raw.unit_pengusul ?? raw.UnitPengusul ?? null;
+
+            return {
+              id: Number(raw.id ?? raw.ID ?? 0),
+              indikatorSubKegiatanId: Number(
+                raw.indikator_sub_kegiatan_id ??
+                  raw.IndikatorSubKegiatanID ??
+                  0,
+              ),
+              unitPengusulId: Number(
+                raw.unit_pengusul_id ?? raw.UnitPengusulID ?? 0,
+              ),
+              kode: raw.kode ?? raw.Kode ?? "",
+              nama: raw.nama ?? raw.Nama ?? "",
+              tahun: Number(raw.tahun ?? raw.Tahun ?? 0),
+              triwulan: raw.triwulan ?? raw.Triwulan ?? null,
+              status: raw.status ?? raw.Status ?? "DRAFT",
+              dibuatOleh: Number(raw.dibuat_oleh ?? raw.DibuatOleh ?? 0),
+              catatan: raw.catatan ?? raw.Catatan ?? "",
+              indikatorSubKegiatanKode:
+                indikatorSubKegiatan?.kode ?? indikatorSubKegiatan?.Kode ?? "",
+              indikatorSubKegiatanNama:
+                indikatorSubKegiatan?.nama ?? indikatorSubKegiatan?.Nama ?? "",
+              unitPengusulKode: unitPengusul?.kode ?? unitPengusul?.Kode ?? "",
+              unitPengusulNama: unitPengusul?.nama ?? unitPengusul?.Nama ?? "",
+            };
+          }
+
+          function isDuplicateKode(kode, editingID) {
+            const normalizedKode = String(kode || "")
+              .trim()
+              .toLowerCase();
+            if (!normalizedKode) {
               return false;
             }
 
-            return (
-              String(item.kode || "")
-                .trim()
-                .toLowerCase() === normalizedKode
-            );
-          });
-        }
+            return currentListItems.some((item) => {
+              const itemID = Number(item.id || 0);
+              if (editingID > 0 && itemID === editingID) {
+                return false;
+              }
 
-        function suggestNextKode() {
-          let maxNumber = 0;
-          let padWidth = 3;
-
-          currentListItems.forEach((item) => {
-            const kode = String(item.kode || "").trim();
-            const match = /^RK-(\d+)$/i.exec(kode);
-            if (!match) {
-              return;
-            }
-
-            const numberPart = match[1];
-            const parsed = Number(numberPart);
-            if (Number.isFinite(parsed) && parsed > maxNumber) {
-              maxNumber = parsed;
-              padWidth = Math.max(padWidth, numberPart.length);
-            }
-          });
-
-          return `RK-${String(maxNumber + 1).padStart(padWidth, "0")}`;
-        }
-
-        function resetForm() {
-          idInput.value = "";
-          subKegiatanFilterInput.value = "";
-          subKegiatanInput.value = "";
-          paguTahunSebelumnyaInput.value = money(0);
-          paguTahunIniInput.value = money(0);
-          indikatorInput.value = "";
-          unitPengusulInput.value = "";
-          kodeInput.value = suggestNextKode();
-          namaInput.value = "";
-          tahunInput.value = defaultTahun();
-          triwulanInput.value = "";
-          statusInput.value = "DRAFT";
-          dibuatOlehInput.value =
-            currentUserID > 0 ? String(currentUserID) : "";
-          catatanInput.value = "";
-          applyIndikatorFilter("", "");
-        }
-
-        window.__AUTH__.initInformasiSwitcher("/rencana-kerja");
-      })();
-        function filterSubKegiatanOptions(filterText = "") {
-          const selectedValue = subKegiatanInput.value;
-          const normalizedFilter = String(filterText || "")
-            .trim()
-            .toLowerCase();
-
-          let visibleItems = subKegiatanItemsCache;
-          if (normalizedFilter) {
-            visibleItems = subKegiatanItemsCache.filter((item) => {
-              const label = `${item.kode} ${item.nama}`.toLowerCase();
-              return label.includes(normalizedFilter);
+              return (
+                String(item.kode || "")
+                  .trim()
+                  .toLowerCase() === normalizedKode
+              );
             });
           }
 
-          fillSelect(
-            subKegiatanInput,
-            subKegiatanMap,
-            visibleItems,
-            "Pilih sub kegiatan",
-          );
+          function suggestNextKode() {
+            let maxNumber = 0;
+            let padWidth = 3;
 
-          if (
-            selectedValue &&
-            visibleItems.some((item) => String(item.id) === selectedValue)
-          ) {
-            subKegiatanInput.value = selectedValue;
-            return;
+            currentListItems.forEach((item) => {
+              const kode = String(item.kode || "").trim();
+              const match = /^RK-(\d+)$/i.exec(kode);
+              if (!match) {
+                return;
+              }
+
+              const numberPart = match[1];
+              const parsed = Number(numberPart);
+              if (Number.isFinite(parsed) && parsed > maxNumber) {
+                maxNumber = parsed;
+                padWidth = Math.max(padWidth, numberPart.length);
+              }
+            });
+
+            return `RK-${String(maxNumber + 1).padStart(padWidth, "0")}`;
           }
 
-          if (!normalizedFilter) {
-            subKegiatanInput.value = selectedValue;
+          function resetForm() {
+            idInput.value = "";
+            subKegiatanFilterInput.value = "";
+            subKegiatanInput.value = "";
+            paguTahunSebelumnyaInput.value = money(0);
+            paguTahunIniInput.value = money(0);
+            indikatorInput.value = "";
+            unitPengusulInput.value = "";
+            kodeInput.value = suggestNextKode();
+            namaInput.value = "";
+            tahunInput.value = defaultTahun();
+            triwulanInput.value = "";
+            statusInput.value = "DRAFT";
+            dibuatOlehInput.value =
+              currentUserID > 0 ? String(currentUserID) : "";
+            catatanInput.value = "";
+            applyIndikatorFilter("", "");
           }
-        }
 
-        function getPagu(subKegiatanId, tahun) {
-          const subId = Number(subKegiatanId || 0);
-          const yr = Number(tahun || 0);
-          if (subId === 0) return { paguN1: 0, paguN: 0 };
-          const exact = paguSubKegiatanMap.get(`${subId}_${yr}`);
-          if (exact) return exact;
-          const generic = paguSubKegiatanMap.get(`${subId}_0`);
-          return generic || { paguN1: 0, paguN: 0 };
-        }
+          // window.__AUTH__.initInformasiSwitcher("/rencana-kerja"); - moved to end
 
-        function setPaguFields(subKegiatanId, tahun) {
-          const pagu = getPagu(
-            subKegiatanId,
-            tahun ?? Number(tahunInput.value || 0),
-          );
-          paguTahunSebelumnyaInput.value = money(pagu.paguN1);
-          paguTahunIniInput.value = money(pagu.paguN);
-          paguTahunSebelumnyaInput.className = `form-control ${paguToneClass(pagu.paguN1)}`;
-          paguTahunIniInput.className = `form-control ${paguToneClass(pagu.paguN)}`;
-        }
+          function filterSubKegiatanOptions(filterText = "") {
+            const selectedValue = subKegiatanInput.value;
+            const normalizedFilter = String(filterText || "")
+              .trim()
+              .toLowerCase();
 
-        function paguByIndikator(indikatorId, tahun) {
-          const indikator = indikatorDetailMap.get(Number(indikatorId));
-          if (!indikator) return { paguN1: 0, paguN: 0 };
-          return getPagu(indikator.subKegiatanId, tahun);
-        }
+            let visibleItems = subKegiatanItemsCache;
+            if (normalizedFilter) {
+              visibleItems = subKegiatanItemsCache.filter((item) => {
+                const label = `${item.kode} ${item.nama}`.toLowerCase();
+                return label.includes(normalizedFilter);
+              });
+            }
 
-        function totalPaguByActiveYear(tahunAktif) {
-          const yearNum = Number(tahunAktif || 0);
-          const groupedBySubKegiatan = new Map();
+            fillSelect(
+              subKegiatanInput,
+              subKegiatanMap,
+              visibleItems,
+              "Pilih sub kegiatan",
+            );
 
-          paguSubKegiatanMap.forEach((item) => {
-            const subID = Number(item?.subKegiatanId || 0);
-            if (!subID) {
+            if (
+              selectedValue &&
+              visibleItems.some((item) => String(item.id) === selectedValue)
+            ) {
+              subKegiatanInput.value = selectedValue;
               return;
             }
 
-            const current = groupedBySubKegiatan.get(subID) || {
-              exact: null,
-              generic: null,
-            };
-            const itemYear = Number(item?.tahun || 0);
-
-            if (yearNum > 0 && itemYear === yearNum) {
-              current.exact = item;
-            } else if (!item?.tahun) {
-              current.generic = item;
+            if (!normalizedFilter) {
+              subKegiatanInput.value = selectedValue;
             }
-
-            groupedBySubKegiatan.set(subID, current);
-          });
-
-          return Array.from(groupedBySubKegiatan.values()).reduce(
-            (acc, bucket) => {
-              const chosen = bucket.exact || bucket.generic;
-              if (!chosen) {
-                return acc;
-              }
-              acc.n1 += Number(chosen.paguN1 || 0);
-              acc.n += Number(chosen.paguN || 0);
-              return acc;
-            },
-            { n1: 0, n: 0 },
-          );
-        }
-
-        function setAkumulasi(
-          items,
-          indikatorRencanaKerjaItems = [],
-          allRencanaKerjaItems = items,
-        ) {
-          const total = totalPaguByActiveYear(defaultTahun());
-
-          const rencanaKerjaStatusByID = allRencanaKerjaItems.reduce(
-            (acc, item) => {
-              const key = String(item.status || "").toUpperCase();
-              if (item.id > 0 && key) {
-                acc.set(Number(item.id), key);
-              }
-              return acc;
-            },
-            new Map(),
-          );
-
-          const byStatus = indikatorRencanaKerjaItems.reduce(
-            (acc, item) => {
-              const rkID = Number(item.rencanaKerjaId || 0);
-              if (!rkID) {
-                return acc;
-              }
-
-              const status = rencanaKerjaStatusByID.get(rkID);
-              if (
-                !status ||
-                !Object.prototype.hasOwnProperty.call(acc, status)
-              ) {
-                return acc;
-              }
-
-              acc[status] += Number(item.anggaranTahunan || 0);
-              return acc;
-            },
-            {
-              DRAFT: 0,
-              DIAJUKAN: 0,
-              DISETUJUI: 0,
-              DITOLAK: 0,
-            },
-          );
-
-          akumulasiPaguN1.textContent = money(total.n1);
-          akumulasiPaguN.textContent = money(total.n);
-          akumulasiStatusDraft.textContent = money(byStatus.DRAFT);
-          akumulasiStatusDiajukan.textContent = money(byStatus.DIAJUKAN);
-          akumulasiStatusDisetujui.textContent = money(byStatus.DISETUJUI);
-          akumulasiStatusDitolak.textContent = money(byStatus.DITOLAK);
-        }
-
-        function buildAkumulasiByKode(
-          allRencanaKerjaItems,
-          indikatorRencanaKerjaItems,
-        ) {
-          const kodeByRencanaKerjaID = allRencanaKerjaItems.reduce(
-            (acc, item) => {
-              if (item.id > 0) {
-                acc.set(Number(item.id), String(item.kode || "-"));
-              }
-              return acc;
-            },
-            new Map(),
-          );
-
-          const totalByKode = indikatorRencanaKerjaItems.reduce((acc, item) => {
-            const rencanaKerjaID = Number(item.rencanaKerjaId || 0);
-            if (!rencanaKerjaID) {
-              return acc;
-            }
-
-            const kode = kodeByRencanaKerjaID.get(rencanaKerjaID);
-            if (!kode) {
-              return acc;
-            }
-
-            const current = acc.get(kode) || { kode, total: 0, indikator: 0 };
-            current.total += Number(item.anggaranTahunan || 0);
-            current.indikator += 1;
-            acc.set(kode, current);
-            return acc;
-          }, new Map());
-
-          return Array.from(totalByKode.values()).sort(
-            (a, b) => b.total - a.total,
-          );
-        }
-
-        function filterIndikatorRencanaKerjaByRencanaKerjaItems(
-          rencanaKerjaItems,
-          indikatorRencanaKerjaItems,
-        ) {
-          const rencanaKerjaIDs = new Set(
-            rencanaKerjaItems.map((item) => Number(item.id || 0)),
-          );
-
-          return indikatorRencanaKerjaItems.filter((item) =>
-            rencanaKerjaIDs.has(Number(item.rencanaKerjaId || 0)),
-          );
-        }
-
-        function renderAkumulasiByKode(items, page = 1, totalPages = 1) {
-          if (!akumulasiByKodeBody || !akumulasiByKodeMeta) {
-            return;
           }
 
-          if (!Array.isArray(items) || items.length === 0) {
-            akumulasiByKodeBody.innerHTML =
-              '<tr><td colspan="3" class="text-center text-muted py-2">Belum ada data</td></tr>';
-            akumulasiByKodeMeta.textContent = `Menampilkan 0 kode pada halaman ${page}/${totalPages}.`;
-            return;
+          function getPagu(subKegiatanId, tahun) {
+            const subId = Number(subKegiatanId || 0);
+            const yr = Number(tahun || 0);
+            if (subId === 0) return { paguN1: 0, paguN: 0 };
+            const exact = paguSubKegiatanMap.get(`${subId}_${yr}`);
+            if (exact) return exact;
+            const generic = paguSubKegiatanMap.get(`${subId}_0`);
+            return generic || { paguN1: 0, paguN: 0 };
           }
 
-          akumulasiByKodeBody.innerHTML = "";
-          items.forEach((item) => {
-            const tr = document.createElement("tr");
-            tr.innerHTML = `
+          function setPaguFields(subKegiatanId, tahun) {
+            const pagu = getPagu(
+              subKegiatanId,
+              tahun ?? Number(tahunInput.value || 0),
+            );
+            paguTahunSebelumnyaInput.value = money(pagu.paguN1);
+            paguTahunIniInput.value = money(pagu.paguN);
+            paguTahunSebelumnyaInput.className = `form-control ${paguToneClass(pagu.paguN1)}`;
+            paguTahunIniInput.className = `form-control ${paguToneClass(pagu.paguN)}`;
+          }
+
+          function paguByIndikator(indikatorId, tahun) {
+            const indikator = indikatorDetailMap.get(Number(indikatorId));
+            if (!indikator) return { paguN1: 0, paguN: 0 };
+            return getPagu(indikator.subKegiatanId, tahun);
+          }
+
+          function totalPaguByActiveYear(tahunAktif) {
+            const yearNum = Number(tahunAktif || 0);
+            const groupedBySubKegiatan = new Map();
+
+            paguSubKegiatanMap.forEach((item) => {
+              const subID = Number(item?.subKegiatanId || 0);
+              if (!subID) {
+                return;
+              }
+
+              const current = groupedBySubKegiatan.get(subID) || {
+                exact: null,
+                generic: null,
+              };
+              const itemYear = Number(item?.tahun || 0);
+
+              if (yearNum > 0 && itemYear === yearNum) {
+                current.exact = item;
+              } else if (!item?.tahun) {
+                current.generic = item;
+              }
+
+              groupedBySubKegiatan.set(subID, current);
+            });
+
+            return Array.from(groupedBySubKegiatan.values()).reduce(
+              (acc, bucket) => {
+                const chosen = bucket.exact || bucket.generic;
+                if (!chosen) {
+                  return acc;
+                }
+                acc.n1 += Number(chosen.paguN1 || 0);
+                acc.n += Number(chosen.paguN || 0);
+                return acc;
+              },
+              { n1: 0, n: 0 },
+            );
+          }
+
+          function setAkumulasi(
+            items,
+            indikatorRencanaKerjaItems = [],
+            allRencanaKerjaItems = items,
+          ) {
+            const total = totalPaguByActiveYear(defaultTahun());
+
+            const rencanaKerjaStatusByID = allRencanaKerjaItems.reduce(
+              (acc, item) => {
+                const key = String(item.status || "").toUpperCase();
+                if (item.id > 0 && key) {
+                  acc.set(Number(item.id), key);
+                }
+                return acc;
+              },
+              new Map(),
+            );
+
+            const byStatus = indikatorRencanaKerjaItems.reduce(
+              (acc, item) => {
+                const rkID = Number(item.rencanaKerjaId || 0);
+                if (!rkID) {
+                  return acc;
+                }
+
+                const status = rencanaKerjaStatusByID.get(rkID);
+                if (
+                  !status ||
+                  !Object.prototype.hasOwnProperty.call(acc, status)
+                ) {
+                  return acc;
+                }
+
+                acc[status] += Number(item.anggaranTahunan || 0);
+                return acc;
+              },
+              {
+                DRAFT: 0,
+                DIAJUKAN: 0,
+                DISETUJUI: 0,
+                DITOLAK: 0,
+              },
+            );
+
+            akumulasiPaguN1.textContent = money(total.n1);
+            akumulasiPaguN.textContent = money(total.n);
+            akumulasiStatusDraft.textContent = money(byStatus.DRAFT);
+            akumulasiStatusDiajukan.textContent = money(byStatus.DIAJUKAN);
+            akumulasiStatusDisetujui.textContent = money(byStatus.DISETUJUI);
+            akumulasiStatusDitolak.textContent = money(byStatus.DITOLAK);
+          }
+
+          function buildAkumulasiByKode(
+            allRencanaKerjaItems,
+            indikatorRencanaKerjaItems,
+          ) {
+            const kodeByRencanaKerjaID = allRencanaKerjaItems.reduce(
+              (acc, item) => {
+                if (item.id > 0) {
+                  acc.set(Number(item.id), String(item.kode || "-"));
+                }
+                return acc;
+              },
+              new Map(),
+            );
+
+            const totalByKode = indikatorRencanaKerjaItems.reduce(
+              (acc, item) => {
+                const rencanaKerjaID = Number(item.rencanaKerjaId || 0);
+                if (!rencanaKerjaID) {
+                  return acc;
+                }
+
+                const kode = kodeByRencanaKerjaID.get(rencanaKerjaID);
+                if (!kode) {
+                  return acc;
+                }
+
+                const current = acc.get(kode) || {
+                  kode,
+                  total: 0,
+                  indikator: 0,
+                };
+                current.total += Number(item.anggaranTahunan || 0);
+                current.indikator += 1;
+                acc.set(kode, current);
+                return acc;
+              },
+              new Map(),
+            );
+
+            return Array.from(totalByKode.values()).sort(
+              (a, b) => b.total - a.total,
+            );
+          }
+
+          function filterIndikatorRencanaKerjaByRencanaKerjaItems(
+            rencanaKerjaItems,
+            indikatorRencanaKerjaItems,
+          ) {
+            const rencanaKerjaIDs = new Set(
+              rencanaKerjaItems.map((item) => Number(item.id || 0)),
+            );
+
+            return indikatorRencanaKerjaItems.filter((item) =>
+              rencanaKerjaIDs.has(Number(item.rencanaKerjaId || 0)),
+            );
+          }
+
+          function renderAkumulasiByKode(items, page = 1, totalPages = 1) {
+            if (!akumulasiByKodeBody || !akumulasiByKodeMeta) {
+              return;
+            }
+
+            if (!Array.isArray(items) || items.length === 0) {
+              akumulasiByKodeBody.innerHTML =
+                '<tr><td colspan="3" class="text-center text-muted py-2">Belum ada data</td></tr>';
+              akumulasiByKodeMeta.textContent = `Menampilkan 0 kode pada halaman ${page}/${totalPages}.`;
+              return;
+            }
+
+            akumulasiByKodeBody.innerHTML = "";
+            items.forEach((item) => {
+              const tr = document.createElement("tr");
+              tr.innerHTML = `
               <td>${item.kode}</td>
               <td class="text-end">${item.indikator}</td>
               <td class="text-end text-success fw-semibold">${money(item.total)}</td>
             `;
-            akumulasiByKodeBody.appendChild(tr);
-          });
+              akumulasiByKodeBody.appendChild(tr);
+            });
 
-          akumulasiByKodeMeta.textContent = `Menampilkan ${items.length} kode pada halaman ${page}/${totalPages}.`;
-        }
-
-        function updatePaginationUI(totalItems) {
-          const totalPages = Math.max(
-            1,
-            Math.ceil(Number(totalItems || 0) / DEFAULT_PAGE_SIZE),
-          );
-
-          if (currentPage > totalPages) {
-            currentPage = totalPages;
-          }
-          if (currentPage < 1) {
-            currentPage = 1;
+            akumulasiByKodeMeta.textContent = `Menampilkan ${items.length} kode pada halaman ${page}/${totalPages}.`;
           }
 
-          pageText.textContent = `Page ${currentPage}/${totalPages}`;
-          pagePrevBtn.disabled = currentPage <= 1;
-          pageNextBtn.disabled = currentPage >= totalPages;
+          function updatePaginationUI(totalItems) {
+            const totalPages = Math.max(
+              1,
+              Math.ceil(Number(totalItems || 0) / DEFAULT_PAGE_SIZE),
+            );
 
-          return totalPages;
-        }
+            if (currentPage > totalPages) {
+              currentPage = totalPages;
+            }
+            if (currentPage < 1) {
+              currentPage = 1;
+            }
 
-        let currentUserUnitPengusulId = 0;
-        async function loadCurrentUser() {
-          const me = await fetchJSON("/api/v1/auth/me");
-          currentUserID = Number(me?.user_id ?? me?.userID ?? 0);
-          currentUserRole = normalizeRole(me?.role ?? me?.Role ?? "");
-          currentUserUnitPengusulId = Number(
-            me?.unit_pengusul_id ?? me?.unitPengusulID ?? 0,
-          );
-          // Set default dropdown ke unit user login jika ada
-          if (unitPengusulInput && currentUserUnitPengusulId) {
-            unitPengusulInput.value = String(currentUserUnitPengusulId);
-          }
-          if (!currentUserID) {
-            throw new Error("ID user login tidak ditemukan");
-          }
-          dibuatOlehInput.value = String(currentUserID);
-          applyRoleAccess();
-        }
-        // Event listener: filter data saat dropdown unit pengusul berubah
-        if (unitPengusulInput) {
-          unitPengusulInput.addEventListener("change", () => {
-            currentPage = 1;
-            loadList();
-          });
-        }
+            pageText.textContent = `Page ${currentPage}/${totalPages}`;
+            pagePrevBtn.disabled = currentPage <= 1;
+            pageNextBtn.disabled = currentPage >= totalPages;
 
-        function indikatorLabel(id) {
-          return indikatorMap.get(Number(id)) || `Indikator #${id}`;
-        }
-
-        function unitPengusulLabel(id) {
-          return unitPengusulMap.get(Number(id)) || `Unit #${id}`;
-        }
-
-        function subKegiatanLabelByIndikator(indikatorID) {
-          const indikator = indikatorDetailMap.get(Number(indikatorID));
-          if (!indikator) {
-            return "";
-          }
-          return subKegiatanMap.get(Number(indikator.subKegiatanId)) || "";
-        }
-
-        function indikatorSubKegiatanSearchText(item) {
-          const fromItem =
-            `${item.indikatorSubKegiatanKode || ""} ${item.indikatorSubKegiatanNama || ""}`.trim();
-          if (fromItem) {
-            return fromItem;
-          }
-          return indikatorLabelByID(item.indikatorSubKegiatanId);
-        }
-
-        function matchesListSearch(item, q) {
-          if (!q) {
-            return true;
+            return totalPages;
           }
 
-          const keyword = String(q || "").toLowerCase();
-          const namaRencanaKerja = String(item.nama || "").toLowerCase();
-          const indikatorText =
-            indikatorSubKegiatanSearchText(item).toLowerCase();
+          let currentUserUnitPengusulId = 0;
+          async function loadCurrentUser() {
+            const me = await fetchJSON("/api/v1/auth/me");
+            currentUserID = Number(me?.user_id ?? me?.userID ?? 0);
+            currentUserRole = normalizeRole(me?.role ?? me?.Role ?? "");
+            currentUserUnitPengusulId = Number(
+              me?.unit_pengusul_id ?? me?.unitPengusulID ?? 0,
+            );
+            // Set default dropdown ke unit user login jika ada
+            if (unitPengusulInput && currentUserUnitPengusulId) {
+              unitPengusulInput.value = String(currentUserUnitPengusulId);
+            }
+            if (!currentUserID) {
+              throw new Error("ID user login tidak ditemukan");
+            }
+            dibuatOlehInput.value = String(currentUserID);
+            applyRoleAccess();
+          }
+          // Event listener: filter data saat dropdown unit pengusul berubah
+          if (unitPengusulInput) {
+            unitPengusulInput.addEventListener("change", () => {
+              currentPage = 1;
+              loadList();
+            });
+          }
 
-          return (
-            namaRencanaKerja.includes(keyword) ||
-            indikatorText.includes(keyword)
-          );
-        }
+          function indikatorLabel(id) {
+            return indikatorMap.get(Number(id)) || `Indikator #${id}`;
+          }
 
-        function rowTemplate(item) {
-          const tr = document.createElement("tr");
-          const canMutate = canMutateByRole(currentUserRole);
-          const pagu = paguByIndikator(item.indikatorSubKegiatanId, item.tahun);
-          const indikatorLabel =
-            item.indikatorSubKegiatanNama || item.indikatorSubKegiatanKode
-              ? `${item.indikatorSubKegiatanKode} - ${item.indikatorSubKegiatanNama}`
-              : indikatorLabelByID(item.indikatorSubKegiatanId);
-          const unitLabel =
-            item.unitPengusulNama || item.unitPengusulKode
-              ? `${item.unitPengusulKode} - ${item.unitPengusulNama}`
-              : unitPengusulLabel(item.unitPengusulId);
+          function unitPengusulLabel(id) {
+            return unitPengusulMap.get(Number(id)) || `Unit #${id}`;
+          }
 
-          tr.innerHTML = `
+          function subKegiatanLabelByIndikator(indikatorID) {
+            const indikator = indikatorDetailMap.get(Number(indikatorID));
+            if (!indikator) {
+              return "";
+            }
+            return subKegiatanMap.get(Number(indikator.subKegiatanId)) || "";
+          }
+
+          function indikatorSubKegiatanSearchText(item) {
+            const fromItem =
+              `${item.indikatorSubKegiatanKode || ""} ${item.indikatorSubKegiatanNama || ""}`.trim();
+            if (fromItem) {
+              return fromItem;
+            }
+            return indikatorLabelByID(item.indikatorSubKegiatanId);
+          }
+
+          function matchesListSearch(item, q) {
+            if (!q) {
+              return true;
+            }
+
+            const keyword = String(q || "").toLowerCase();
+            const namaRencanaKerja = String(item.nama || "").toLowerCase();
+            const indikatorText =
+              indikatorSubKegiatanSearchText(item).toLowerCase();
+
+            return (
+              namaRencanaKerja.includes(keyword) ||
+              indikatorText.includes(keyword)
+            );
+          }
+
+          function rowTemplate(item) {
+            const tr = document.createElement("tr");
+            const canMutate = canMutateByRole(currentUserRole);
+            const pagu = paguByIndikator(
+              item.indikatorSubKegiatanId,
+              item.tahun,
+            );
+            const indikatorLabel =
+              item.indikatorSubKegiatanNama || item.indikatorSubKegiatanKode
+                ? `${item.indikatorSubKegiatanKode} - ${item.indikatorSubKegiatanNama}`
+                : indikatorLabelByID(item.indikatorSubKegiatanId);
+            const unitLabel =
+              item.unitPengusulNama || item.unitPengusulKode
+                ? `${item.unitPengusulKode} - ${item.unitPengusulNama}`
+                : unitPengusulLabel(item.unitPengusulId);
+
+            tr.innerHTML = `
             <td>${item.id}</td>
             <td>${indikatorLabel}</td>
             <td>${item.kode}</td>
@@ -1067,474 +1081,448 @@
             </td>
           `;
 
-          if (!canMutate) {
+            if (!canMutate) {
+              return tr;
+            }
+
+            tr.querySelector('[data-action="edit"]').addEventListener(
+              "click",
+              () => {
+                // --- Anggaran Tahunan Calculation ---
+                const targetTahunanInput =
+                  document.getElementById("targetTahunan");
+                const hargaSatuanInput = document.getElementById("hargaSatuan");
+                const anggaranTahunanInput =
+                  document.getElementById("anggaranTahunan");
+
+                function updateAnggaranTahunan() {
+                  const target = Number(targetTahunanInput?.value || 0);
+                  const harga = Number(hargaSatuanInput?.value || 0);
+                  const anggaran = target * harga;
+                  if (anggaranTahunanInput) {
+                    anggaranTahunanInput.value = anggaran;
+                  }
+                }
+
+                if (
+                  targetTahunanInput &&
+                  hargaSatuanInput &&
+                  anggaranTahunanInput
+                ) {
+                  targetTahunanInput.addEventListener(
+                    "input",
+                    updateAnggaranTahunan,
+                  );
+                  hargaSatuanInput.addEventListener(
+                    "input",
+                    updateAnggaranTahunan,
+                  );
+                }
+                // --- End Anggaran Tahunan Calculation ---
+                idInput.value = item.id;
+                const indikatorItem = indikatorDetailMap.get(
+                  Number(item.indikatorSubKegiatanId),
+                );
+                const subKegiatanId = indikatorItem?.subKegiatanId ?? 0;
+
+                // Reset sub-kegiatan filter to ensure the target sub-kegiatan exists in the select options
+                subKegiatanFilterInput.value = "";
+                filterSubKegiatanOptions("");
+
+                subKegiatanInput.value = subKegiatanId
+                  ? String(subKegiatanId)
+                  : "";
+                setPaguFields(subKegiatanInput.value, item.tahun);
+                applyIndikatorFilter(
+                  subKegiatanInput.value,
+                  item.indikatorSubKegiatanId,
+                );
+                // Pastikan opsi unit_pengusul milik data yang diedit selalu ada di dropdown
+                const unitIdStr = String(item.unitPengusulId);
+                let found = false;
+                for (let i = 0; i < unitPengusulInput.options.length; i++) {
+                  if (unitPengusulInput.options[i].value === unitIdStr) {
+                    found = true;
+                    break;
+                  }
+                }
+                if (!found && unitIdStr && unitIdStr !== "0") {
+                  // Tambahkan opsi dinamis jika belum ada
+                  const opt = document.createElement("option");
+                  opt.value = unitIdStr;
+                  // Coba ambil label dari data, fallback ke "Unit #id"
+                  opt.textContent =
+                    item.unitPengusulNama ||
+                    item.unitPengusulKode ||
+                    `Unit #${unitIdStr}`;
+                  unitPengusulInput.appendChild(opt);
+                }
+                unitPengusulInput.value = unitIdStr;
+                kodeInput.value = item.kode;
+                namaInput.value = item.nama;
+                tahunInput.value = String(item.tahun || "");
+                triwulanInput.value =
+                  item.triwulan == null ? "" : String(item.triwulan);
+                statusInput.value = item.status;
+                dibuatOlehInput.value =
+                  currentUserID > 0
+                    ? String(currentUserID)
+                    : String(item.dibuatOleh || "");
+                catatanInput.value = item.catatan || "";
+                setStatus(`Mode edit ID ${item.id}`);
+              },
+            );
+
+            tr.querySelector('[data-action="delete"]').addEventListener(
+              "click",
+              async () => {
+                if (!confirm(`Hapus rencana kerja ${item.nama}?`)) {
+                  return;
+                }
+                try {
+                  await fetchJSON(`${endpoint}/${item.id}`, {
+                    method: "DELETE",
+                  });
+                  setStatus("Data berhasil dihapus");
+                  if (Number(idInput.value) === item.id) {
+                    resetForm();
+                  }
+                  await loadList();
+                } catch (error) {
+                  setStatus(error.message, true);
+                }
+              },
+            );
+
             return tr;
           }
 
-          tr.querySelector('[data-action="edit"]').addEventListener(
-            "click",
-            () => {
-              // --- Anggaran Tahunan Calculation ---
-              const targetTahunanInput =
-                document.getElementById("targetTahunan");
-              const hargaSatuanInput = document.getElementById("hargaSatuan");
-              const anggaranTahunanInput =
-                document.getElementById("anggaranTahunan");
-
-              function updateAnggaranTahunan() {
-                const target = Number(targetTahunanInput?.value || 0);
-                const harga = Number(hargaSatuanInput?.value || 0);
-                const anggaran = target * harga;
-                if (anggaranTahunanInput) {
-                  anggaranTahunanInput.value = anggaran;
-                }
-              }
-
-              if (
-                targetTahunanInput &&
-                hargaSatuanInput &&
-                anggaranTahunanInput
-              ) {
-                targetTahunanInput.addEventListener(
-                  "input",
-                  updateAnggaranTahunan,
-                );
-                hargaSatuanInput.addEventListener(
-                  "input",
-                  updateAnggaranTahunan,
-                );
-              }
-              // --- End Anggaran Tahunan Calculation ---
-              idInput.value = item.id;
-              const indikatorItem = indikatorDetailMap.get(
-                Number(item.indikatorSubKegiatanId),
-              );
-              const subKegiatanId = indikatorItem?.subKegiatanId ?? 0;
-
-              // Reset sub-kegiatan filter to ensure the target sub-kegiatan exists in the select options
-              subKegiatanFilterInput.value = "";
-              filterSubKegiatanOptions("");
-
-              subKegiatanInput.value = subKegiatanId
-                ? String(subKegiatanId)
-                : "";
-              setPaguFields(subKegiatanInput.value, item.tahun);
-              applyIndikatorFilter(
-                subKegiatanInput.value,
-                item.indikatorSubKegiatanId,
-              );
-              // Pastikan opsi unit_pengusul milik data yang diedit selalu ada di dropdown
-              const unitIdStr = String(item.unitPengusulId);
-              let found = false;
-              for (let i = 0; i < unitPengusulInput.options.length; i++) {
-                if (unitPengusulInput.options[i].value === unitIdStr) {
-                  found = true;
-                  break;
-                }
-              }
-              if (!found && unitIdStr && unitIdStr !== "0") {
-                // Tambahkan opsi dinamis jika belum ada
-                const opt = document.createElement("option");
-                opt.value = unitIdStr;
-                // Coba ambil label dari data, fallback ke "Unit #id"
-                opt.textContent =
-                  item.unitPengusulNama ||
-                  item.unitPengusulKode ||
-                  `Unit #${unitIdStr}`;
-                unitPengusulInput.appendChild(opt);
-              }
-              unitPengusulInput.value = unitIdStr;
-              kodeInput.value = item.kode;
-              namaInput.value = item.nama;
-              tahunInput.value = String(item.tahun || "");
-              triwulanInput.value =
-                item.triwulan == null ? "" : String(item.triwulan);
-              statusInput.value = item.status;
-              dibuatOlehInput.value =
-                currentUserID > 0
-                  ? String(currentUserID)
-                  : String(item.dibuatOleh || "");
-              catatanInput.value = item.catatan || "";
-              setStatus(`Mode edit ID ${item.id}`);
-            },
-          );
-
-          tr.querySelector('[data-action="delete"]').addEventListener(
-            "click",
-            async () => {
-              if (!confirm(`Hapus rencana kerja ${item.nama}?`)) {
-                return;
-              }
-              try {
-                await fetchJSON(`${endpoint}/${item.id}`, { method: "DELETE" });
-                setStatus("Data berhasil dihapus");
-                if (Number(idInput.value) === item.id) {
-                  resetForm();
-                }
-                await loadList();
-              } catch (error) {
-                setStatus(error.message, true);
-              }
-            },
-          );
-
-          return tr;
-        }
-
-        function fillSelect(selectEl, map, items, defaultText) {
-          selectEl.innerHTML = `<option value="">${defaultText}</option>`;
-          map.clear();
-          items.forEach((item) => {
-            const label = `${item.kode} - ${item.nama}`;
-            map.set(item.id, label);
-            const option = document.createElement("option");
-            option.value = String(item.id);
-            option.textContent = label;
-            selectEl.appendChild(option);
-          });
-        }
-
-        function indikatorLabelByID(id) {
-          return indikatorMap.get(Number(id)) || `Indikator #${id}`;
-        }
-
-        function applyIndikatorFilter(subKegiatanId, selectedIndikatorId = "") {
-          indikatorMap.clear();
-
-          const selectedSubIDNum = Number(subKegiatanId || 0);
-          const selectedIndikatorIDNum = Number(selectedIndikatorId || 0);
-
-          if (!selectedSubIDNum) {
-            indikatorInput.disabled = true;
-            indikatorInput.innerHTML =
-              '<option value="">Pilih sub kegiatan terlebih dahulu</option>';
-            indikatorInput.value = "";
-            return;
+          function fillSelect(selectEl, map, items, defaultText) {
+            selectEl.innerHTML = `<option value="">${defaultText}</option>`;
+            map.clear();
+            items.forEach((item) => {
+              const label = `${item.kode} - ${item.nama}`;
+              map.set(item.id, label);
+              const option = document.createElement("option");
+              option.value = String(item.id);
+              option.textContent = label;
+              selectEl.appendChild(option);
+            });
           }
 
-          indikatorInput.disabled = false;
-          indikatorInput.innerHTML =
-            '<option value="">Pilih indikator sub kegiatan</option>';
-
-          const visibleItems = indikatorItemsCache.filter(
-            (item) => item.subKegiatanId === selectedSubIDNum,
-          );
-
-          if (visibleItems.length === 0) {
-            indikatorInput.innerHTML =
-              '<option value="">Tidak ada indikator untuk sub kegiatan ini</option>';
-            indikatorInput.value = "";
-            return;
+          function indikatorLabelByID(id) {
+            return indikatorMap.get(Number(id)) || `Indikator #${id}`;
           }
 
-          visibleItems.forEach((item) => {
-            const label = `${item.kode} - ${item.nama}`;
-            indikatorMap.set(item.id, label);
-            indikatorDetailMap.set(item.id, item);
-
-            const option = document.createElement("option");
-            option.value = String(item.id);
-            option.textContent = label;
-            indikatorInput.appendChild(option);
-          });
-
-          if (
-            selectedIndikatorIDNum > 0 &&
-            visibleItems.some((item) => item.id === selectedIndikatorIDNum)
+          function applyIndikatorFilter(
+            subKegiatanId,
+            selectedIndikatorId = "",
           ) {
-            indikatorInput.value = String(selectedIndikatorIDNum);
-            return;
-          }
+            indikatorMap.clear();
 
-          indikatorInput.value = "";
-        }
+            const selectedSubIDNum = Number(subKegiatanId || 0);
+            const selectedIndikatorIDNum = Number(selectedIndikatorId || 0);
 
-        async function loadReferenceOptions() {
-          const [subKegiatanResult, indikatorResult, paguResult, unitResult] =
-            await Promise.allSettled([
-              fetchJSON(subKegiatanEndpoint),
-              fetchJSON(indikatorEndpoint),
-              fetchJSON(paguSubKegiatanEndpoint),
-              fetchJSON(unitPengusulEndpoint),
-            ]);
-
-          if (subKegiatanResult.status === "fulfilled") {
-            const subKegiatanItems = (
-              Array.isArray(subKegiatanResult.value?.items)
-                ? subKegiatanResult.value.items
-                : []
-            )
-              .map(normalizeSubKegiatan)
-              .sort((a, b) => {
-                const kodeCompare = String(a.kode || "").localeCompare(
-                  String(b.kode || ""),
-                  "id",
-                  { sensitivity: "base" },
-                );
-                if (kodeCompare !== 0) {
-                  return kodeCompare;
-                }
-                return String(a.nama || "").localeCompare(
-                  String(b.nama || ""),
-                  "id",
-                  { sensitivity: "base" },
-                );
-              });
-            subKegiatanItemsCache = subKegiatanItems;
-          }
-
-          if (indikatorResult.status === "fulfilled") {
-            indikatorItemsCache = (
-              Array.isArray(indikatorResult.value?.items)
-                ? indikatorResult.value.items
-                : []
-            )
-              .map(normalizeIndikator)
-              .sort((a, b) => a.id - b.id);
-
-            // Populate maps globally to support edit mode lookup
-            indikatorItemsCache.forEach((item) => {
-              indikatorMap.set(item.id, `${item.kode} - ${item.nama}`);
-              indikatorDetailMap.set(item.id, item);
-            });
-          } else {
-            indikatorItemsCache = [];
-            setStatus("Gagal memuat indikator sub kegiatan", true);
-          }
-
-          if (paguResult.status === "fulfilled") {
-            const paguItems = (
-              Array.isArray(paguResult.value?.items)
-                ? paguResult.value.items
-                : []
-            ).map(normalizePagu);
-            paguSubKegiatanMap.clear();
-            paguItems.forEach((item) => {
-              if (item.subKegiatanId > 0) {
-                const key = `${item.subKegiatanId}_${item.tahun ?? 0}`;
-                paguSubKegiatanMap.set(key, item);
-              }
-            });
-          }
-
-          if (unitResult.status === "fulfilled") {
-            let unitItems = (
-              Array.isArray(unitResult.value?.items)
-                ? unitResult.value.items
-                : []
-            ).map(normalizeUnit);
-
-            // Filter untuk OPERATOR dan VERIFIKATOR
-            if (
-              currentUserRole === "OPERATOR" ||
-              currentUserRole === "VERIFIKATOR"
-            ) {
-              let filtered = unitItems.filter(
-                (item) => item.id === currentUserUnitPengusulId,
-              );
-              // Jika unit milik user login tidak ada di hasil fetch, tambahkan secara dinamis
-              if (
-                filtered.length === 0 &&
-                currentUserUnitPengusulId &&
-                !unitItems.some((item) => item.id === currentUserUnitPengusulId)
-              ) {
-                filtered.push({
-                  id: currentUserUnitPengusulId,
-                  kode: "",
-                  nama: "Unit Anda",
-                });
-              }
-              fillSelect(
-                unitPengusulInput,
-                unitPengusulMap,
-                filtered,
-                "Unit Anda",
-              );
-              if (filtered.length === 1) {
-                unitPengusulInput.value = String(filtered[0].id);
-              } else {
-                unitPengusulInput.value = "";
-              }
-              unitPengusulInput.disabled = false;
-            } else {
-              fillSelect(
-                unitPengusulInput,
-                unitPengusulMap,
-                unitItems,
-                "Pilih unit pengusul",
-              );
-              unitPengusulInput.disabled = false;
-            }
-          }
-
-          filterSubKegiatanOptions(subKegiatanFilterInput.value);
-          applyIndikatorFilter("", "");
-          setPaguFields(0);
-        }
-
-        async function loadList() {
-          tableBody.innerHTML =
-            '<tr><td colspan="11" class="text-center text-muted py-4">Memuat...</td></tr>';
-          try {
-            const q = queryInput.value.trim().toLowerCase();
-            const tahunAktif = defaultTahun();
-            setTahunAktifLabel(tahunAktif);
-            const params = new URLSearchParams();
-            if (tahunAktif) {
-              params.set("tahun", tahunAktif);
-            }
-            // Tambahkan filter unit_pengusul_id dari dropdown
-            const unitPengusulId = unitPengusulInput
-              ? unitPengusulInput.value
-              : "";
-            if (unitPengusulId) {
-              params.set("unit_pengusul_id", unitPengusulId);
-            }
-
-            const [data, indikatorRKData] = await Promise.all([
-              fetchJSON(
-                `${endpoint}${params.toString() ? `?${params.toString()}` : ""}`,
-              ),
-              fetchJSON(indikatorRencanaKerjaEndpoint),
-            ]);
-            const allItems = (Array.isArray(data?.items) ? data.items : []).map(
-              normalizeItem,
-            );
-            currentListItems = allItems;
-            const indikatorRencanaKerjaItems = (
-              Array.isArray(indikatorRKData?.items) ? indikatorRKData.items : []
-            ).map(normalizeIndikatorRencanaKerja);
-            const items = q
-              ? allItems.filter((item) => matchesListSearch(item, q))
-              : allItems;
-
-            setAkumulasi(items, indikatorRencanaKerjaItems, allItems);
-
-            tableBody.innerHTML = "";
-            metaText.textContent = `Total ${items.length} data`;
-            const sortedItems = [...items].sort((a, b) => a.id - b.id);
-            const totalPages = updatePaginationUI(sortedItems.length);
-
-            if (sortedItems.length === 0) {
-              tableBody.innerHTML =
-                '<tr><td colspan="11" class="text-center text-muted py-4">Belum ada data</td></tr>';
+            if (!selectedSubIDNum) {
+              indikatorInput.disabled = true;
+              indikatorInput.innerHTML =
+                '<option value="">Pilih sub kegiatan terlebih dahulu</option>';
+              indikatorInput.value = "";
               return;
             }
 
-            const start = (currentPage - 1) * DEFAULT_PAGE_SIZE;
-            const pagedItems = sortedItems.slice(
-              start,
-              start + DEFAULT_PAGE_SIZE,
+            indikatorInput.disabled = false;
+            indikatorInput.innerHTML =
+              '<option value="">Pilih indikator sub kegiatan</option>';
+
+            const visibleItems = indikatorItemsCache.filter(
+              (item) => item.subKegiatanId === selectedSubIDNum,
             );
 
-            renderAkumulasiByKode(
-              buildAkumulasiByKode(
-                pagedItems,
-                filterIndikatorRencanaKerjaByRencanaKerjaItems(
-                  pagedItems,
-                  indikatorRencanaKerjaItems,
-                ),
-              ),
-              currentPage,
-              totalPages,
-            );
+            if (visibleItems.length === 0) {
+              indikatorInput.innerHTML =
+                '<option value="">Tidak ada indikator untuk sub kegiatan ini</option>';
+              indikatorInput.value = "";
+              return;
+            }
 
-            pagedItems.forEach((item) =>
-              tableBody.appendChild(rowTemplate(item)),
-            );
-          } catch (error) {
-            setAkumulasi([], []);
-            const totalPages = updatePaginationUI(0);
-            renderAkumulasiByKode([], currentPage, totalPages);
-            tableBody.innerHTML =
-              '<tr><td colspan="11" class="text-center text-danger py-4">Gagal memuat data</td></tr>';
-            setStatus(error.message, true);
-          }
-        }
+            visibleItems.forEach((item) => {
+              const label = `${item.kode} - ${item.nama}`;
+              indikatorMap.set(item.id, label);
+              indikatorDetailMap.set(item.id, item);
 
-        form.addEventListener("submit", async (event) => {
-          event.preventDefault();
-
-          if (!canMutateByRole(currentUserRole)) {
-            setStatus(
-              `Role ${currentUserRole || "UNKNOWN"} tidak diizinkan mengubah data`,
-              true,
-            );
-            return;
-          }
-
-          const payload = {
-            indikator_sub_kegiatan_id: Number(indikatorInput.value),
-            unit_pengusul_id: Number(unitPengusulInput.value),
-            kode: kodeInput.value.trim(),
-            nama: namaInput.value.trim(),
-            tahun: Number(tahunInput.value || 0),
-            status: statusInput.value,
-            dibuat_oleh: Number(currentUserID || dibuatOlehInput.value || 0),
-            catatan: catatanInput.value.trim(),
-          };
-
-          const triwulanValue = triwulanInput.value.trim();
-          if (triwulanValue !== "") {
-            payload.triwulan = Number(triwulanValue);
-          }
-
-          if (!subKegiatanInput.value) {
-            setStatus("Sub kegiatan wajib dipilih", true);
-            return;
-          }
-          if (!payload.indikator_sub_kegiatan_id) {
-            setStatus("Indikator sub kegiatan wajib dipilih", true);
-            return;
-          }
-          if (!payload.dibuat_oleh) {
-            setStatus("ID user login tidak valid", true);
-            return;
-          }
-
-          const id = idInput.value.trim();
-          const editingID = id ? Number(id) : 0;
-          if (!payload.kode) {
-            setStatus("Kode wajib diisi", true);
-            kodeInput.focus();
-            return;
-          }
-          if (isDuplicateKode(payload.kode, editingID)) {
-            const suggestedKode = suggestNextKode();
-            kodeInput.value = suggestedKode;
-            setStatus(
-              `Kode rencana_kerja sudah digunakan. Saran kode: ${suggestedKode}`,
-              true,
-            );
-            kodeInput.focus();
-            return;
-          }
-
-          const isEdit = id !== "";
-          const url = isEdit ? `${endpoint}/${id}` : endpoint;
-          const method = isEdit ? "PUT" : "POST";
-
-          try {
-            await fetchJSON(url, {
-              method,
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify(payload),
+              const option = document.createElement("option");
+              option.value = String(item.id);
+              option.textContent = label;
+              indikatorInput.appendChild(option);
             });
 
-            setStatus(
-              isEdit
-                ? `Data ID ${id} diperbarui`
-                : "Data baru berhasil disimpan",
-            );
-            currentPage = 1;
-            resetForm();
-            await loadList();
-          } catch (error) {
             if (
-              String(error.message || "")
-                .toLowerCase()
-                .includes("kode rencana_kerja sudah digunakan")
+              selectedIndikatorIDNum > 0 &&
+              visibleItems.some((item) => item.id === selectedIndikatorIDNum)
             ) {
+              indikatorInput.value = String(selectedIndikatorIDNum);
+              return;
+            }
+
+            indikatorInput.value = "";
+          }
+
+          async function loadReferenceOptions() {
+            const [subKegiatanResult, indikatorResult, paguResult, unitResult] =
+              await Promise.allSettled([
+                fetchJSON(subKegiatanEndpoint),
+                fetchJSON(indikatorEndpoint),
+                fetchJSON(paguSubKegiatanEndpoint),
+                fetchJSON(unitPengusulEndpoint),
+              ]);
+
+            if (subKegiatanResult.status === "fulfilled") {
+              const subKegiatanItems = (
+                Array.isArray(subKegiatanResult.value?.items)
+                  ? subKegiatanResult.value.items
+                  : []
+              )
+                .map(normalizeSubKegiatan)
+                .sort((a, b) => {
+                  const kodeCompare = String(a.kode || "").localeCompare(
+                    String(b.kode || ""),
+                    "id",
+                    { sensitivity: "base" },
+                  );
+                  if (kodeCompare !== 0) {
+                    return kodeCompare;
+                  }
+                  return String(a.nama || "").localeCompare(
+                    String(b.nama || ""),
+                    "id",
+                    { sensitivity: "base" },
+                  );
+                });
+              subKegiatanItemsCache = subKegiatanItems;
+            }
+
+            if (indikatorResult.status === "fulfilled") {
+              indikatorItemsCache = (
+                Array.isArray(indikatorResult.value?.items)
+                  ? indikatorResult.value.items
+                  : []
+              )
+                .map(normalizeIndikator)
+                .sort((a, b) => a.id - b.id);
+
+              // Populate maps globally to support edit mode lookup
+              indikatorItemsCache.forEach((item) => {
+                indikatorMap.set(item.id, `${item.kode} - ${item.nama}`);
+                indikatorDetailMap.set(item.id, item);
+              });
+            } else {
+              indikatorItemsCache = [];
+              setStatus("Gagal memuat indikator sub kegiatan", true);
+            }
+
+            if (paguResult.status === "fulfilled") {
+              const paguItems = (
+                Array.isArray(paguResult.value?.items)
+                  ? paguResult.value.items
+                  : []
+              ).map(normalizePagu);
+              paguSubKegiatanMap.clear();
+              paguItems.forEach((item) => {
+                if (item.subKegiatanId > 0) {
+                  const key = `${item.subKegiatanId}_${item.tahun ?? 0}`;
+                  paguSubKegiatanMap.set(key, item);
+                }
+              });
+            }
+
+            if (unitResult.status === "fulfilled") {
+              let unitItems = (
+                Array.isArray(unitResult.value?.items)
+                  ? unitResult.value.items
+                  : []
+              ).map(normalizeUnit);
+
+              // Filter untuk OPERATOR dan VERIFIKATOR
+              if (
+                currentUserRole === "OPERATOR" ||
+                currentUserRole === "VERIFIKATOR"
+              ) {
+                let filtered = unitItems.filter(
+                  (item) => item.id === currentUserUnitPengusulId,
+                );
+                // Jika unit milik user login tidak ada di hasil fetch, tambahkan secara dinamis
+                if (
+                  filtered.length === 0 &&
+                  currentUserUnitPengusulId &&
+                  !unitItems.some(
+                    (item) => item.id === currentUserUnitPengusulId,
+                  )
+                ) {
+                  filtered.push({
+                    id: currentUserUnitPengusulId,
+                    kode: "",
+                    nama: "Unit Anda",
+                  });
+                }
+                fillSelect(
+                  unitPengusulInput,
+                  unitPengusulMap,
+                  filtered,
+                  "Unit Anda",
+                );
+                if (filtered.length === 1) {
+                  unitPengusulInput.value = String(filtered[0].id);
+                } else {
+                  unitPengusulInput.value = "";
+                }
+                unitPengusulInput.disabled = false;
+              } else {
+                fillSelect(
+                  unitPengusulInput,
+                  unitPengusulMap,
+                  unitItems,
+                  "Pilih unit pengusul",
+                );
+                unitPengusulInput.disabled = false;
+              }
+            }
+
+            filterSubKegiatanOptions(subKegiatanFilterInput.value);
+            applyIndikatorFilter("", "");
+            setPaguFields(0);
+          }
+
+          async function loadList() {
+            tableBody.innerHTML =
+              '<tr><td colspan="11" class="text-center text-muted py-4">Memuat...</td></tr>';
+            try {
+              const q = queryInput.value.trim().toLowerCase();
+              const tahunAktif = defaultTahun();
+              setTahunAktifLabel(tahunAktif);
+              const params = new URLSearchParams();
+              if (tahunAktif) {
+                params.set("tahun", tahunAktif);
+              }
+              // Tambahkan filter unit_pengusul_id dari dropdown
+              const unitPengusulId = unitPengusulInput
+                ? unitPengusulInput.value
+                : "";
+              if (unitPengusulId) {
+                params.set("unit_pengusul_id", unitPengusulId);
+              }
+
+              const [data, indikatorRKData] = await Promise.all([
+                fetchJSON(
+                  `${endpoint}${params.toString() ? `?${params.toString()}` : ""}`,
+                ),
+                fetchJSON(indikatorRencanaKerjaEndpoint),
+              ]);
+              const allItems = (
+                Array.isArray(data?.items) ? data.items : []
+              ).map(normalizeItem);
+              currentListItems = allItems;
+              const indikatorRencanaKerjaItems = (
+                Array.isArray(indikatorRKData?.items)
+                  ? indikatorRKData.items
+                  : []
+              ).map(normalizeIndikatorRencanaKerja);
+              const items = q
+                ? allItems.filter((item) => matchesListSearch(item, q))
+                : allItems;
+
+              setAkumulasi(items, indikatorRencanaKerjaItems, allItems);
+
+              tableBody.innerHTML = "";
+              metaText.textContent = `Total ${items.length} data`;
+              const sortedItems = [...items].sort((a, b) => a.id - b.id);
+              const totalPages = updatePaginationUI(sortedItems.length);
+
+              if (sortedItems.length === 0) {
+                tableBody.innerHTML =
+                  '<tr><td colspan="11" class="text-center text-muted py-4">Belum ada data</td></tr>';
+                return;
+              }
+
+              const start = (currentPage - 1) * DEFAULT_PAGE_SIZE;
+              const pagedItems = sortedItems.slice(
+                start,
+                start + DEFAULT_PAGE_SIZE,
+              );
+
+              renderAkumulasiByKode(
+                buildAkumulasiByKode(
+                  pagedItems,
+                  filterIndikatorRencanaKerjaByRencanaKerjaItems(
+                    pagedItems,
+                    indikatorRencanaKerjaItems,
+                  ),
+                ),
+                currentPage,
+                totalPages,
+              );
+
+              pagedItems.forEach((item) =>
+                tableBody.appendChild(rowTemplate(item)),
+              );
+            } catch (error) {
+              setAkumulasi([], []);
+              const totalPages = updatePaginationUI(0);
+              renderAkumulasiByKode([], currentPage, totalPages);
+              tableBody.innerHTML =
+                '<tr><td colspan="11" class="text-center text-danger py-4">Gagal memuat data</td></tr>';
+              setStatus(error.message, true);
+            }
+          }
+
+          form.addEventListener("submit", async (event) => {
+            event.preventDefault();
+
+            if (!canMutateByRole(currentUserRole)) {
+              setStatus(
+                `Role ${currentUserRole || "UNKNOWN"} tidak diizinkan mengubah data`,
+                true,
+              );
+              return;
+            }
+
+            const payload = {
+              indikator_sub_kegiatan_id: Number(indikatorInput.value),
+              unit_pengusul_id: Number(unitPengusulInput.value),
+              kode: kodeInput.value.trim(),
+              nama: namaInput.value.trim(),
+              tahun: Number(tahunInput.value || 0),
+              status: statusInput.value,
+              dibuat_oleh: Number(currentUserID || dibuatOlehInput.value || 0),
+              catatan: catatanInput.value.trim(),
+            };
+
+            const triwulanValue = triwulanInput.value.trim();
+            if (triwulanValue !== "") {
+              payload.triwulan = Number(triwulanValue);
+            }
+
+            if (!subKegiatanInput.value) {
+              setStatus("Sub kegiatan wajib dipilih", true);
+              return;
+            }
+            if (!payload.indikator_sub_kegiatan_id) {
+              setStatus("Indikator sub kegiatan wajib dipilih", true);
+              return;
+            }
+            if (!payload.dibuat_oleh) {
+              setStatus("ID user login tidak valid", true);
+              return;
+            }
+
+            const id = idInput.value.trim();
+            const editingID = id ? Number(id) : 0;
+            if (!payload.kode) {
+              setStatus("Kode wajib diisi", true);
+              kodeInput.focus();
+              return;
+            }
+            if (isDuplicateKode(payload.kode, editingID)) {
               const suggestedKode = suggestNextKode();
               kodeInput.value = suggestedKode;
               setStatus(
@@ -1544,63 +1532,97 @@
               kodeInput.focus();
               return;
             }
-            setStatus(error.message, true);
-          }
-        });
 
-        btnReset.addEventListener("click", () => {
-          resetForm();
-          setStatus("Form direset");
-        });
+            const isEdit = id !== "";
+            const url = isEdit ? `${endpoint}/${id}` : endpoint;
+            const method = isEdit ? "PUT" : "POST";
 
-        btnSearch.addEventListener("click", () => {
-          currentPage = 1;
-          loadList();
-        });
+            try {
+              await fetchJSON(url, {
+                method,
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload),
+              });
 
-        queryInput.addEventListener("keydown", (event) => {
-          if (event.key !== "Enter") {
-            return;
-          }
-          event.preventDefault();
-          currentPage = 1;
-          loadList();
-        });
+              setStatus(
+                isEdit
+                  ? `Data ID ${id} diperbarui`
+                  : "Data baru berhasil disimpan",
+              );
+              currentPage = 1;
+              resetForm();
+              await loadList();
+            } catch (error) {
+              if (
+                String(error.message || "")
+                  .toLowerCase()
+                  .includes("kode rencana_kerja sudah digunakan")
+              ) {
+                const suggestedKode = suggestNextKode();
+                kodeInput.value = suggestedKode;
+                setStatus(
+                  `Kode rencana_kerja sudah digunakan. Saran kode: ${suggestedKode}`,
+                  true,
+                );
+                kodeInput.focus();
+                return;
+              }
+              setStatus(error.message, true);
+            }
+          });
 
-        btnSearchReset.addEventListener("click", () => {
-          queryInput.value = "";
-          currentPage = 1;
-          loadList();
-        });
+          btnReset.addEventListener("click", () => {
+            resetForm();
+            setStatus("Form direset");
+          });
 
-        pagePrevBtn.addEventListener("click", () => {
-          if (currentPage <= 1) {
-            return;
-          }
-          currentPage -= 1;
-          loadList();
-        });
+          btnSearch.addEventListener("click", () => {
+            currentPage = 1;
+            loadList();
+          });
 
-        pageNextBtn.addEventListener("click", () => {
-          currentPage += 1;
-          loadList();
-        });
+          queryInput.addEventListener("keydown", (event) => {
+            if (event.key !== "Enter") {
+              return;
+            }
+            event.preventDefault();
+            currentPage = 1;
+            loadList();
+          });
 
-        subKegiatanFilterInput.addEventListener("input", () => {
-          const previousValue = subKegiatanInput.value;
-          filterSubKegiatanOptions(subKegiatanFilterInput.value);
-          if (subKegiatanInput.value !== previousValue) {
+          btnSearchReset.addEventListener("click", () => {
+            queryInput.value = "";
+            currentPage = 1;
+            loadList();
+          });
+
+          pagePrevBtn.addEventListener("click", () => {
+            if (currentPage <= 1) {
+              return;
+            }
+            currentPage -= 1;
+            loadList();
+          });
+
+          pageNextBtn.addEventListener("click", () => {
+            currentPage += 1;
+            loadList();
+          });
+
+          subKegiatanFilterInput.addEventListener("input", () => {
+            const previousValue = subKegiatanInput.value;
+            filterSubKegiatanOptions(subKegiatanFilterInput.value);
+            if (subKegiatanInput.value !== previousValue) {
+              setPaguFields(subKegiatanInput.value);
+              applyIndikatorFilter(subKegiatanInput.value, "");
+            }
+          });
+
+          subKegiatanInput.addEventListener("change", () => {
             setPaguFields(subKegiatanInput.value);
             applyIndikatorFilter(subKegiatanInput.value, "");
-          }
-        });
+          });
 
-        subKegiatanInput.addEventListener("change", () => {
-          setPaguFields(subKegiatanInput.value);
-          applyIndikatorFilter(subKegiatanInput.value, "");
-        });
-
-        (async () => {
           try {
             if (!getAccessToken()) {
               redirectToLogin();
@@ -1610,12 +1632,17 @@
             resetForm();
             await loadReferenceOptions();
             await Promise.all([loadList()]);
-            window.__AUTH__.initInformasiSwitcher("/rencana-kerja");
+            if (
+              window.__AUTH__ &&
+              typeof window.__AUTH__.initInformasiSwitcher === "function"
+            ) {
+              window.__AUTH__.initInformasiSwitcher("/rencana-kerja");
+            }
           } catch (error) {
             setStatus(`Gagal inisialisasi form: ${error.message}`, true);
           }
         })();
+      });
     </script>
-    
   </body>
 </html>
