@@ -299,7 +299,8 @@
     "/ui/target-realisasi",
     "/ui/dokumen_pdf",
     "/ui/dashboard",
-    "/ui/unit-pengusul"
+    "/ui/unit-pengusul",
+    "/ui/kontrol-pagu"
   ];
 
   function applyRoleBasedAccessControl(rawRole) {

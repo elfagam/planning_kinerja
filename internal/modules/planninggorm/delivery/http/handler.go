@@ -1702,7 +1702,7 @@ func (h *Handler) GetPaguControl(c *gin.Context) {
 		return
 	}
 	role := strings.ToUpper(strings.TrimSpace(fmt.Sprintf("%v", rawRole)))
-	if role != "ADMIN" && role != "PIMPINAN" {
+	if role != "ADMIN" && role != "PIMPINAN" && role != "PERENCANA" && role != "OPERATOR" {
 		response.Error(c, http.StatusForbidden, "Akses ditolak: role anda tidak diizinkan")
 		return
 	}
