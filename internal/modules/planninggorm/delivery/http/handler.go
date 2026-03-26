@@ -79,6 +79,7 @@ func (h *Handler) RegisterRoutes(v1 *gin.RouterGroup) {
 		g.PUT("/:id", h.update(cfg))
 		g.DELETE("/:id", h.delete(cfg))
 	}
+	v1.GET("/pagu_sub_kegiatan_control", h.GetPaguControl)
 }
 
 func (h *Handler) list(rc resourceConfig) gin.HandlerFunc {
@@ -1687,4 +1688,80 @@ func planningResources() []resourceConfig {
 		{path: "realisasi_rencana_kerja", name: "realisasi_rencana_kerja", requiredKeys: []string{"indikator_rencana_kerja_id", "tahun", "nilai_realisasi", "realisasi_anggaran", "diinput_oleh"}, searchFields: []string{"keterangan"}, newModel: func() any { return &database.RealisasiRencanaKerja{} }, newSlice: func() any { return &[]database.RealisasiRencanaKerja{} }},
 		{path: "users", name: "users", requiredKeys: []string{"nama_lengkap", "email", "role"}, searchFields: []string{"nama_lengkap", "email"}, newModel: func() any { return &database.User{} }, newSlice: func() any { return &[]database.User{} }},
 	}
+}
+
+func (h *Handler) GetPaguControl(c *gin.Context) {
+	if !h.ensureReady(c) {
+		return
+	}
+
+	// RBAC: sebagaimana pagu-sub-kegiatan (hanya ADMIN dan PIMPINAN)
+	rawRole, ok := c.Get("auth.role")
+	if !ok {
+		response.Error(c, http.StatusUnauthorized, "Sesi tidak valid")
+		return
+	}
+	role := strings.ToUpper(strings.TrimSpace(fmt.Sprintf("%v", rawRole)))
+	if role != "ADMIN" && role != "PIMPINAN" {
+		response.Error(c, http.StatusForbidden, "Akses ditolak: role anda tidak diizinkan")
+		return
+	}
+
+	tahunRaw := strings.TrimSpace(c.Query("tahun"))
+	if tahunRaw == "" {
+		tahunRaw = strconv.Itoa(time.Now().Year())
+	}
+	tahun, err := strconv.Atoi(tahunRaw)
+	if err != nil || tahun < 2000 || tahun > 2100 {
+		response.Error(c, http.StatusBadRequest, "tahun harus berupa angka antara 2000-2100")
+		return
+	}
+
+	type PaguControlItem struct {
+		SubKegiatanID       uint64  `json:"sub_kegiatan_id"`
+		Kode                string  `json:"kode"`
+		Nama                string  `json:"nama"`
+		PaguTahunSebelumnya float64 `json:"pagu_tahun_sebelumnya"`
+		PaguTahunIni        float64 `json:"pagu_tahun_ini"`
+		TotalRencanaKerja   float64 `json:"total_rencana_kerja"`
+		Selisih             float64 `json:"selisih"`
+	}
+
+	var results []PaguControlItem
+
+	// We use sub_kegiatan as the base.
+	// Joined with pagu_sub_kegiatan for the target budgets (pagu).
+	// Joined with rencana_kerja (via indikator_sub_kegiatan) for total work plan.
+	query := h.db.WithContext(c.Request.Context()).
+		Table("sub_kegiatan sk").
+		Select(`
+			sk.id as sub_kegiatan_id,
+			sk.kode,
+			sk.nama,
+			COALESCE(psk.pagu_tahun_sebelumnya, 0) as pagu_tahun_sebelumnya,
+			COALESCE(psk.pagu_tahun_ini, 0) as pagu_tahun_ini,
+			COALESCE(SUM(irk.anggaran_tahunan), 0) as total_rencana_kerja,
+			(COALESCE(psk.pagu_tahun_ini, 0) - COALESCE(SUM(irk.anggaran_tahunan), 0)) as selisih
+		`).
+		Joins("LEFT JOIN pagu_sub_kegiatan psk ON psk.sub_kegiatan_id = sk.id AND psk.tahun = ?", tahun).
+		Joins("LEFT JOIN indikator_sub_kegiatan isk ON isk.sub_kegiatan_id = sk.id").
+		Joins("LEFT JOIN rencana_kerja rk ON rk.indikator_sub_kegiatan_id = isk.id AND rk.tahun = ?", tahun).
+		Joins("LEFT JOIN indikator_rencana_kerja irk ON irk.rencana_kerja_id = rk.id").
+		Group("sk.id, psk.id")
+
+	if q := strings.TrimSpace(c.Query("q")); q != "" {
+		like := "%" + q + "%"
+		query = query.Where("sk.kode LIKE ? OR sk.nama LIKE ?", like, like)
+	}
+
+	if err := query.Find(&results).Error; err != nil {
+		response.Error(c, http.StatusInternalServerError, "Gagal memuat data kontrol pagu: "+err.Error())
+		return
+	}
+
+	response.Success(c, gin.H{
+		"items": results,
+		"total": len(results),
+		"tahun": tahun,
+	})
 }

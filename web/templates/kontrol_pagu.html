@@ -1,0 +1,241 @@
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Kontrol Pagu - E-Planning RSUD</title>
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <link href="/assets/css/app.css" rel="stylesheet" />
+    <script src="/assets/js/auth-client.js?v=20260326"></script>
+    <style>
+      .status-badge {
+        font-size: 0.75rem;
+        padding: 0.25rem 0.6rem;
+        border-radius: 50rem;
+      }
+      .diff-positive { color: #198754; font-weight: 600; }
+      .diff-negative { color: #dc3545; font-weight: 600; }
+      .table-hover tbody tr:hover {
+        background-color: rgba(0, 123, 255, 0.05);
+      }
+      .card-stats {
+        transition: transform 0.2s;
+      }
+      .card-stats:hover {
+        transform: translateY(-5px);
+      }
+    </style>
+  </head>
+  <body class="bg-soft-pattern" data-module-name="Kontrol Pagu">
+    <main class="container-fluid py-4 px-4">
+      <header class="mb-4 p-4 card shadow-sm border-0 header-gradient text-white">
+        <div class="d-flex justify-content-between align-items-center">
+          <div>
+            <h1 class="h3 mb-1">Kontrol Pagu & Rencana Kerja</h1>
+            <p class="mb-0 opacity-75">Perbandingan Pagu Anggaran dengan Total Rencana Kerja per Sub Kegiatan</p>
+          </div>
+          <a href="/ui/dashboard" class="btn btn-light btn-sm shadow-sm">
+            Dashboard
+          </a>
+        </div>
+      </header>
+
+      <div class="card border-0 shadow-sm mb-4">
+        <div class="card-body">
+          <div class="row g-3 align-items-end">
+            <div class="col-md-3">
+              <label for="filter-tahun" class="form-label small text-muted text-uppercase fw-bold">Tahun Anggaran</label>
+              <select id="filter-tahun" class="form-select border-0 bg-light">
+                <!-- Will be populated by JS -->
+              </select>
+            </div>
+            <div class="col-md-4">
+              <label for="filter-query" class="form-label small text-muted text-uppercase fw-bold">Cari Sub Kegiatan</label>
+              <div class="input-group">
+                <input id="filter-query" type="text" class="form-control border-0 bg-light" placeholder="Kode atau nama sub kegiatan...">
+                <button id="btn-search" class="btn btn-primary px-4">Cari</button>
+              </div>
+            </div>
+            <div class="col-md-5 text-end">
+              <button id="btn-refresh" class="btn btn-outline-secondary btn-sm">
+                Refresh Data
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="row g-4 mb-4" id="stats-container">
+        <!-- Stats will be populated by JS -->
+      </div>
+
+      <div class="card border-0 shadow-sm">
+        <div class="card-body p-0">
+          <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+              <thead class="bg-light">
+                <tr>
+                  <th class="ps-4 py-3 text-uppercase small text-muted">Sub Kegiatan</th>
+                  <th class="text-end py-3 text-uppercase small text-muted">Pagu N-1</th>
+                  <th class="text-end py-3 text-uppercase small text-muted">Pagu N</th>
+                  <th class="text-end py-3 text-uppercase small text-muted">Rencana Kerja (RK)</th>
+                  <th class="text-end py-3 text-uppercase small text-muted">Selisih (Pagu N - RK)</th>
+                  <th class="text-center py-3 text-uppercase small text-muted">Status</th>
+                </tr>
+              </thead>
+              <tbody id="table-body">
+                <tr>
+                  <td colspan="6" class="text-center py-5">
+                    <div class="spinner-border text-primary" role="status">
+                      <span class="visually-hidden">Loading...</span>
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div class="card-footer bg-white border-0 py-3 ps-4">
+          <small id="meta-text" class="text-muted">Memuat data...</small>
+        </div>
+      </div>
+    </main>
+
+    <script>
+      (function() {
+        const apiEndpoint = "/api/v1/pagu_sub_kegiatan_control";
+        const tableBody = document.getElementById("table-body");
+        const filterTahun = document.getElementById("filter-tahun");
+        const filterQuery = document.getElementById("filter-query");
+        const btnSearch = document.getElementById("btn-search");
+        const btnRefresh = document.getElementById("btn-refresh");
+        const metaText = document.getElementById("meta-text");
+        const statsContainer = document.getElementById("stats-container");
+
+        function formatCurrency(value) {
+          return new Intl.NumberFormat("id-ID", {
+            style: "currency",
+            currency: "IDR",
+            minimumFractionDigits: 0
+          }).format(value);
+        }
+
+        function populateYears() {
+          const currentYear = new Date().getFullYear();
+          filterTahun.innerHTML = ''; // Clear current options
+          for (let i = currentYear - 2; i <= currentYear + 2; i++) {
+            const option = document.createElement("option");
+            option.value = i;
+            option.textContent = i;
+            if (i === currentYear) option.selected = true;
+            filterTahun.appendChild(option);
+          }
+        }
+
+        async function loadData() {
+          tableBody.innerHTML = '<tr><td colspan="6" class="text-center py-5"><div class="spinner-border text-primary" role="status"></div></td></tr>';
+          
+          const tahun = filterTahun.value;
+          const query = filterQuery.value.trim();
+          const url = new URL(window.location.origin + apiEndpoint);
+          url.searchParams.append("tahun", tahun);
+          if (query) url.searchParams.append("q", query);
+
+          try {
+            const res = await fetch(url, {
+              headers: {
+                "Authorization": `Bearer ${localStorage.getItem("AUTH_TOKEN") || localStorage.getItem("authToken")}`
+              }
+            });
+            
+            if (!res.ok) throw new Error("Gagal mengambil data");
+            
+            const body = await res.json();
+            const items = body.data?.items || [];
+            renderTable(items);
+            renderStats(items);
+            metaText.textContent = `Menampilkan ${items.length} sub kegiatan untuk tahun ${tahun}`;
+          } catch (error) {
+            tableBody.innerHTML = `<tr><td colspan="6" class="text-center py-5 text-danger">Error: ${error.message}</td></tr>`;
+          }
+        }
+
+        function renderTable(items) {
+          if (items.length === 0) {
+            tableBody.innerHTML = '<tr><td colspan="6" class="text-center py-5 text-muted">Data tidak ditemukan</td></tr>';
+            return;
+          }
+
+          tableBody.innerHTML = items.map(item => {
+            const diff = item.selisih;
+            const diffClass = diff < 0 ? "diff-negative" : "diff-positive";
+            const statusBadge = diff < 0 ? "bg-danger" : (diff === 0 ? "bg-success" : "bg-warning text-dark");
+            const statusText = diff < 0 ? "Over Budget" : (diff === 0 ? "Matching" : "Under Pagu");
+
+            return `
+              <tr>
+                <td class="ps-4">
+                  <div class="fw-bold text-dark">${item.kode}</div>
+                  <div class="small text-muted">${item.nama}</div>
+                </td>
+                <td class="text-end text-nowrap">${formatCurrency(item.pagu_tahun_sebelumnya)}</td>
+                <td class="text-end text-nowrap fw-semibold text-primary">${formatCurrency(item.pagu_tahun_ini)}</td>
+                <td class="text-end text-nowrap">${formatCurrency(item.total_rencana_kerja)}</td>
+                <td class="text-end text-nowrap ${diffClass}">${formatCurrency(diff)}</td>
+                <td class="text-center">
+                  <span class="badge status-badge ${statusBadge}">${statusText}</span>
+                </td>
+              </tr>
+            `;
+          }).join("");
+        }
+
+        function renderStats(items) {
+          const totalPagu = items.reduce((sum, item) => sum + item.pagu_tahun_ini, 0);
+          const totalRK = items.reduce((sum, item) => sum + item.total_rencana_kerja, 0);
+          const deficitCount = items.filter(item => item.selisih < 0).length;
+
+          statsContainer.innerHTML = `
+            <div class="col-md-4">
+              <div class="card border-0 shadow-sm card-stats h-100 bg-primary text-white">
+                <div class="card-body">
+                  <h6 class="text-uppercase small opacity-75">Total Pagu (N)</h6>
+                  <h3 class="mb-0">${formatCurrency(totalPagu)}</h3>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-4">
+              <div class="card border-0 shadow-sm card-stats h-100 bg-info text-white">
+                <div class="card-body">
+                  <h6 class="text-uppercase small opacity-75">Total Rencana Kerja</h6>
+                  <h3 class="mb-0">${formatCurrency(totalRK)}</h3>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-4">
+              <div class="card border-0 shadow-sm card-stats h-100 \${deficitCount > 0 ? 'bg-danger' : 'bg-success'} text-white">
+                <div class="card-body">
+                  <h6 class="text-uppercase small opacity-75">Sub Kegiatan Over Budget</h6>
+                  <h3 class="mb-0">\${deficitCount}</h3>
+                </div>
+              </div>
+            </div>
+          `;
+        }
+
+        populateYears();
+        loadData();
+
+        btnSearch.addEventListener("click", loadData);
+        btnRefresh.addEventListener("click", loadData);
+        filterTahun.addEventListener("change", loadData);
+        filterQuery.addEventListener("keypress", (e) => {
+          if (e.key === "Enter") loadData();
+        });
+      })();
+    </script>
+  </body>
+</html>

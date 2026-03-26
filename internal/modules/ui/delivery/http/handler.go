@@ -57,6 +57,7 @@ func pages() []page {
 		{Route: "clients", File: "clients.html"},
 		{Route: "dokumen_pdf", File: "dokumen_pdf.html"},
 		{Route: "dashboard", File: "dashboard.html"},
+		{Route: "kontrol-pagu", File: "kontrol_pagu.html"},
 	}
 }
 
