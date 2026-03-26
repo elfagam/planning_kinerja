@@ -13,3 +13,4 @@ dist/
 
 # macOS
 .DS_Store
+internal/shared/database/database.db
