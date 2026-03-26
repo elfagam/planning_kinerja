@@ -416,11 +416,14 @@
           return;
         }
 
+        // Ensure proactive refresh timer is started for this session
+        scheduleProactiveRefresh();
+
         // Proactive refresh check
         const state = getSessionState();
         if (state.status === "refresh_soon") {
           console.log("Session needs proactive refresh during init");
-          await performRefresh();
+          await refreshAccessToken();
         }
       } catch (err) {
         console.error("RBAC: verifySession failed:", err);
