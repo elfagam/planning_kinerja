@@ -2,6 +2,7 @@ package main
 
 import (
 	"log"
+	"os"
 
 	"e-plan-ai/internal/bootstrap"
 	"e-plan-ai/internal/config"
@@ -14,8 +15,16 @@ func main() {
 	gin.SetMode(cfg.GinMode)
 	r := bootstrap.NewRouter(cfg)
 
-	log.Printf("e-plan-ai API running on %s", cfg.HTTPAddr)
-	if err := r.Run(cfg.HTTPAddr); err != nil {
+	// 1. Ambil port dari Railway (Variable "PORT")
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080" // Fallback jika dijalankan di laptop sendiri
+	}
+
+	// 2. Jalankan di "0.0.0.0" (BUKAN localhost) agar bisa diakses dari luar kontainer
+	// Cukup gunakan ":" + port
+	log.Printf("e-plan-ai API running on port %s", port)
+	if err := r.Run(":" + port); err != nil {
 		log.Fatalf("failed to run server: %v", err)
 	}
 }

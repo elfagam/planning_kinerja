@@ -38,7 +38,7 @@ func Load() Config {
 	return Config{
 		AppName:                  getenv("APP_NAME", "e-plan-ai"),
 		AppEnv:                   getenv("APP_ENV", "development"),
-		HTTPAddr:                 getenv("HTTP_ADDR", "localhost:8080"),
+		HTTPAddr:                 getenv("HTTP_ADDR", ":8080"),
 		MySQLDSN:                 getenv("MYSQL_DSN", "root@tcp(localhost:3306)/e-plan-ai?parseTime=true"),
 		DBConnectMaxRetries:      getenvInt("DB_CONNECT_MAX_RETRIES", 10),
 		DBConnectRetryDelaySecs:  getenvInt("DB_CONNECT_RETRY_DELAY_SECONDS", 2),

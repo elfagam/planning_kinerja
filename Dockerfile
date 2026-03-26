@@ -32,10 +32,8 @@ COPY --from=builder --chown=eplan:eplan /app/docs ./docs
 # Set timezone
 ENV TZ=Asia/Jakarta
 
+# Use the port provided by Railway or fallback to 8080
+ENV PORT=8080
 EXPOSE 8080
-
-# Healthcheck
-HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
-  CMD curl -f http://localhost:8080/health || exit 1
 
 CMD ["sh", "-c", "./gorm-migrate || true; ./e-plan-ai"]
