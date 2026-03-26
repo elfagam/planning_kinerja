@@ -131,21 +131,8 @@ async function deleteIndikator(id) {
 }
 
 
+
 // --- index.js ---
-import {
-  deleteIndikator,
-  deleteRencanaKerja,
-  getCurrentUserID,
-  listAllIndikatorRencanaKerja,
-  listIndikatorByRencanaKerjaID,
-  listIndikatorSubKegiatan,
-  listPaguSubKegiatan,
-  listRencanaKerja,
-  listSubKegiatan,
-  listUnitPengusul,
-  saveIndikator,
-  saveRencanaKerja,
-} from "./service.js";
 
 const stateDefaults = {
   q: "",
@@ -1161,6 +1148,10 @@ function bindEvents() {
 
   try {
     await loadReferenceOptions();
+    // Initialize Information Switcher for this route
+    if (window.__AUTH__ && typeof window.__AUTH__.initInformasiSwitcher === "function") {
+      window.__AUTH__.initInformasiSwitcher("/rencana-kerja-spa");
+    }
   } catch (err) {
     setStatus(`Gagal memuat referensi: ${err.message}`, true);
   }

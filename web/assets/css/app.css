@@ -57,3 +57,24 @@ body {
 .metric-card {
   border-left: 5px solid var(--ep-brand-b);
 }
+
+/* Information Switcher Styles */
+@keyframes fadeEffect {
+  0% { opacity: 0.2; }
+  20% { opacity: 1; }
+  80% { opacity: 1; }
+  100% { opacity: 0.2; }
+}
+
+.info-switcher {
+  margin-top: 0.75rem;
+  background: rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: 0.65rem;
+  padding: 0.55rem 0.75rem;
+}
+
+.info-switcher-text {
+  margin-bottom: 0;
+  animation: fadeEffect 5s ease-in-out infinite;
+}
