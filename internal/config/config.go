@@ -41,20 +41,28 @@ type Config struct {
 func Load() *Config {
 	loadDotEnvIfExists(".env")
 
-	dbHost := getenv("DB_HOST", "localhost")
-	dbPort := getenv("DB_PORT", "3306")
-	dbUser := getenv("DB_USER", "root")
-	dbPass := getenv("DB_PASSWORD", "")
-	dbName := getenv("DB_NAME", "e-plan-ai")
+	dbHost := os.Getenv("DB_HOST")
+	if dbHost == "" {
+		dbHost = "localhost" // Fallback jika jalan di laptop lokal
+	}
 
-	// Build fallback DSN from individual components
-	defaultDSN := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?parseTime=true", dbUser, dbPass, dbHost, dbPort, dbName)
+	dbUser := os.Getenv("DB_USER")
+	dbPass := os.Getenv("DB_PASSWORD")
+	dbPort := os.Getenv("DB_PORT")
+	if dbPort == "" {
+		dbPort = "3306"
+	}
+	dbName := os.Getenv("DB_NAME")
+
+	// Rakit DSN-nya di sini
+	dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?charset=utf8mb4&parseTime=True&loc=Local",
+		dbUser, dbPass, dbHost, dbPort, dbName)
 
 	return &Config{
 		AppName:                  getenv("APP_NAME", "e-plan-ai"),
 		AppEnv:                   getenv("APP_ENV", "development"),
 		HTTPAddr:                 getenv("HTTP_ADDR", ":8080"),
-		MySQLDSN:                 getenv("MYSQL_DSN", defaultDSN),
+		MySQLDSN:                 dsn,
 		DBHost:                   dbHost,
 		DBPort:                   dbPort,
 		DBUser:                   dbUser,
