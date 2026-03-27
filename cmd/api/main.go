@@ -24,7 +24,7 @@ func main() {
 	// 2. Jalankan di "0.0.0.0" (BUKAN localhost) agar bisa diakses dari luar kontainer
 	// Cukup gunakan ":" + port
 	log.Printf("e-plan-ai API running on port %s", port)
-	if err := r.Run(":" + port); err != nil {
+	if err := r.Run("0.0.0.0:" + port); err != nil {
 		log.Fatalf("failed to run server: %v", err)
 	}
 }
