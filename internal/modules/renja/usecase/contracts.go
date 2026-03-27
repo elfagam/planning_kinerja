@@ -9,6 +9,7 @@ import (
 type Repository interface {
 	GetByID(ctx context.Context, id int64) (domain.Renja, error)
 	Save(ctx context.Context, renja domain.Renja) error
+	GetRencanaKerjaCSVData(ctx context.Context, subKegiatanID uint) ([]domain.ExportIndikatorCSVFlatDTO, error)
 	AppendAudit(ctx context.Context, actorID int64, action string, resourceID int64, notes string) error
 }
 

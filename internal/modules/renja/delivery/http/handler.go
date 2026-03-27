@@ -2,6 +2,7 @@ package http
 
 import (
 	"errors"
+	"fmt"
 	"log"
 	"net/http"
 	"strconv"
@@ -48,6 +49,7 @@ func (h *Handler) RegisterRoutes(v1 *gin.RouterGroup) {
 	renja.POST("/:id/approve", h.Approve)
 	renja.POST("/:id/reject", h.Reject)
 	renja.GET("/export/indikator-csv", h.ExportIndikatorKinerjaCSV)
+	renja.GET("/export/rencana-kerja-csv", h.ExportRencanaKerjaCSV)
 }
 // ExportIndikatorKinerjaCSV handles CSV export for Indikator Kinerja.
 func (h *Handler) ExportIndikatorKinerjaCSV(c *gin.Context) {
@@ -70,6 +72,31 @@ func (h *Handler) ExportIndikatorKinerjaCSV(c *gin.Context) {
 		return
 	}
 	c.Header("Content-Disposition", "attachment; filename=indikator_kinerja.csv")
+	c.Header("Content-Type", "text/csv")
+	c.Data(http.StatusOK, "text/csv", csvBytes)
+}
+
+// ExportRencanaKerjaCSV handles CSV export for Rencana Kerja by sub_kegiatan_id.
+func (h *Handler) ExportRencanaKerjaCSV(c *gin.Context) {
+	subKegiatanIDStr := c.Query("sub_kegiatan_id")
+	if subKegiatanIDStr == "" {
+		response.Error(c, http.StatusBadRequest, "sub_kegiatan_id is required")
+		return
+	}
+	subKegiatanID, err := strconv.ParseUint(subKegiatanIDStr, 10, 64)
+	if err != nil || subKegiatanID == 0 {
+		response.Error(c, http.StatusBadRequest, "invalid sub_kegiatan_id")
+		return
+	}
+
+	csvBytes, err := h.service.GenerateRencanaKerjaCSV(c.Request.Context(), uint(subKegiatanID))
+	if err != nil {
+		response.Error(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	filename := fmt.Sprintf("rencana_kerja_sub_kegiatan_%d.csv", subKegiatanID)
+	c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=%s", filename))
 	c.Header("Content-Type", "text/csv")
 	c.Data(http.StatusOK, "text/csv", csvBytes)
 }

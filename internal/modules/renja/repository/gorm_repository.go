@@ -59,6 +59,48 @@ func (r *RenjaGormRepository) GetIndikatorCSVData(ctx context.Context, rencanaKe
 	return results, nil
 }
 
+// GetRencanaKerjaCSVData fetches flat rencana kerja data filtered by sub_kegiatan_id.
+func (r *RenjaGormRepository) GetRencanaKerjaCSVData(ctx context.Context, subKegiatanID uint) ([]domain.ExportIndikatorCSVFlatDTO, error) {
+	var results []domain.ExportIndikatorCSVFlatDTO
+	err := r.dbFromContext(ctx).
+		Table("rencana_kerja").
+		Select(`
+			program.nama as program_nama,
+			kegiatan.nama as kegiatan_nama,
+			sub_kegiatan.nama as sub_kegiatan_nama,
+			unit_pengusul.kode as unit_pengusul_kode,
+			unit_pengusul.nama as unit_pengusul_nama,
+			rencana_kerja.tahun as rencana_kerja_tahun,
+			rencana_kerja.kode as rencana_kerja_kode,
+			rencana_kerja.nama as rencana_kerja_nama,
+			tb_standar_harga.id_rekening as standar_harga_id_rekening,
+			tb_standar_harga.id as standar_harga_id,
+			indikator_rencana_kerja.kode as indikator_kode,
+			indikator_rencana_kerja.nama as indikator_nama,
+			indikator_rencana_kerja.harga_satuan as harga_satuan,
+			indikator_rencana_kerja.satuan as satuan,
+			indikator_rencana_kerja.target_tahunan as target_tahunan,
+			indikator_rencana_kerja.anggaran_tahunan as anggaran_tahunan,
+			unit_pengusul.jabatan_penanggungjawab as jabatan_penanggung_jawab,
+			unit_pengusul.nama_penanggungjawab as nama_penanggung_jawab,
+			unit_pengusul.nip_penanggungjawab as nip_penanggung_jawab
+		`).
+		Joins("JOIN unit_pengusul ON unit_pengusul.id = rencana_kerja.unit_pengusul_id").
+		Joins("JOIN indikator_rencana_kerja ON indikator_rencana_kerja.rencana_kerja_id = rencana_kerja.id").
+		Joins("LEFT JOIN tb_standar_harga ON tb_standar_harga.id = indikator_rencana_kerja.tb_standar_harga_id").
+		Joins("LEFT JOIN indikator_sub_kegiatan ON indikator_sub_kegiatan.id = rencana_kerja.indikator_sub_kegiatan_id").
+		Joins("LEFT JOIN sub_kegiatan ON sub_kegiatan.id = indikator_sub_kegiatan.sub_kegiatan_id").
+		Joins("LEFT JOIN kegiatan ON kegiatan.id = sub_kegiatan.kegiatan_id").
+		Joins("LEFT JOIN program ON program.id = kegiatan.program_id").
+		Where("sub_kegiatan.id = ?", subKegiatanID).
+		Order("tb_standar_harga.id_rekening, tb_standar_harga.id, rencana_kerja.kode, indikator_rencana_kerja.kode").
+		Scan(&results).Error
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch rencana kerja csv data: %w", err)
+	}
+	return results, nil
+}
+
 func NewRenjaGormRepository(db *gorm.DB) *RenjaGormRepository {
 	return &RenjaGormRepository{db: db}
 }

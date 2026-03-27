@@ -55,8 +55,11 @@ func Load() *Config {
 	dbName := os.Getenv("DB_NAME")
 
 	// Rakit DSN-nya di sini
-	dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?charset=utf8mb4&parseTime=True&loc=Local",
-		dbUser, dbPass, dbHost, dbPort, dbName)
+	dsn := os.Getenv("MYSQL_DSN")
+	if dsn == "" {
+		dsn = fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?charset=utf8mb4&parseTime=True&loc=Local",
+			dbUser, dbPass, dbHost, dbPort, dbName)
+	}
 
 	return &Config{
 		AppName:                  getenv("APP_NAME", "e-plan-ai"),

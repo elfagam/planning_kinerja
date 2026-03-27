@@ -228,9 +228,18 @@
                 class="d-flex justify-content-between align-items-center mb-3"
               >
                 <h2 class="h6 text-uppercase text-muted mb-0">Daftar Data</h2>
-                <a href="/ui/dashboard" class="btn btn-sm btn-outline-dark"
-                  >Kembali ke Dashboard</a
-                >
+                <div class="d-flex gap-2">
+                  <button
+                    id="btn-export-csv"
+                    type="button"
+                    class="btn btn-sm btn-outline-success"
+                  >
+                    Export CSV
+                  </button>
+                  <a href="/ui/dashboard" class="btn btn-sm btn-outline-dark"
+                    >Kembali ke Dashboard</a
+                  >
+                </div>
               </div>
 
               <div class="row g-2 mb-3">
@@ -443,6 +452,7 @@
           const queryInput = document.getElementById("query");
           const btnSearch = document.getElementById("btn-search");
           const btnSearchReset = document.getElementById("btn-search-reset");
+          const btnExportCSV = document.getElementById("btn-export-csv");
           const btnReset = document.getElementById("btn-reset");
           const tableBody = document.getElementById("table-body");
           const metaText = document.getElementById("meta-text");
@@ -1641,6 +1651,47 @@
           } catch (error) {
             setStatus(`Gagal inisialisasi form: ${error.message}`, true);
           }
+
+          // Handle Export CSV
+          btnExportCSV.addEventListener("click", async function () {
+            const subId = subKegiatanInput.value;
+            if (!subId) {
+              alert("Silakan pilih Sub Kegiatan terlebih dahulu.");
+              return;
+            }
+
+            const token = getAccessToken();
+            const url = `/api/v1/renja/export/rencana-kerja-csv?sub_kegiatan_id=${subId}`;
+
+            try {
+              const resp = await fetch(url, {
+                headers: {
+                  Authorization: `Bearer ${token}`,
+                },
+              });
+
+              if (!resp.ok) {
+                const errText = await resp.text();
+                alert("Gagal mengunduh CSV: " + errText);
+                return;
+              }
+
+              const blob = await resp.blob();
+              const downloadUrl = window.URL.createObjectURL(blob);
+              const a = document.createElement("a");
+              a.href = downloadUrl;
+              a.download = `rencana_kerja_${subId}.csv`;
+              document.body.appendChild(a);
+              a.click();
+              setTimeout(() => {
+                window.URL.revokeObjectURL(downloadUrl);
+                a.remove();
+              }, 100);
+            } catch (err) {
+              console.error("Export CSV Error:", err);
+              alert("Terjadi kesalahan saat mengunduh CSV.");
+            }
+          });
         })();
       });
     </script>
