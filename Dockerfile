@@ -33,7 +33,5 @@ COPY --from=builder --chown=eplan:eplan /app/docs ./docs
 ENV TZ=Asia/Jakarta
 
 # Use the port provided by Railway or fallback to 8080
-ENV PORT=8080
-EXPOSE 8080
 
 CMD ["sh", "-c", "./gorm-migrate || true; ./e-plan-ai"]
