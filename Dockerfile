@@ -9,7 +9,7 @@ COPY go.mod go.sum ./
 RUN go mod download
 
 COPY . .
-RUN go build -ldflags="-s -w" -o e-plan-ai ./cmd/api
+RUN go build -ldflags="-s -w" -o e-plan-ai .
 RUN go build -ldflags="-s -w" -o gorm-migrate ./cmd/gorm-migrate
 
 # Stage 2: Runtime
