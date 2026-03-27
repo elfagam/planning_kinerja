@@ -41,21 +41,14 @@ type Config struct {
 func Load() *Config {
 	loadDotEnvIfExists(".env")
 
-	dbHost := os.Getenv("DB_HOST")
-	if dbHost == "" {
-		dbHost = "localhost" // Fallback jika jalan di laptop lokal
-	}
-
-	dbUser := os.Getenv("DB_USER")
-	dbPass := os.Getenv("DB_PASSWORD")
-	dbPort := os.Getenv("DB_PORT")
-	if dbPort == "" {
-		dbPort = "3306"
-	}
-	dbName := os.Getenv("DB_NAME")
+	dbHost := getenv("MYSQLHOST", getenv("DB_HOST", "localhost"))
+	dbPort := getenv("MYSQLPORT", getenv("DB_PORT", "3306"))
+	dbUser := getenv("MYSQLUSER", getenv("DB_USER", "root"))
+	dbPass := getenv("MYSQLPASSWORD", getenv("DB_PASSWORD", ""))
+	dbName := getenv("MYSQLDATABASE", getenv("DB_NAME", ""))
 
 	// Rakit DSN-nya di sini
-	dsn := os.Getenv("MYSQL_DSN")
+	dsn := getenv("MYSQL_URL", getenv("MYSQL_DSN", ""))
 	if dsn == "" {
 		dsn = fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?charset=utf8mb4&parseTime=True&loc=Local",
 			dbUser, dbPass, dbHost, dbPort, dbName)
