@@ -18,7 +18,7 @@ type developmentActorRow struct {
 	Role     string
 }
 
-func resolveDevelopmentActor(cfg config.Config) middleware.DevelopmentActorContext {
+func resolveDevelopmentActor(cfg *config.Config) middleware.DevelopmentActorContext {
 	if cfg.AuthEnabled || !strings.EqualFold(strings.TrimSpace(cfg.AppEnv), "development") {
 		return middleware.DevelopmentActorContext{}
 	}

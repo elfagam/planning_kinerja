@@ -84,7 +84,7 @@ type programPerformanceRankingRow struct {
 	RataRataCapaian     float64 `gorm:"column:rata_rata_capaian"`
 }
 
-func NewHandler(cfg config.Config) *Handler {
+func NewHandler(cfg *config.Config) *Handler {
 	db, err := database.NewGormMySQL(cfg)
 	if err != nil {
 		log.Printf("performance handler unavailable: %v", err)

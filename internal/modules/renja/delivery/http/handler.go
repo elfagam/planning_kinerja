@@ -27,7 +27,7 @@ type actionRequest struct {
 	Reason  string `json:"reason"`
 }
 
-func NewHandler(cfg config.Config) *Handler {
+func NewHandler(cfg *config.Config) *Handler {
 	db, err := shareddb.NewGormMySQL(cfg)
 	if err != nil {
 		log.Printf("renja handler running without database-backed workflow: %v", err)

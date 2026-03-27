@@ -28,7 +28,7 @@ type upsertRequest struct {
 	Aktif      *bool  `json:"aktif"`
 }
 
-func NewHandler(cfg config.Config) *Handler {
+func NewHandler(cfg *config.Config) *Handler {
 	db, err := database.NewGormMySQL(cfg)
 	if err != nil {
 		log.Printf("unit_pelaksana handler unavailable: %v", err)

@@ -24,7 +24,7 @@ type Handler struct {
 	storage string
 }
 
-func NewHandler(cfg config.Config) *Handler {
+func NewHandler(cfg *config.Config) *Handler {
 	db, err := shareddb.NewGormMySQL(cfg)
 	if err != nil {
 		log.Printf("client handler running without database-backed service: %v", err)

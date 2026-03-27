@@ -59,7 +59,7 @@ type userUpsertPayload struct {
 	PasswordHash    string
 }
 
-func NewHandler(cfg config.Config) *Handler {
+func NewHandler(cfg *config.Config) *Handler {
 	db, err := database.NewGormMySQL(cfg)
 	if err != nil {
 		log.Printf("planninggorm handler unavailable: %v", err)

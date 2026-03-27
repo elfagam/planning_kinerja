@@ -19,7 +19,7 @@ type GormMySQLConfig struct {
 }
 
 // NewGormMySQLConfig builds GORM DB config from app config and optional env overrides.
-func NewGormMySQLConfig(cfg config.Config) GormMySQLConfig {
+func NewGormMySQLConfig(cfg *config.Config) GormMySQLConfig {
 	logMode := logger.Warn
 	if cfg.AppEnv == "production" {
 		logMode = logger.Error

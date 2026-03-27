@@ -20,7 +20,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func NewRouter(cfg config.Config) *gin.Engine {
+func NewRouter(cfg *config.Config) *gin.Engine {
 	devActor := resolveDevelopmentActor(cfg)
 
 	r := gin.New()

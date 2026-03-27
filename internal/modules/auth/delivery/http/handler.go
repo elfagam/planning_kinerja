@@ -20,7 +20,7 @@ import (
 )
 
 type Handler struct {
-	cfg        config.Config
+	cfg        *config.Config
 	db         *gorm.DB
 	signingKey []byte
 	accessTTL  time.Duration
@@ -55,7 +55,7 @@ type systemUser struct {
 	UnitPengusulNama *string
 }
 
-func NewHandler(cfg config.Config) *Handler {
+func NewHandler(cfg *config.Config) *Handler {
 	db, err := database.NewGormMySQL(cfg)
 	if err != nil {
 		db = nil

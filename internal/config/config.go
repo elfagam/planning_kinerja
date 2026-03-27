@@ -2,6 +2,7 @@ package config
 
 import (
 	"bufio"
+	"fmt"
 	"os"
 	"strconv"
 	"strings"
@@ -13,6 +14,11 @@ type Config struct {
 	AppEnv                   string
 	HTTPAddr                 string
 	MySQLDSN                 string
+	DBHost                   string
+	DBPort                   string
+	DBUser                   string
+	DBPass                   string
+	DBName                   string
 	DBConnectMaxRetries      int
 	DBConnectRetryDelaySecs  int
 	DBMaxOpenConns           int
@@ -32,14 +38,28 @@ type Config struct {
 	ShutdownTimeoutSeconds   int
 }
 
-func Load() Config {
+func Load() *Config {
 	loadDotEnvIfExists(".env")
 
-	return Config{
+	dbHost := getenv("DB_HOST", "localhost")
+	dbPort := getenv("DB_PORT", "3306")
+	dbUser := getenv("DB_USER", "root")
+	dbPass := getenv("DB_PASSWORD", "")
+	dbName := getenv("DB_NAME", "e-plan-ai")
+
+	// Build fallback DSN from individual components
+	defaultDSN := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?parseTime=true", dbUser, dbPass, dbHost, dbPort, dbName)
+
+	return &Config{
 		AppName:                  getenv("APP_NAME", "e-plan-ai"),
 		AppEnv:                   getenv("APP_ENV", "development"),
 		HTTPAddr:                 getenv("HTTP_ADDR", ":8080"),
-		MySQLDSN:                 getenv("MYSQL_DSN", "root@tcp(localhost:3306)/e-plan-ai?parseTime=true"),
+		MySQLDSN:                 getenv("MYSQL_DSN", defaultDSN),
+		DBHost:                   dbHost,
+		DBPort:                   dbPort,
+		DBUser:                   dbUser,
+		DBPass:                   dbPass,
+		DBName:                   dbName,
 		DBConnectMaxRetries:      getenvInt("DB_CONNECT_MAX_RETRIES", 10),
 		DBConnectRetryDelaySecs:  getenvInt("DB_CONNECT_RETRY_DELAY_SECONDS", 2),
 		DBMaxOpenConns:           getenvInt("DB_MAX_OPEN_CONNS", 20),

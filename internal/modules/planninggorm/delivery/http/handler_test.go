@@ -17,7 +17,7 @@ func TestCreateIndikatorKegiatan_RequiredValidation(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	cfg := config.Config{ /* ...isi config test... */ }
 	// Handler setup
-	h := NewHandler(cfg)
+	h := NewHandler(&cfg)
 	if !h.ready {
 		t.Skip("Handler not ready: " + h.reason)
 	}

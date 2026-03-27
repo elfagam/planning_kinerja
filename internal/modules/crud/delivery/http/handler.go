@@ -19,7 +19,7 @@ type Handler struct {
 	store repository.Store
 }
 
-func NewHandler(cfg config.Config) *Handler {
+func NewHandler(cfg *config.Config) *Handler {
 	var store repository.Store
 	mysqlStore, err := repository.NewMySQLStore(cfg.MySQLDSN)
 	if err != nil {

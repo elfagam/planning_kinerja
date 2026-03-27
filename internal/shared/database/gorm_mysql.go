@@ -15,7 +15,7 @@ import (
 )
 
 // NewGormMySQL creates a GORM connection backed by MySQL.
-func NewGormMySQL(cfg config.Config) (*gorm.DB, error) {
+func NewGormMySQL(cfg *config.Config) (*gorm.DB, error) {
 	dbCfg := NewGormMySQLConfig(cfg)
 	gormCfg := &gorm.Config{Logger: logger.Default.LogMode(dbCfg.LogMode)}
 
@@ -69,7 +69,7 @@ func openAndPingGorm(dbCfg GormMySQLConfig, gormCfg *gorm.Config) (*gorm.DB, err
 }
 
 // PingMySQL checks database availability without creating a long-lived pool.
-func PingMySQL(cfg config.Config) error {
+func PingMySQL(cfg *config.Config) error {
 	db, err := sql.Open("mysql", cfg.MySQLDSN)
 	if err != nil {
 		return WrapConnectionError("sql open", fmt.Errorf("open mysql: %w", err))
