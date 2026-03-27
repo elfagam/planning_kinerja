@@ -34,6 +34,7 @@ func AutoMigrateAll(db *gorm.DB) error {
 		&RealisasiRencanaKerja{},
 		&TargetDanRealisasi{},
 		&Informasi{},
+		&StandarHarga{},
 	); err != nil {
 		return fmt.Errorf("gorm automigrate all models: %w", err)
 	}
