@@ -248,7 +248,7 @@ func (RencanaKerja) TableName() string { return "rencana_kerja" }
 type IndikatorRencanaKerja struct {
 	ID               uint64        `gorm:"primaryKey;autoIncrement"`
 	RencanaKerjaID   uint64        `gorm:"not null;index:idx_indikator_rk_rk;index:idx_indikator_rk_rk_kode,priority:1"`
-	TbStandarHargaID *int          `json:"tb_standar_harga_id" gorm:"column:tb_standar_harga_id"`
+	TbStandarHargaID *uint64        `json:"tb_standar_harga_id" gorm:"column:tb_standar_harga_id"`
 	StandarHarga     *StandarHarga `json:"standar_harga" gorm:"foreignKey:TbStandarHargaID;constraint:fk_gorm_indikator_rk_tb_sh"`
 	Kode             string        `gorm:"size:50;not null;uniqueIndex:uq_indikator_rk_kode;index:idx_indikator_rk_rk_kode,priority:2"`
 	Nama            string    `gorm:"size:255;not null"`
@@ -309,7 +309,7 @@ type Informasi struct {
 func (Informasi) TableName() string { return "informasi" }
 
 type StandarHarga struct {
-	ID           int      `json:"id" gorm:"primaryKey;column:id"`
+	ID           uint64   `json:"id" gorm:"primaryKey;column:id"`
 	JenisStandar *string  `json:"jenis_standar" gorm:"column:jenis_standar"`
 	UraianBarang *string  `json:"uraian_barang" gorm:"column:uraian_barang"`
 	Spesifikasi  *string  `json:"spesifikasi" gorm:"column:spesifikasi"`

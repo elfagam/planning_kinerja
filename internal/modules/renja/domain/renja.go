@@ -19,7 +19,7 @@ type ExportIndikatorCSVFlatDTO struct {
 	RencanaKerjaKode         string
 	RencanaKerjaNama         string
 	StandarHargaIdRekening   string
-	StandarHargaId           int
+	StandarHargaId           uint64
 	IndikatorKode            string
 	IndikatorNama            string
 	HargaSatuan              float64
@@ -71,7 +71,7 @@ type RencanaKerja struct {
 type Renja = RencanaKerja
 
 type StandarHarga struct {
-	ID           int
+	ID           uint64
 	JenisStandar *string
 	UraianBarang *string
 	Spesifikasi  *string
@@ -84,7 +84,7 @@ type StandarHarga struct {
 type IndikatorRencanaKerja struct {
 	ID               int64
 	RencanaKerjaID   int64
-	TbStandarHargaID *int
+	TbStandarHargaID *uint64
 	StandarHarga     *StandarHarga
 	Code             string
 	Name            string

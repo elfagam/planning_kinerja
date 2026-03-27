@@ -542,7 +542,7 @@ DROP TABLE IF EXISTS `indikator_rencana_kerja`;
 CREATE TABLE `indikator_rencana_kerja` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
   `rencana_kerja_id` bigint unsigned NOT NULL,
-  `tb_standar_harga_id` int DEFAULT NULL,
+  `tb_standar_harga_id` bigint unsigned DEFAULT NULL,
   `kode` varchar(50) NOT NULL,
   `nama` varchar(255) NOT NULL,
   `satuan` varchar(60) DEFAULT NULL,
@@ -1536,7 +1536,7 @@ DROP TABLE IF EXISTS `tb_standar_harga`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `tb_standar_harga` (
-  `id` int NOT NULL,
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
   `jenis_standar` char(5) DEFAULT NULL,
   `uraian_barang` text,
   `spesifikasi` text,
