@@ -39,16 +39,20 @@ type Config struct {
 }
 
 func Load() *Config {
+	// 1. Muat file .env jika ada (berguna saat jalan di lokal/laptop)
 	loadDotEnvIfExists(".env")
 
+	// 2. Ambil Variabel Database dengan sistem Prioritas (Railway -> Lokal -> Default)
 	dbHost := getenv("MYSQLHOST", getenv("DB_HOST", "localhost"))
 	dbPort := getenv("MYSQLPORT", getenv("DB_PORT", "3306"))
 	dbUser := getenv("MYSQLUSER", getenv("DB_USER", "root"))
 	dbPass := getenv("MYSQLPASSWORD", getenv("DB_PASSWORD", ""))
-	dbName := getenv("MYSQLDATABASE", getenv("DB_NAME", ""))
+	dbName := getenv("MYSQLDATABASE", getenv("DB_NAME", "eplanning-rsud"))
 
-	// Rakit DSN-nya di sini
-	dsn := getenv("MYSQL_URL", getenv("MYSQL_DSN", ""))
+	// 3. Rakit DSN (Data Source Name)
+	// Kita prioritaskan variabel MYSQL_URL jika Railway menyediakannya,
+	// jika tidak, kita rakit sendiri menggunakan komponen di atas.
+	dsn := os.Getenv("MYSQL_URL")
 	if dsn == "" {
 		dsn = fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?charset=utf8mb4&parseTime=True&loc=Local",
 			dbUser, dbPass, dbHost, dbPort, dbName)
@@ -73,7 +77,7 @@ func Load() *Config {
 		GinMode:                  getenv("GIN_MODE", "debug"),
 		LogLevel:                 getenv("LOG_LEVEL", "info"),
 		AuthEnabled:              getenvBool("AUTH_ENABLED", true),
-		AuthToken:                getenv("AUTH_TOKEN", "change-me-in-production"),
+		AuthToken:                getenv("AUTH_TOKEN", "rahasia-super-kuat-123"), // Default fallback agar JWT tidak crash
 		DevAuthUserEmail:         getenv("DEV_AUTH_USER_EMAIL", "superadmin@rsudcontoh.go.id"),
 		JWTIssuer:                getenv("JWT_ISSUER", "e-plan-ai"),
 		JWTAccessTokenTTLMinutes: getenvInt("JWT_ACCESS_TOKEN_TTL_MINUTES", 15),
@@ -84,16 +88,19 @@ func Load() *Config {
 	}
 }
 
+// --- FUNGSI HELPER ---
+
 func loadDotEnvIfExists(path string) {
 	f, err := os.Open(path)
 	if err != nil {
-		return
+		return // File tidak ada, abaikan saja (misal saat di production)
 	}
 	defer f.Close()
 
 	scanner := bufio.NewScanner(f)
 	for scanner.Scan() {
 		line := strings.TrimSpace(scanner.Text())
+		// Abaikan baris kosong atau komentar
 		if line == "" || strings.HasPrefix(line, "#") {
 			continue
 		}
@@ -105,14 +112,11 @@ func loadDotEnvIfExists(path string) {
 
 		key = strings.TrimSpace(key)
 		value = strings.TrimSpace(value)
-		if key == "" {
-			continue
+		
+		// Jangan timpa variabel yang sudah ada di environment OS
+		if key != "" && os.Getenv(key) == "" {
+			_ = os.Setenv(key, value)
 		}
-
-		if _, exists := os.LookupEnv(key); exists {
-			continue
-		}
-		_ = os.Setenv(key, value)
 	}
 }
 
