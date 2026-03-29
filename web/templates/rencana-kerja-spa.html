@@ -325,7 +325,8 @@
                 :key="isk.id"
                 :value="isk.id"
               >
-                {{ isk.kode }} - {{ isk.nama }}
+                <span v-text="isk.kode"></span> -
+                <span v-text="isk.nama"></span>
               </option>
             </select>
             <div
@@ -400,7 +401,7 @@
             <label class="form-label fw-bold">Unit Pengusul</label>
             <select v-model="rkForm.unit_pengusul_id" class="form-select">
               <option v-for="u in unitItems" :key="u.id" :value="u.id">
-                {{ u.nama }}
+                <span v-text="u.nama"></span>
               </option>
             </select>
           </div>
@@ -437,7 +438,8 @@
       >
         <div class="offcanvas-header bg-light border-bottom">
           <h5 class="offcanvas-title fw-bold">
-            {{ irkForm.id ? 'Edit' : 'Tambah' }} Rincian Indikator
+            <span v-text="irkForm.id ? 'Edit' : 'Tambah'"></span> Rincian
+            Indikator
           </h5>
           <button
             type="button"
@@ -607,17 +609,11 @@
                   <tbody>
                     <tr v-for="sh in shItems" :key="sh.id">
                       <td>
-                        <div class="fw-bold text-primary">
-                          {{ sh.uraian_barang }}
-                        </div>
-                        <div class="small text-muted">
-                          {{ sh.spesifikasi || '-' }}
-                        </div>
+                        <div class="fw-bold text-primary"><span v-text="sh.uraian_barang"></span></div>
+                        <div class="small text-muted"><span v-text="sh.spesifikasi || '-' "></span></div>
                       </td>
-                      <td class="align-middle">{{ sh.satuan }}</td>
-                      <td class="text-end align-middle fw-bold">
-                        {{ formatMoney(sh.harga_satuan) }}
-                      </td>
+                      <td class="align-middle"><span v-text="sh.satuan"></span></td>
+                      <td class="text-end align-middle fw-bold"><span v-text="formatMoney(sh.harga_satuan)"></span></td>
                       <td class="text-end align-middle">
                         <button
                           @click="selectStandarHarga(sh)"
