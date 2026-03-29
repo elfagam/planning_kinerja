@@ -1,348 +1,644 @@
 <!doctype html>
 <html lang="id">
-<head>
+  <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Rencana Kerja SPA - E-Plan AI</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
     <link href="/assets/css/app.css" rel="stylesheet" />
     <style>
-        .sk-sticky { position: sticky; top: 0; z-index: 10; background: #fff; }
-        .row-actions { opacity: 0; transition: opacity 0.2s; }
-        tr:hover .row-actions { opacity: 1; }
+      .sk-sticky {
+        position: sticky;
+        top: 0;
+        z-index: 10;
+        background: #fff;
+      }
+      .row-actions {
+        opacity: 0;
+        transition: opacity 0.2s;
+      }
+      tr:hover .row-actions {
+        opacity: 1;
+      }
     </style>
-</head>
-<body class="bg-soft-pattern">
+  </head>
+  <body class="bg-soft-pattern">
     <div id="app" v-cloak class="container-fluid py-3 py-lg-4">
-        <!-- Sidebar Mobile Offcanvas (Reuse existing style if needed, but we focus on Main Content) -->
-        
-        <main class="mx-auto" style="max-width: 1400px;">
-            <!-- Header -->
-            <header class="mb-4 p-4 card shadow-sm border-0 header-gradient text-white">
-                <div class="d-flex justify-content-between align-items-start">
-                    <div>
-                        <h1 class="h4 mb-1">Rencana Aksi Rencana Kerja</h1>
-                        <p class="mb-0 small opacity-75">Manajemen program dan rincian anggaran tahunan</p>
-                    </div>
-                    <a href="/ui/dashboard" class="btn btn-sm btn-light text-primary fw-bold">Dashboard</a>
-                </div>
-            </header>
+      <!-- Sidebar Mobile Offcanvas (Reuse existing style if needed, but we focus on Main Content) -->
 
-            <!-- Filters -->
-            <section class="card border-0 shadow-sm mb-4">
-                <div class="card-body">
-                    <div class="row g-2 align-items-end">
-                        <div class="col-md-3">
-                            <label class="form-label mb-1">Cari Keyword</label>
-                            <input v-model="filters.search" @input="debounceSearch" class="form-control" placeholder="Nama rencana kerja atau indikator...">
-                        </div>
-                        <div class="col-md-1">
-                            <label class="form-label mb-1">Tahun</label>
-                            <input v-model="filters.tahun" type="number" class="form-control text-center">
-                        </div>
-                        <div class="col-md-2">
-                            <label class="form-label mb-1">Triwulan</label>
-                            <select v-model="filters.triwulan" class="form-select">
-                                <option value="">Semua (Tahunan)</option>
-                                <option value="1">1</option>
-                                <option value="2">2</option>
-                                <option value="3">3</option>
-                                <option value="4">4</option>
-                            </select>
-                        </div>
-                        <div class="col-md-5">
-                            <label class="form-label mb-1 small opacity-75">Sub Kegiatan (Cari & Pilih)</label>
-                            <div class="row g-1">
-                                <div class="col-5">
-                                    <input v-model="filters.sk_search" class="form-control form-control-sm" placeholder="Cari Kode/Nama...">
-                                </div>
-                                <div class="col-7">
-                                    <select v-model="filters.sub_kegiatan_id" class="form-select form-select-sm">
-                                        <option value="">Semua Sub Kegiatan</option>
-                                        <option v-for="sk in filteredSkItems" :key="sk.id" :value="sk.id">{{ sk.kode }} - {{ sk.nama }}</option>
-                                    </select>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-2 d-grid">
-                            <button @click="fetchData" class="btn btn-primary">Muat Data</button>
-                        </div>
-                    </div>
-                </div>
-            </section>
-
-            <!-- Main Tree View -->
-            <div class="card border-0 shadow-sm overflow-hidden">
-                <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
-                    <h2 class="h6 mb-0 text-uppercase fw-bold text-muted">Hierarki Rencana Kerja & Indikator</h2>
-                    <button @click="openRkDrawer()" class="btn btn-sm btn-success">+ Rencana Kerja Baru</button>
-                </div>
-                <div class="table-responsive">
-                    <table class="table align-middle mb-0">
-                        <thead class="table-light">
-                            <tr>
-                                <th style="width: 40%">Rencana Kerja / Indikator</th>
-                                <th class="text-center">Tahun</th>
-                                <th class="text-end">Target</th>
-                                <th class="text-end">Harga Satuan</th>
-                                <th class="text-end">Total Anggaran</th>
-                                <th class="text-center">Status</th>
-                                <th style="width: 100px"></th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <template v-for="rk in treeData" :key="rk.id">
-                                <!-- Parent Row -->
-                                <tr class="tree-row-parent" @click="toggleExpand(rk.id)">
-                                    <td>
-                                        <span class="tree-icon" :class="{ expanded: expandedParents.includes(rk.id) }">▶</span>
-                                        <span class="fw-bold">{{ rk.kode }} - {{ rk.nama }}</span>
-                                    </td>
-                                    <td class="text-center">{{ rk.tahun }}</td>
-                                    <td class="text-end">-</td>
-                                    <td class="text-end">-</td>
-                                    <td class="text-end fw-bold">{{ formatMoney(rk.total_anggaran) }}</td>
-                                    <td class="text-center">
-                                        <span :class="['badge-status', getStatusClass(rk.status)]">{{ rk.status }}</span>
-                                    </td>
-                                    <td class="text-end">
-                                        <div class="row-actions">
-                                            <button @click.stop="openRkDrawer(rk)" class="btn btn-xs btn-outline-primary py-0 px-2" title="Edit RK">✎</button>
-                                            <button @click.stop="openIrkDrawer(null, rk.id)" class="btn btn-xs btn-outline-success py-0 px-2" title="Tambah Indikator">+</button>
-                                        </div>
-                                    </td>
-                                </tr>
-                                <!-- Child Rows -->
-                                <template v-if="expandedParents.includes(rk.id)">
-                                    <tr v-for="irk in rk.children" :key="irk.id" class="tree-row-child">
-                                        <td class="tree-indent">
-                                            <span class="text-muted small">↳</span> {{ irk.kode }} - {{ irk.nama }}
-                                        </td>
-                                        <td class="text-center">-</td>
-                                        <td class="text-end text-muted">{{ irk.target_tahunan }} {{ irk.satuan }}</td>
-                                        <td class="text-end text-muted">{{ formatMoney(irk.harga_satuan) }}</td>
-                                        <td class="text-end">{{ formatMoney(irk.anggaran_tahunan) }}</td>
-                                        <td class="text-center"><span class="text-muted small">Linked</span></td>
-                                        <td class="text-end">
-                                            <div class="row-actions">
-                                                <button @click="openIrkDrawer(irk, rk.id)" class="btn btn-xs btn-outline-secondary py-0 px-2">Edit</button>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                    <tr v-if="!rk.children || rk.children.length === 0" class="tree-row-child">
-                                        <td colspan="7" class="tree-indent text-muted small py-1 fst-italic">Belum ada rincian indikator.</td>
-                                    </tr>
-                                </template>
-                            </template>
-                            <tr v-if="loading" class="text-center">
-                                <td colspan="7" class="py-5">
-                                    <div class="spinner-border text-primary spinner-border-sm"></div> Memuat...
-                                </td>
-                            </tr>
-                            <tr v-if="!loading && treeData.length === 0" class="text-center">
-                                <td colspan="7" class="py-5 text-muted">Data tidak ditemukan.</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
+      <main class="mx-auto" style="max-width: 1400px">
+        <!-- Header -->
+        <header
+          class="mb-4 p-4 card shadow-sm border-0 header-gradient text-white"
+        >
+          <div class="d-flex justify-content-between align-items-start">
+            <div>
+              <h1 class="h4 mb-1">Rencana Aksi Rencana Kerja</h1>
+              <p class="mb-0 small opacity-75">
+                Manajemen program dan rincian anggaran tahunan
+              </p>
             </div>
-        </main>
+            <a
+              href="/ui/dashboard"
+              class="btn btn-sm btn-light text-primary fw-bold"
+              >Dashboard</a
+            >
+          </div>
+        </header>
 
-        <!-- Form RK Offcanvas (Parent) -->
-        <div class="offcanvas offcanvas-end" tabindex="-1" id="rkDrawer" style="width: 450px;">
-            <div class="offcanvas-header bg-light border-bottom">
-                <h5 class="offcanvas-title fw-bold">{{ rkForm.id ? 'Edit' : 'Tambah' }} Rencana Kerja</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="offcanvas"></button>
-            </div>
-            <div class="offcanvas-body">
-                <div class="mb-3">
-                    <label class="form-label fw-bold small opacity-75">Cari & Pilih Sub Kegiatan</label>
-                    <div class="row g-1">
-                        <div class="col-5">
-                            <input v-model="rkForm.sk_search" class="form-control form-control-sm" placeholder="Cari Kode/Nama...">
-                        </div>
-                        <div class="col-7">
-                            <select v-model="rkForm.sub_kegiatan_id" class="form-select form-select-sm">
-                                <option value="">Pilih Sub Kegiatan...</option>
-                                <option v-for="sk in filteredSkItemsDrawer" :key="sk.id" :value="sk.id">{{ sk.kode }} - {{ sk.nama }}</option>
-                            </select>
-                        </div>
-                    </div>
-                </div>
-
-                <div v-show="rkForm.sub_kegiatan_id" class="mb-3">
-                    <label class="form-label fw-bold small opacity-75 text-primary">Pilih Sasaran (Indikator Sub Kegiatan)</label>
-                    <select v-model="rkForm.indikator_sub_kegiatan_id" class="form-select border-primary shadow-sm">
-                        <option value="">Pilih Rincian Sasaran...</option>
-                        <option v-for="isk in filteredIskItemsDrawer" :key="isk.id" :value="isk.id">{{ isk.kode }} - {{ isk.nama }}</option>
+        <!-- Filters -->
+        <section class="card border-0 shadow-sm mb-4">
+          <div class="card-body">
+            <div class="row g-2 align-items-end">
+              <div class="col-md-3">
+                <label class="form-label mb-1">Cari Keyword</label>
+                <input
+                  v-model="filters.search"
+                  @input="debounceSearch"
+                  class="form-control"
+                  placeholder="Nama rencana kerja atau indikator..."
+                />
+              </div>
+              <div class="col-md-1">
+                <label class="form-label mb-1">Tahun</label>
+                <input
+                  v-model="filters.tahun"
+                  type="number"
+                  class="form-control text-center"
+                />
+              </div>
+              <div class="col-md-2">
+                <label class="form-label mb-1">Triwulan</label>
+                <select v-model="filters.triwulan" class="form-select">
+                  <option value="">Semua (Tahunan)</option>
+                  <option value="1">1</option>
+                  <option value="2">2</option>
+                  <option value="3">3</option>
+                  <option value="4">4</option>
+                </select>
+              </div>
+              <div class="col-md-5">
+                <label class="form-label mb-1 small opacity-75"
+                  >Sub Kegiatan (Cari & Pilih)</label
+                >
+                <div class="row g-1">
+                  <div class="col-5">
+                    <input
+                      v-model="filters.sk_search"
+                      class="form-control form-control-sm"
+                      placeholder="Cari Kode/Nama..."
+                    />
+                  </div>
+                  <div class="col-7">
+                    <select
+                      v-model="filters.sub_kegiatan_id"
+                      class="form-select form-select-sm"
+                    >
+                      <option value="">Semua Sub Kegiatan</option>
+                      <option
+                        v-for="sk in filteredSkItems"
+                        :key="sk.id"
+                        :value="sk.id"
+                      >
+                        <span v-text="sk.kode"></span> -
+                        <span v-text="sk.nama"></span>
+                      </option>
                     </select>
-                    <div v-if="filteredIskItemsDrawer.length === 0" class="small text-danger mt-1">Belum ada rincian indikator untuk sub kegiatan ini.</div>
+                  </div>
                 </div>
-                <div class="mb-3">
-                    <label class="form-label fw-bold">Kode Rencana Kerja</label>
-                    <input v-model="rkForm.kode" class="form-control" placeholder="Contoh: RK-001">
-                </div>
-                <div class="mb-3">
-                    <label class="form-label fw-bold">Nama Rencana Kerja</label>
-                    <textarea v-model="rkForm.nama" class="form-control" rows="3"></textarea>
-                </div>
-                <div class="row mb-3">
-                    <div class="col-6">
-                        <label class="form-label fw-bold">Tahun</label>
-                        <input v-model.number="rkForm.tahun" type="number" class="form-control">
-                    </div>
-                    <div class="col-6">
-                        <label class="form-label fw-bold">Triwulan</label>
-                        <select v-model.number="rkForm.triwulan" class="form-select">
-                            <option :value="null">Tahunan</option>
-                            <option value="1">1</option>
-                            <option value="2">2</option>
-                            <option value="3">3</option>
-                            <option value="4">4</option>
-                        </select>
-                    </div>
-                </div>
-                <div class="row mb-3">
-                    <div class="col-6">
-                        <label class="form-label fw-bold">Status</label>
-                        <select v-model="rkForm.status" class="form-select border-warning">
-                            <option value="DRAFT">DRAFT</option>
-                            <option value="DIAJUKAN">DIAJUKAN</option>
-                            <option value="DISETUJUI">DISETUJUI</option>
-                            <option value="DITOLAK">DITOLAK</option>
-                        </select>
-                    </div>
-                    <div class="col-6">
-                        <label class="form-label fw-bold">Dibuat Oleh (ID User)</label>
-                        <input v-model="rkForm.dibuat_oleh" type="text" class="form-control bg-light" placeholder="-" readonly>
-                        <small class="text-muted">Terisi otomatis dari user login</small>
-                    </div>
-                </div>
-                <div class="mb-4">
-                    <label class="form-label fw-bold">Unit Pengusul</label>
-                    <select v-model="rkForm.unit_pengusul_id" class="form-select">
-                        <option v-for="u in unitItems" :key="u.id" :value="u.id">{{ u.nama }}</option>
-                    </select>
-                </div>
-                
-                <div class="d-grid gap-2">
-                    <button @click="saveRk" class="btn btn-primary" :disabled="submitting">
-                        <span v-if="submitting" class="spinner-border spinner-border-sm"></span> Simpan
-                    </button>
-                    <button v-if="rkForm.id" @click="deleteRk(rkForm.id)" class="btn btn-outline-danger mt-4">Hapus Rencana Kerja</button>
-                </div>
+              </div>
+              <div class="col-md-2 d-grid">
+                <button @click="fetchData" class="btn btn-primary">
+                  Muat Data
+                </button>
+              </div>
             </div>
-        </div>
+          </div>
+        </section>
 
-        <!-- Form IRK Offcanvas (Child) -->
-        <div class="offcanvas offcanvas-end" tabindex="-1" id="irkDrawer" style="width: 500px;">
-            <div class="offcanvas-header bg-light border-bottom">
-                <h5 class="offcanvas-title fw-bold">{{ irkForm.id ? 'Edit' : 'Tambah' }} Rincian Indikator</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="offcanvas"></button>
-            </div>
-            <div class="offcanvas-body">
-                <div class="mb-3">
-                    <label class="form-label fw-bold">Pilih Standar Harga</label>
-                    <div class="input-group">
-                        <input :value="irkForm.nama" readonly class="form-control bg-light" placeholder="Klik Cari Standar Harga...">
-                        <button @click="openStandarHargaModal" class="btn btn-outline-primary">Cari 🔍</button>
-                    </div>
-                    <div class="form-check mt-2">
-                        <input class="form-check-input" type="checkbox" v-model="irkForm.isManual" id="manualCheck">
-                        <label class="form-check-label small" for="manualCheck">🛠️ Input Manual (Gunakan jika item tidak ada di standar)</label>
-                    </div>
-                </div>
-
-                <div v-if="irkForm.isManual" class="mb-3">
-                    <label class="form-label fw-bold text-primary">Nama & Satuan Manual</label>
-                    <input v-model="irkForm.nama" class="form-control mb-2" placeholder="Nama Barang/Jasa">
-                    <input v-model="irkForm.satuan" class="form-control" placeholder="Satuan (Rim, Pkt, dll)">
-                </div>
-
-                <div class="row mb-3">
-                    <div class="col-6">
-                        <label class="form-label fw-bold">Kode Indikator</label>
-                        <input v-model="irkForm.kode" class="form-control">
-                    </div>
-                    <div class="col-6">
-                        <label class="form-label fw-bold">Target</label>
-                        <input v-model.number="irkForm.target_tahunan" type="number" step="0.01" class="form-control">
-                    </div>
-                </div>
-
-                <div class="row mb-4">
-                    <div class="col-6">
-                        <label class="form-label fw-bold">Harga Satuan</label>
-                        <input v-model.number="irkForm.harga_satuan" type="number" class="form-control" :readonly="!irkForm.isManual">
-                    </div>
-                    <div class="col-6">
-                        <label class="form-label fw-bold">Total Anggaran</label>
-                        <input :value="formatMoney(calculatedAnggaran)" readonly class="form-control bg-light fw-bold">
-                    </div>
-                </div>
-
-                <div class="d-grid gap-2">
-                    <button @click="saveIrk" class="btn btn-primary" :disabled="submitting">
-                        <span v-if="submitting" class="spinner-border spinner-border-sm"></span> Simpan Rincian
-                    </button>
-                    <button v-if="irkForm.id" @click="deleteIrk(irkForm.id)" class="btn btn-outline-danger mt-4">Hapus Rincian</button>
-                </div>
-            </div>
-        </div>
-
-        <!-- Standar Harga Modal Pop-up -->
-        <div class="modal fade" id="shModal" tabindex="-1" role="dialog" aria-modal="true" style="z-index: 1060;">
-            <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
-                <div class="modal-content border-0 shadow-lg">
-                    <div class="modal-header bg-light border-bottom">
-                        <h5 class="modal-title fw-bold">Cari Standar Harga</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                    </div>
-                    <div class="modal-body p-4">
-                        <div class="mb-3">
-                            <label class="form-label small fw-bold text-muted">Cari Nama Barang / Spesifikasi</label>
-                            <input v-model="shSearch" @input="debounceShSearch" class="form-control" placeholder="Ketik minimal 3 karakter untuk mencari...">
+        <!-- Main Tree View -->
+        <div class="card border-0 shadow-sm overflow-hidden">
+          <div
+            class="card-header bg-white py-3 d-flex justify-content-between align-items-center"
+          >
+            <h2 class="h6 mb-0 text-uppercase fw-bold text-muted">
+              Hierarki Rencana Kerja & Indikator
+            </h2>
+            <button @click="openRkDrawer()" class="btn btn-sm btn-success">
+              + Rencana Kerja Baru
+            </button>
+          </div>
+          <div class="table-responsive">
+            <table class="table align-middle mb-0">
+              <thead class="table-light">
+                <tr>
+                  <th style="width: 40%">Rencana Kerja / Indikator</th>
+                  <th class="text-center">Tahun</th>
+                  <th class="text-end">Target</th>
+                  <th class="text-end">Harga Satuan</th>
+                  <th class="text-end">Total Anggaran</th>
+                  <th class="text-center">Status</th>
+                  <th style="width: 100px"></th>
+                </tr>
+              </thead>
+              <tbody>
+                <template v-for="rk in treeData" :key="rk.id">
+                  <!-- Parent Row -->
+                  <tr class="tree-row-parent" @click="toggleExpand(rk.id)">
+                    <td>
+                      <span
+                        class="tree-icon"
+                        :class="{ expanded: expandedParents.includes(rk.id) }"
+                        >▶</span
+                      >
+                      <span class="fw-bold"
+                        ><span v-text="rk.kode"></span> -
+                        <span v-text="rk.nama"></span
+                      ></span>
+                    </td>
+                    <td class="text-center"><span v-text="rk.tahun"></span></td>
+                    <td class="text-end">-</td>
+                    <td class="text-end">-</td>
+                    <td class="text-end fw-bold">
+                      <span v-text="formatMoney(rk.total_anggaran)"></span>
+                    </td>
+                    <td class="text-center">
+                      <span
+                        :class="['badge-status', getStatusClass(rk.status)]"
+                        v-text="rk.status"
+                      ></span>
+                    </td>
+                    <td class="text-end">
+                      <div class="row-actions">
+                        <button
+                          @click.stop="openRkDrawer(rk)"
+                          class="btn btn-xs btn-outline-primary py-0 px-2"
+                          title="Edit RK"
+                        >
+                          ✎
+                        </button>
+                        <button
+                          @click.stop="openIrkDrawer(null, rk.id)"
+                          class="btn btn-xs btn-outline-success py-0 px-2"
+                          title="Tambah Indikator"
+                        >
+                          +
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                  <!-- Child Rows -->
+                  <template v-if="expandedParents.includes(rk.id)">
+                    <tr
+                      v-for="irk in rk.children"
+                      :key="irk.id"
+                      class="tree-row-child"
+                    >
+                      <td class="tree-indent">
+                        <span class="text-muted small">↳</span>
+                        <span v-text="irk.kode"></span> -
+                        <span v-text="irk.nama"></span>
+                      </td>
+                      <td class="text-center">-</td>
+                      <td class="text-end text-muted">
+                        <span v-text="irk.target_tahunan"></span>
+                        <span v-text="irk.satuan"></span>
+                      </td>
+                      <td class="text-end text-muted">
+                        <span v-text="formatMoney(irk.harga_satuan)"></span>
+                      </td>
+                      <td class="text-end">
+                        <span v-text="formatMoney(irk.anggaran_tahunan)"></span>
+                      </td>
+                      <td class="text-center">
+                        <span class="text-muted small">Linked</span>
+                      </td>
+                      <td class="text-end">
+                        <div class="row-actions">
+                          <button
+                            @click="openIrkDrawer(irk, rk.id)"
+                            class="btn btn-xs btn-outline-secondary py-0 px-2"
+                          >
+                            Edit
+                          </button>
                         </div>
-                        
-                        <div v-if="shLoading" class="text-center py-5">
-                            <div class="spinner-border text-primary"></div>
-                            <div class="mt-2 text-muted small">Mencari data standar harga...</div>
-                        </div>
-                        
-                        <div v-else class="table-responsive" style="max-height: 400px;">
-                            <table class="table table-hover table-sm">
-                                <thead class="table-light sticky-top">
-                                    <tr>
-                                        <th>Uraian & Spesifikasi</th>
-                                        <th style="width: 100px;">Satuan</th>
-                                        <th class="text-end" style="width: 150px;">Harga Satuan</th>
-                                        <th style="width: 60px;"></th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr v-for="sh in shItems" :key="sh.id">
-                                        <td>
-                                            <div class="fw-bold text-primary">{{ sh.uraian_barang }}</div>
-                                            <div class="small text-muted">{{ sh.spesifikasi || '-' }}</div>
-                                        </td>
-                                        <td class="align-middle">{{ sh.satuan }}</td>
-                                        <td class="text-end align-middle fw-bold">{{ formatMoney(sh.harga_satuan) }}</td>
-                                        <td class="text-end align-middle">
-                                            <button @click="selectStandarHarga(sh)" class="btn btn-sm btn-primary py-1">Pilih</button>
-                                        </td>
-                                    </tr>
-                                    <tr v-if="shItems.length === 0 && !shLoading">
-                                        <td colspan="4" class="text-center py-4 text-muted">
-                                            Tidak ada data ditemukan. Silakan ketik keyword lain.
-                                        </td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-            </div>
+                      </td>
+                    </tr>
+                    <tr
+                      v-if="!rk.children || rk.children.length === 0"
+                      class="tree-row-child"
+                    >
+                      <td
+                        colspan="7"
+                        class="tree-indent text-muted small py-1 fst-italic"
+                      >
+                        Belum ada rincian indikator.
+                      </td>
+                    </tr>
+                  </template>
+                </template>
+                <tr v-if="loading" class="text-center">
+                  <td colspan="7" class="py-5">
+                    <div
+                      class="spinner-border text-primary spinner-border-sm"
+                    ></div>
+                    Memuat...
+                  </td>
+                </tr>
+                <tr
+                  v-if="!loading && treeData.length === 0"
+                  class="text-center"
+                >
+                  <td colspan="7" class="py-5 text-muted">
+                    Data tidak ditemukan.
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
         </div>
+      </main>
+
+      <!-- Form RK Offcanvas (Parent) -->
+      <div
+        class="offcanvas offcanvas-end"
+        tabindex="-1"
+        id="rkDrawer"
+        style="width: 450px"
+      >
+        <div class="offcanvas-header bg-light border-bottom">
+          <h5 class="offcanvas-title fw-bold">
+            <span v-text="rkForm.id ? 'Edit' : 'Tambah'"></span> Rencana Kerja
+          </h5>
+          <button
+            type="button"
+            class="btn-close"
+            data-bs-dismiss="offcanvas"
+          ></button>
+        </div>
+        <div class="offcanvas-body">
+          <div class="mb-3">
+            <label class="form-label fw-bold small opacity-75"
+              >Cari & Pilih Sub Kegiatan</label
+            >
+            <div class="row g-1">
+              <div class="col-5">
+                <input
+                  v-model="rkForm.sk_search"
+                  class="form-control form-control-sm"
+                  placeholder="Cari Kode/Nama..."
+                />
+              </div>
+              <div class="col-7">
+                <select
+                  v-model="rkForm.sub_kegiatan_id"
+                  class="form-select form-select-sm"
+                >
+                  <option value="">Pilih Sub Kegiatan...</option>
+                  <option
+                    v-for="sk in filteredSkItemsDrawer"
+                    :key="sk.id"
+                    :value="sk.id"
+                  >
+                    <span v-text="sk.kode"></span> -
+                    <span v-text="sk.nama"></span>
+                  </option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <div v-show="rkForm.sub_kegiatan_id" class="mb-3">
+            <label class="form-label fw-bold small opacity-75 text-primary"
+              >Pilih Sasaran (Indikator Sub Kegiatan)</label
+            >
+            <select
+              v-model="rkForm.indikator_sub_kegiatan_id"
+              class="form-select border-primary shadow-sm"
+            >
+              <option value="">Pilih Rincian Sasaran...</option>
+              <option
+                v-for="isk in filteredIskItemsDrawer"
+                :key="isk.id"
+                :value="isk.id"
+              >
+                {{ isk.kode }} - {{ isk.nama }}
+              </option>
+            </select>
+            <div
+              v-if="filteredIskItemsDrawer.length === 0"
+              class="small text-danger mt-1"
+            >
+              Belum ada rincian indikator untuk sub kegiatan ini.
+            </div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-bold">Kode Rencana Kerja</label>
+            <input
+              v-model="rkForm.kode"
+              class="form-control"
+              placeholder="Contoh: RK-001"
+            />
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-bold">Nama Rencana Kerja</label>
+            <textarea
+              v-model="rkForm.nama"
+              class="form-control"
+              rows="3"
+            ></textarea>
+          </div>
+          <div class="row mb-3">
+            <div class="col-6">
+              <label class="form-label fw-bold">Tahun</label>
+              <input
+                v-model.number="rkForm.tahun"
+                type="number"
+                class="form-control"
+              />
+            </div>
+            <div class="col-6">
+              <label class="form-label fw-bold">Triwulan</label>
+              <select v-model.number="rkForm.triwulan" class="form-select">
+                <option :value="null">Tahunan</option>
+                <option value="1">1</option>
+                <option value="2">2</option>
+                <option value="3">3</option>
+                <option value="4">4</option>
+              </select>
+            </div>
+          </div>
+          <div class="row mb-3">
+            <div class="col-6">
+              <label class="form-label fw-bold">Status</label>
+              <select
+                v-model="rkForm.status"
+                class="form-select border-warning"
+              >
+                <option value="DRAFT">DRAFT</option>
+                <option value="DIAJUKAN">DIAJUKAN</option>
+                <option value="DISETUJUI">DISETUJUI</option>
+                <option value="DITOLAK">DITOLAK</option>
+              </select>
+            </div>
+            <div class="col-6">
+              <label class="form-label fw-bold">Dibuat Oleh (ID User)</label>
+              <input
+                v-model="rkForm.dibuat_oleh"
+                type="text"
+                class="form-control bg-light"
+                placeholder="-"
+                readonly
+              />
+              <small class="text-muted">Terisi otomatis dari user login</small>
+            </div>
+          </div>
+          <div class="mb-4">
+            <label class="form-label fw-bold">Unit Pengusul</label>
+            <select v-model="rkForm.unit_pengusul_id" class="form-select">
+              <option v-for="u in unitItems" :key="u.id" :value="u.id">
+                {{ u.nama }}
+              </option>
+            </select>
+          </div>
+
+          <div class="d-grid gap-2">
+            <button
+              @click="saveRk"
+              class="btn btn-primary"
+              :disabled="submitting"
+            >
+              <span
+                v-if="submitting"
+                class="spinner-border spinner-border-sm"
+              ></span>
+              Simpan
+            </button>
+            <button
+              v-if="rkForm.id"
+              @click="deleteRk(rkForm.id)"
+              class="btn btn-outline-danger mt-4"
+            >
+              Hapus Rencana Kerja
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Form IRK Offcanvas (Child) -->
+      <div
+        class="offcanvas offcanvas-end"
+        tabindex="-1"
+        id="irkDrawer"
+        style="width: 500px"
+      >
+        <div class="offcanvas-header bg-light border-bottom">
+          <h5 class="offcanvas-title fw-bold">
+            {{ irkForm.id ? 'Edit' : 'Tambah' }} Rincian Indikator
+          </h5>
+          <button
+            type="button"
+            class="btn-close"
+            data-bs-dismiss="offcanvas"
+          ></button>
+        </div>
+        <div class="offcanvas-body">
+          <div class="mb-3">
+            <label class="form-label fw-bold">Pilih Standar Harga</label>
+            <div class="input-group">
+              <input
+                :value="irkForm.nama"
+                readonly
+                class="form-control bg-light"
+                placeholder="Klik Cari Standar Harga..."
+              />
+              <button
+                @click="openStandarHargaModal"
+                class="btn btn-outline-primary"
+              >
+                Cari 🔍
+              </button>
+            </div>
+            <div class="form-check mt-2">
+              <input
+                class="form-check-input"
+                type="checkbox"
+                v-model="irkForm.isManual"
+                id="manualCheck"
+              />
+              <label class="form-check-label small" for="manualCheck"
+                >🛠️ Input Manual (Gunakan jika item tidak ada di standar)</label
+              >
+            </div>
+          </div>
+
+          <div v-if="irkForm.isManual" class="mb-3">
+            <label class="form-label fw-bold text-primary"
+              >Nama & Satuan Manual</label
+            >
+            <input
+              v-model="irkForm.nama"
+              class="form-control mb-2"
+              placeholder="Nama Barang/Jasa"
+            />
+            <input
+              v-model="irkForm.satuan"
+              class="form-control"
+              placeholder="Satuan (Rim, Pkt, dll)"
+            />
+          </div>
+
+          <div class="row mb-3">
+            <div class="col-6">
+              <label class="form-label fw-bold">Kode Indikator</label>
+              <input v-model="irkForm.kode" class="form-control" />
+            </div>
+            <div class="col-6">
+              <label class="form-label fw-bold">Target</label>
+              <input
+                v-model.number="irkForm.target_tahunan"
+                type="number"
+                step="0.01"
+                class="form-control"
+              />
+            </div>
+          </div>
+
+          <div class="row mb-4">
+            <div class="col-6">
+              <label class="form-label fw-bold">Harga Satuan</label>
+              <input
+                v-model.number="irkForm.harga_satuan"
+                type="number"
+                class="form-control"
+                :readonly="!irkForm.isManual"
+              />
+            </div>
+            <div class="col-6">
+              <label class="form-label fw-bold">Total Anggaran</label>
+              <input
+                :value="formatMoney(calculatedAnggaran)"
+                readonly
+                class="form-control bg-light fw-bold"
+              />
+            </div>
+          </div>
+
+          <div class="d-grid gap-2">
+            <button
+              @click="saveIrk"
+              class="btn btn-primary"
+              :disabled="submitting"
+            >
+              <span
+                v-if="submitting"
+                class="spinner-border spinner-border-sm"
+              ></span>
+              Simpan Rincian
+            </button>
+            <button
+              v-if="irkForm.id"
+              @click="deleteIrk(irkForm.id)"
+              class="btn btn-outline-danger mt-4"
+            >
+              Hapus Rincian
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Standar Harga Modal Pop-up -->
+      <div
+        class="modal fade"
+        id="shModal"
+        tabindex="-1"
+        role="dialog"
+        aria-modal="true"
+        style="z-index: 1060"
+      >
+        <div
+          class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable"
+        >
+          <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header bg-light border-bottom">
+              <h5 class="modal-title fw-bold">Cari Standar Harga</h5>
+              <button
+                type="button"
+                class="btn-close"
+                data-bs-dismiss="modal"
+                aria-label="Close"
+              ></button>
+            </div>
+            <div class="modal-body p-4">
+              <div class="mb-3">
+                <label class="form-label small fw-bold text-muted"
+                  >Cari Nama Barang / Spesifikasi</label
+                >
+                <input
+                  v-model="shSearch"
+                  @input="debounceShSearch"
+                  class="form-control"
+                  placeholder="Ketik minimal 3 karakter untuk mencari..."
+                />
+              </div>
+
+              <div v-if="shLoading" class="text-center py-5">
+                <div class="spinner-border text-primary"></div>
+                <div class="mt-2 text-muted small">
+                  Mencari data standar harga...
+                </div>
+              </div>
+
+              <div v-else class="table-responsive" style="max-height: 400px">
+                <table class="table table-hover table-sm">
+                  <thead class="table-light sticky-top">
+                    <tr>
+                      <th>Uraian & Spesifikasi</th>
+                      <th style="width: 100px">Satuan</th>
+                      <th class="text-end" style="width: 150px">
+                        Harga Satuan
+                      </th>
+                      <th style="width: 60px"></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr v-for="sh in shItems" :key="sh.id">
+                      <td>
+                        <div class="fw-bold text-primary">
+                          {{ sh.uraian_barang }}
+                        </div>
+                        <div class="small text-muted">
+                          {{ sh.spesifikasi || '-' }}
+                        </div>
+                      </td>
+                      <td class="align-middle">{{ sh.satuan }}</td>
+                      <td class="text-end align-middle fw-bold">
+                        {{ formatMoney(sh.harga_satuan) }}
+                      </td>
+                      <td class="text-end align-middle">
+                        <button
+                          @click="selectStandarHarga(sh)"
+                          class="btn btn-sm btn-primary py-1"
+                        >
+                          Pilih
+                        </button>
+                      </td>
+                    </tr>
+                    <tr v-if="shItems.length === 0 && !shLoading">
+                      <td colspan="4" class="text-center py-4 text-muted">
+                        Tidak ada data ditemukan. Silakan ketik keyword lain.
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- Scripts -->
@@ -351,5 +647,5 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script src="/assets/js/auth-client.js"></script>
     <script src="/assets/js/rencana-kerja-spa.js"></script>
-</body>
+  </body>
 </html>
