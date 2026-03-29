@@ -4,11 +4,12 @@
 
 # Go build artifacts
 bin/
-# Dependency folders (Sangat Penting)
+# --- Dependency Folders ---
+# Sangat penting agar node_modules tidak masuk ke GitHub
 node_modules/
 frontend/node_modules/
 
-# Golang binaries and builds
+# --- Golang Build & Binaries ---
 bin/
 *.exe
 *.exe~
@@ -17,19 +18,32 @@ bin/
 *.dylib
 main
 e-plan-ai
+debug
+tmp/
 
-# Environment variables (Keamanan: jangan upload password DB/API Key)
+# --- Environment & Secrets ---
+# Keamanan: Jangan upload password database atau API key hospital
 .env
 .env.local
-*.out
-# IDE - VS Code & Mac system files
-.vscode/
-.DS_Store
-*.swp
+.env.*.local
 
-# Frontend builds (Opsional: agar GitHub hanya simpan source code, bukan hasil build)
+# --- Frontend Build Output ---
+# Biarkan server (Railway) yang melakukan build, jangan upload folder dist
 frontend/dist/
-frontend/.kjt/
 
-# Logs
+# --- IDE & System Files ---
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+.DS_Store
+Thumbs.db
+
+# --- Logs ---
 *.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
