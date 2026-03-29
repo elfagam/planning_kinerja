@@ -6,11 +6,15 @@ services:
     ports:
       - "7002:8080"
     environment:
-      - HTTP_ADDR=0.0.0.0:8080
-      - MYSQL_DSN=root:rootpassword@tcp(db:3306)/e-plan-ai?parseTime=true
-      - AUTH_ENABLED=true
-      - AUTH_TOKEN=change-me-in-production
-      - TZ=Asia/Jakarta
+      - HTTP_ADDR=:8080
+      # 👇 SESUAIKAN DENGAN config.go ANDA
+      - DB_HOST=db
+      - DB_PORT=3306
+      - DB_USER=root
+      - DB_PASSWORD=rootpassword
+      - DB_NAME=e-plan-ai
+      - GIN_MODE=debug
+      - TZ=Asia/Makassar
     depends_on:
       db:
         condition: service_healthy

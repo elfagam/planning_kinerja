@@ -1,45 +1,64 @@
-# --- Stage 1: Build Backend (Golang) ---
-FROM golang:alpine AS builder
+# ==========================================
+# Tahap 1: Frontend Builder (Node.js)
+# ==========================================
+# Kita gunakan image Node resmi yang ringan
+FROM node:lts-alpine AS frontend-builder
 
-# Set working directory
+# Tentukan direktori kerja khusus frontend
+WORKDIR /app/frontend
+
+# Salin file package.json untuk caching dependensi
+COPY frontend/package*.json ./
+
+# Instal dependensi Vue/Pinia (NPM)
+RUN npm install
+
+# Salin seluruh kode source frontend
+COPY frontend/ .
+
+# Bangun aset produksi (Menghasilkan folder frontend/dist)
+RUN npm run build
+
+
+# ==========================================
+# Tahap 2: Backend Builder (Golang)
+# ==========================================
+# (Hampir sama seperti sebelumnya, tapi versinya sudah kita sesuaikan ke 1.25)
+FROM golang:1.25-alpine AS backend-builder
+
 WORKDIR /app
 
-# Copy go mod dan sum dulu untuk caching layer
+# Salin dependensi modul Go
 COPY go.mod go.sum ./
 RUN go mod download
 
-# Copy seluruh source code backend (internal, cmd, pkg, dll)
+# Salin seluruh kode source backend
 COPY . .
-# Copy package.json dan package-lock.json frontend untuk install dependencies
-# COPY frontend/package*.json ./frontend/
-# Install dependencies dan build frontend
-# RUN cd frontend && npm install && npm run build
 
-# Build aplikasi Golang (sesuaikan dengan lokasi main.go Anda)
-RUN go build -o main ./cmd/api/main.go
+# Build aplikasi menjadi binary statis 'main'
+RUN CGO_ENABLED=0 GOOS=linux go build -o main .
 
-# --- Stage 2: Runtime (Final Image) ---
+
+# ==========================================
+# Tahap 3: Runner (Container Final)
+# ==========================================
+# Image Alpine murni yang super kecil
 FROM alpine:latest
+
+# Instal sertifikat dan tzdata untuk keamanan dan akurasi waktu Makassar
+RUN apk --no-cache add ca-certificates tzdata
 
 WORKDIR /app
 
-# Install dependencies yang dibutuhkan alpine (opsional)
-RUN apk add --no-cache ca-certificates tzdata
+# 1. 🌟 KUNCI PEMBARUAN: Salin folder 'dist' hasil build Vue dari Tahap 1
+COPY --from=frontend-builder /app/frontend/dist ./frontend/dist
 
-# Copy binary dari builder
-COPY --from=builder /app/main .
+# 2. Salin binary aplikasi dari Tahap 2
+COPY --from=backend-builder /app/main .
 
-# Copy folder statis yang dibutuhkan (Templates, Assets, Configs)
-COPY --from=builder /app/web ./web
-# COPY --from=builder /app/configs* ./configs/
+# 3. Salin folder web (template HTML) yang kita bahas sebelumnya
+COPY --from=backend-builder /app/web ./web
 
-# --- CATATAN PENTING ---
-# Bagian COPY frontend di bawah ini kita komentari dulu agar 
-# Railway tidak error saat mencoba mencari folder frontend/dist
-# COPY --from=builder /app/frontend/dist ./frontend/dist
-
-# Expose port (sesuaikan dengan port Gin Anda, misal 8080)
 EXPOSE 8080
 
-# Jalankan aplikasi
 CMD ["./main"]
