@@ -10,6 +10,10 @@ RUN go mod download
 
 # Copy seluruh source code backend (internal, cmd, pkg, dll)
 COPY . .
+# Copy package.json dan package-lock.json frontend untuk install dependencies
+# COPY frontend/package*.json ./frontend/
+# Install dependencies dan build frontend
+# RUN cd frontend && npm install && npm run build
 
 # Build aplikasi Golang (sesuaikan dengan lokasi main.go Anda)
 RUN go build -o main ./cmd/api/main.go

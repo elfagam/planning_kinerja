@@ -9,14 +9,14 @@ import (
 	performancehttp "e-plan-ai/internal/modules/performance/delivery/http"
 	planninghttp "e-plan-ai/internal/modules/planning/delivery/http"
 	planninggormhttp "e-plan-ai/internal/modules/planninggorm/delivery/http"
+	qnahttp "e-plan-ai/internal/modules/qna/delivery/http"
+	qnarepo "e-plan-ai/internal/modules/qna/repository"
+	qnausecase "e-plan-ai/internal/modules/qna/usecase"
 	renjahttp "e-plan-ai/internal/modules/renja/delivery/http"
 	uihttp "e-plan-ai/internal/modules/ui/delivery/http"
 	unitpelaksanahttp "e-plan-ai/internal/modules/unitpelaksana/delivery/http"
 	unitpengusulhttp "e-plan-ai/internal/modules/unitpengusul/delivery/http"
 	visihttp "e-plan-ai/internal/modules/visi/delivery/http"
-	qnahttp "e-plan-ai/internal/modules/qna/delivery/http"
-	qnarepo "e-plan-ai/internal/modules/qna/repository"
-	qnausecase "e-plan-ai/internal/modules/qna/usecase"
 	"e-plan-ai/internal/shared/database"
 	"e-plan-ai/internal/shared/middleware"
 
@@ -61,6 +61,18 @@ func NewRouter(cfg *config.Config) *gin.Engine {
 		c.Redirect(302, "/ui/dashboard")
 	})
 	uihttp.NewHandler().RegisterRoutes(r)
+
+	// Tambahkan ini agar /spa/pagu-control mengarah ke template HTML manual
+	r.GET("/spa/pagu-control", func(c *gin.Context) {
+		c.HTML(200, "kontrol_pagu.html", gin.H{
+			"title": "Kontrol Pagu - AI-Planning",
+		})
+	})
+
+	// Jika ada halaman lain yang juga ingin diaktifkan lewat template:
+	// r.GET("/spa/rencana-kerja", func(c *gin.Context) {
+	// 	c.HTML(200, "rencana-kerja.html", nil)
+	// })
 
 	r.GET("/health", func(c *gin.Context) {
 		c.JSON(200, gin.H{
