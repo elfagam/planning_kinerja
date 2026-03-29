@@ -27,7 +27,7 @@ COPY --from=builder /app/main .
 
 # Copy folder statis yang dibutuhkan (Templates, Assets, Configs)
 COPY --from=builder /app/web ./web
-COPY --from=builder /app/configs ./configs
+# COPY --from=builder /app/configs* ./configs/
 
 # --- CATATAN PENTING ---
 # Bagian COPY frontend di bawah ini kita komentari dulu agar 
