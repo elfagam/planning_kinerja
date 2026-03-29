@@ -4,13 +4,32 @@
 
 # Go build artifacts
 bin/
-dist/
+# Dependency folders (Sangat Penting)
+node_modules/
+frontend/node_modules/
+
+# Golang binaries and builds
+bin/
 *.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+main
+e-plan-ai
+
+# Environment variables (Keamanan: jangan upload password DB/API Key)
+.env
+.env.local
 *.out
+# IDE - VS Code & Mac system files
+.vscode/
+.DS_Store
+*.swp
+
+# Frontend builds (Opsional: agar GitHub hanya simpan source code, bukan hasil build)
+frontend/dist/
+frontend/.kjt/
 
 # Logs
 *.log
-
-# macOS
-.DS_Store
-internal/shared/database/database.db
