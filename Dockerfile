@@ -1,46 +1,41 @@
-# Stage 1: Build Frontend (Node.js)
-FROM node:20-alpine AS frontend-builder
-WORKDIR /app/frontend
-COPY frontend/package*.json ./
-RUN npm install
-COPY frontend/ ./
-RUN npm run build
+# --- Stage 1: Build Backend (Golang) ---
+FROM golang:alpine AS builder
 
-# Stage 2: Build Backend (Go)
-FROM golang:1.24-alpine AS builder
-
-# Set build arguments for static binary
-ENV CGO_ENABLED=0 GOOS=linux
-
+# Set working directory
 WORKDIR /app
+
+# Copy go mod dan sum dulu untuk caching layer
 COPY go.mod go.sum ./
 RUN go mod download
 
+# Copy seluruh source code backend (internal, cmd, pkg, dll)
 COPY . .
-RUN go build -ldflags="-s -w" -o e-plan-ai ./main.go
-RUN go build -ldflags="-s -w" -o gorm-migrate ./cmd/gorm-migrate
 
-# Stage 3: Runtime
-FROM alpine:3.21
+# Build aplikasi Golang (sesuaikan dengan lokasi main.go Anda)
+RUN go build -o main ./cmd/api/main.go
 
-# Install runtime dependencies
-RUN apk add --no-cache ca-certificates tzdata curl
-
-# Create non-root user for security
-RUN adduser -D -u 1001 eplan
+# --- Stage 2: Runtime (Final Image) ---
+FROM alpine:latest
 
 WORKDIR /app
-COPY --from=builder --chown=eplan:eplan /app/e-plan-ai .
-COPY --from=builder --chown=eplan:eplan /app/gorm-migrate .
-COPY --from=builder --chown=eplan:eplan /app/web ./web
-COPY --from=builder --chown=eplan:eplan /app/migrations ./migrations
-COPY --from=builder --chown=eplan:eplan /app/docs ./docs
-# Copy frontend dist from builder
-COPY --from=frontend-builder --chown=eplan:eplan /app/frontend/dist ./frontend/dist
 
-USER eplan
+# Install dependencies yang dibutuhkan alpine (opsional)
+RUN apk add --no-cache ca-certificates tzdata
 
-# Set timezone
-ENV TZ=Asia/Jakarta
+# Copy binary dari builder
+COPY --from=builder /app/main .
 
-CMD ["sh", "-c", "./gorm-migrate || true; ./e-plan-ai"]
+# Copy folder statis yang dibutuhkan (Templates, Assets, Configs)
+COPY --from=builder /app/web ./web
+COPY --from=builder /app/configs ./configs
+
+# --- CATATAN PENTING ---
+# Bagian COPY frontend di bawah ini kita komentari dulu agar 
+# Railway tidak error saat mencoba mencari folder frontend/dist
+# COPY --from=builder /app/frontend/dist ./frontend/dist
+
+# Expose port (sesuaikan dengan port Gin Anda, misal 8080)
+EXPOSE 8080
+
+# Jalankan aplikasi
+CMD ["./main"]
