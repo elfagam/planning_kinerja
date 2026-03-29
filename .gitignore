@@ -1,3 +1,26 @@
+# --- Database Lokal ---
+# Jika Anda menggunakan SQLite untuk testing lokal, jangan upload filenya
+*.db
+*.sqlite
+*.sqlite3
+
+# --- File Sensitif & Konfigurasi ---
+# File konfigurasi yang berisi password database RS
+config.yml
+config.yaml
+!config.example.yml
+
+# --- Log Aplikasi ---
+# Jangan biarkan log transaksi atau error memenuhi repositori
+logs/
+*.log
+debug.test
+
+# --- Folder Temp & OS ---
+.temp/
+.tmp/
+.cache/
+[Dd]esktop.ini
 .env
 .env.*
 !.env.example
