@@ -78,3 +78,33 @@ body {
   margin-bottom: 0;
   animation: fadeEffect 5s ease-in-out infinite;
 }
+
+[v-cloak] { display: none; }
+
+.tree-row-parent {
+  cursor: pointer;
+  background-color: #fff !important;
+  border-left: 4px solid var(--ep-brand-a);
+}
+.tree-row-parent:hover {
+  background-color: #f8fcfb !important;
+}
+.tree-row-child {
+  background-color: #fafbfc !important;
+  border-left: 4px solid #dee2e6;
+}
+.tree-indent {
+  padding-left: 2rem !important;
+}
+.tree-icon {
+  width: 20px;
+  display: inline-block;
+  transition: transform 0.2s;
+}
+.tree-icon.expanded {
+  transform: rotate(90deg);
+}
+.badge-status {
+  font-size: 0.7rem;
+  padding: 0.2rem 0.5rem;
+}

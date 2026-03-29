@@ -53,6 +53,7 @@ func OperatorReadOnly(authEnabled bool) gin.HandlerFunc {
 			"/api/v1/dokumen_pdf",
 			"/api/v1/performance/target-realisasi",
 			"/api/v1/performance/calculate-achievement",
+			"/api/v1/qna",
 		}
 
 		isAllowed := false

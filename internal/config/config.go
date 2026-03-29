@@ -47,7 +47,7 @@ func Load() *Config {
 	dbPort := getenv("MYSQLPORT", getenv("DB_PORT", "3306"))
 	dbUser := getenv("MYSQLUSER", getenv("DB_USER", "root"))
 	dbPass := getenv("MYSQLPASSWORD", getenv("DB_PASSWORD", ""))
-	dbName := getenv("MYSQLDATABASE", getenv("DB_NAME", "eplanning-rsud"))
+	dbName := getenv("MYSQLDATABASE", getenv("DB_NAME", "e-plan-ai"))
 
 	// 3. Rakit DSN (Data Source Name)
 	// Kita prioritaskan variabel MYSQL_URL jika Railway menyediakannya,

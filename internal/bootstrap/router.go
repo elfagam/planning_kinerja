@@ -14,8 +14,14 @@ import (
 	unitpelaksanahttp "e-plan-ai/internal/modules/unitpelaksana/delivery/http"
 	unitpengusulhttp "e-plan-ai/internal/modules/unitpengusul/delivery/http"
 	visihttp "e-plan-ai/internal/modules/visi/delivery/http"
+	qnahttp "e-plan-ai/internal/modules/qna/delivery/http"
+	qnarepo "e-plan-ai/internal/modules/qna/repository"
+	qnausecase "e-plan-ai/internal/modules/qna/usecase"
 	"e-plan-ai/internal/shared/database"
 	"e-plan-ai/internal/shared/middleware"
+
+	"os"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 )
@@ -25,10 +31,32 @@ func NewRouter(cfg *config.Config) *gin.Engine {
 
 	r := gin.New()
 	r.Use(gin.Logger(), middleware.Recovery(), middleware.CORS())
+	
+	db, _ := database.NewGormMySQL(cfg)
+
 	r.Static("/assets", "web/assets")
 	r.GET("/favicon.ico", func(c *gin.Context) {
 		c.Status(204)
 	})
+
+	// Serve SPA if exists (Vite build output)
+	if _, err := os.Stat("frontend/dist"); err == nil {
+		r.Static("/spa/assets", "frontend/dist/assets")
+		r.NoRoute(func(c *gin.Context) {
+			path := c.Request.URL.Path
+			// If it's a /spa/ route, return index.html
+			if strings.HasPrefix(path, "/spa/") {
+				c.File("frontend/dist/index.html")
+				return
+			}
+			// Skip for API/Auth/Legacy UI routes
+			if strings.HasPrefix(path, "/api") || strings.HasPrefix(path, "/auth") || strings.HasPrefix(path, "/ui") || strings.HasPrefix(path, "/assets") {
+				return 
+			}
+			// Fallback to legacy index or 404
+		})
+	}
+
 	r.GET("/", func(c *gin.Context) {
 		c.Redirect(302, "/ui/dashboard")
 	})
@@ -84,7 +112,11 @@ func NewRouter(cfg *config.Config) *gin.Engine {
 	planninggormhttp.NewHandler(cfg).RegisterRoutes(v1)
 	performancehttp.NewHandler(cfg).RegisterRoutes(v1)
 
-	db, _ := database.NewGormMySQL(cfg)
+	// Q&A Module
+	qnaRepository := qnarepo.NewQnaGormRepository(db)
+	qnaUsecase := qnausecase.NewQnaUsecase(qnaRepository)
+	qnahttp.NewQnaHandler(qnaUsecase).RegisterRoutes(v1)
+
 	dokumenPDFHandler := dokumenpdfhttp.NewHandler(db)
 
 	v1.GET("/dokumen_pdf/latest", dokumenPDFHandler.GetLatestDokumenPDF)
