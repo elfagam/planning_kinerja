@@ -80,6 +80,8 @@
                     @input="debounceSearch"
                     placeholder="Cari pertanyaan..."
                     class="form-control"
+                    id="search"
+                    name="search"
                   />
                 </div>
                 <div class="col-md-4">
@@ -87,6 +89,8 @@
                     v-model="filters.status"
                     @change="fetchQuestions"
                     class="form-select"
+                    id="status"
+                    name="status"
                   >
                     <option value="all">Semua Status</option>
                     <option value="open">Masih Terbuka</option>
@@ -260,6 +264,8 @@
                   v-model="replyForm.content"
                   class="form-control mb-3"
                   rows="4"
+                  id="reply-content"
+                  name="reply-content"
                 ></textarea>
                 <button
                   @click="postAnswer"
