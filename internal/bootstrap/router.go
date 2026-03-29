@@ -30,6 +30,8 @@ func NewRouter(cfg *config.Config) *gin.Engine {
 	devActor := resolveDevelopmentActor(cfg)
 
 	r := gin.New()
+	// Inisialisasi template HTML dari folder web/templates
+	r.LoadHTMLGlob("web/templates/*")
 	r.Use(gin.Logger(), middleware.Recovery(), middleware.CORS())
 	
 	db, _ := database.NewGormMySQL(cfg)
