@@ -62,6 +62,7 @@
             <a class="nav-link admin-link" href="/ui/kontrol-pagu"
               >Kontrol Pagu</a
             >
+            <a class="nav-link admin-link" href="/ui/qna">Q&A Forum</a>
             <a class="nav-link admin-link active" href="/ui/dashboard"
               >Perencanaan Strategis</a
             >
@@ -95,7 +96,7 @@
               >Rincian Rencana Kerja</a
             >
             <a class="nav-link admin-link" href="/ui/rencana-kerja-spa"
-              >Rencana Kerja SPA</a
+              >Rencana Kerja</a
             >
             <a class="nav-link admin-link active" href="/ui/dashboard"
               >Monitoring dan Evaluasi</a
@@ -152,6 +153,7 @@
               <a class="nav-link admin-link" href="/ui/kontrol-pagu"
                 >Kontrol Pagu</a
               >
+              <a class="nav-link admin-link" href="/ui/qna">Q&A Forum</a>
               <a class="nav-link admin-link active" href="/ui/dashboard"
                 >Perencanaan Strategis</a
               >
@@ -185,7 +187,7 @@
                 >Rincian Rencana Kerja</a
               >
               <a class="nav-link admin-link" href="/ui/rencana-kerja-spa"
-                >Rencana Kerja SPA</a
+                >Rencana Kerja</a
               >
               <a class="nav-link admin-link active" href="/ui/dashboard"
                 >Monitoring dan Evaluasi</a
@@ -464,6 +466,28 @@
                 <small id="rankingMeta" class="muted-note d-block mt-2"
                   >Menunggu data ranking...</small
                 >
+              </article>
+            </div>
+          </section>
+
+          <!-- Q&A Forum Widget -->
+          <section class="row g-3 mb-3">
+            <div class="col-12">
+              <article class="panel p-3">
+                <div class="d-flex justify-content-between align-items-center mb-0">
+                  <h2 class="h6 mb-0">Diskusi Forum Terpopuler</h2>
+                  <a href="/ui/qna" class="btn btn-sm btn-outline-primary">Lihat Semua</a>
+                </div>
+                <hr class="my-3 opacity-10">
+                <div id="qnaWidgetLoading" class="text-center py-4">
+                  <div class="spinner-border spinner-border-sm text-primary"></div>
+                </div>
+                <div id="qnaWidgetContent" class="row g-3 d-none">
+                  <!-- Dynamic Q&A Cards -->
+                </div>
+                <div id="qnaWidgetEmpty" class="text-center py-4 d-none">
+                  <p class="text-muted small mb-0">Belum ada diskusi aktif saat ini.</p>
+                </div>
               </article>
             </div>
           </section>

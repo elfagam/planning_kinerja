@@ -499,15 +499,40 @@ func (h *Handler) list(rc resourceConfig) gin.HandlerFunc {
 		}
 		if rc.path == "indikator_rencana_kerja" {
 			query = query.Preload("StandarHarga")
+			
+			// Always JOIN with rencana_kerja if Year or Unit filters are provided
+			hasRkJoin := false
 			if isTruthy(c.Query("final_only")) {
 				query = query.Joins("JOIN rencana_kerja rk ON rk.id = indikator_rencana_kerja.rencana_kerja_id").
 					Where("rk.status = ?", "DISETUJUI")
+				hasRkJoin = true
 			}
+
+			if tahunRaw := strings.TrimSpace(c.Query("tahun")); tahunRaw != "" {
+				if tahun, err := strconv.Atoi(tahunRaw); err == nil && tahun >= 2000 && tahun <= 2100 {
+					if !hasRkJoin {
+						query = query.Joins("JOIN rencana_kerja rk ON rk.id = indikator_rencana_kerja.rencana_kerja_id")
+						hasRkJoin = true
+					}
+					query = query.Where("rk.tahun = ?", tahun)
+				}
+			}
+
+			if unitRaw := strings.TrimSpace(c.Query("unit_pengusul_id")); unitRaw != "" {
+				if unitID, err := strconv.ParseUint(unitRaw, 10, 64); err == nil && unitID > 0 {
+					if !hasRkJoin {
+						query = query.Joins("JOIN rencana_kerja rk ON rk.id = indikator_rencana_kerja.rencana_kerja_id")
+						hasRkJoin = true
+					}
+					query = query.Where("rk.unit_pengusul_id = ?", unitID)
+				}
+			}
+
 			// Tambahkan filter eksplisit rencana_kerja_id
 			if rkIDRaw := strings.TrimSpace(c.Query("rencana_kerja_id")); rkIDRaw != "" {
 				rkID, err := strconv.ParseUint(rkIDRaw, 10, 64)
 				if err == nil && rkID > 0 {
-					query = query.Where("rencana_kerja_id = ?", rkID)
+					query = query.Where("indikator_rencana_kerja.rencana_kerja_id = ?", rkID)
 				}
 			}
 		}
@@ -734,6 +759,13 @@ func (h *Handler) create(rc resourceConfig) gin.HandlerFunc {
 				}
 				// Backward-compatible: fill default when client omits unit_pelaksana_id.
 				payload["unit_pelaksana_id"] = defaultUnitID
+			}
+		}
+
+		// Auto-inject dibuat_oleh from auth context for all resources that need it
+		if userID, ok := c.Get("auth.user_id"); ok {
+			if _, exists := payload["dibuat_oleh"]; !exists || payload["dibuat_oleh"] == nil || payload["dibuat_oleh"] == 0 {
+				payload["dibuat_oleh"] = userID
 			}
 		}
 

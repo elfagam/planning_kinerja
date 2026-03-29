@@ -727,6 +727,53 @@
         setRankingTable(ranking);
       }
 
+      async function loadQnaWidget() {
+        const loadingEl = document.getElementById("qnaWidgetLoading");
+        const contentEl = document.getElementById("qnaWidgetContent");
+        const emptyEl = document.getElementById("qnaWidgetEmpty");
+
+        loadingEl.classList.remove("d-none");
+        contentEl.classList.add("d-none");
+        emptyEl.classList.add("d-none");
+
+        try {
+          const res = await fetchJSON("/api/v1/qna/faq");
+          const questions = res || [];
+          
+          if (questions.length === 0) {
+            emptyEl.classList.remove("d-none");
+          } else {
+            contentEl.innerHTML = "";
+            // Show only top 3
+            questions.slice(0, 3).forEach(q => {
+              const card = `
+                <div class="col-md-4">
+                  <div class="card h-100 border-0 shadow-sm" style="border-left: 3px solid #0d6efd !important;">
+                    <div class="card-body p-3">
+                      <h6 class="card-title text-primary text-truncate mb-2">${q.title}</h6>
+                      <p class="card-text small text-muted text-truncate-2 mb-3" style="display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; height: 2.5rem;">
+                        ${q.content}
+                      </p>
+                      <div class="d-flex justify-content-between align-items-center mt-auto">
+                        <small class="text-muted" style="font-size: 0.7rem;">👁️ ${q.view_count} views</small>
+                        <a href="/ui/qna?id=${q.id}" class="btn btn-sm btn-link p-0 text-decoration-none" style="font-size: 0.75rem;">Baca &rarr;</a>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              `;
+              contentEl.insertAdjacentHTML('beforeend', card);
+            });
+            contentEl.classList.remove("d-none");
+          }
+        } catch (err) {
+          console.error("Failed to load Q&A widget:", err);
+          emptyEl.classList.remove("d-none");
+        } finally {
+          loadingEl.classList.add("d-none");
+        }
+      }
+
       async function retryWidget(label, loader) {
         msg.textContent = `Memuat ulang ${label}...`;
         try {
@@ -753,6 +800,7 @@
             loadYearlyWidget(),
             loadChartWidget(),
             loadRankingWidget(),
+            loadQnaWidget(),
           ]);
 
         const failedWidgets = [];

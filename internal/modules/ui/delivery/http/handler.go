@@ -23,6 +23,10 @@ func (h *Handler) RegisterRoutes(r *gin.Engine) {
 	for _, p := range pages() {
 		page := p
 		r.GET("/ui/"+page.Route, func(c *gin.Context) {
+			if page.Route == "kontrol-pagu" {
+				c.Redirect(302, "/spa/pagu-control")
+				return
+			}
 			c.File("web/templates/" + page.File)
 		})
 	}
@@ -58,6 +62,7 @@ func pages() []page {
 		{Route: "dokumen_pdf", File: "dokumen_pdf.html"},
 		{Route: "dashboard", File: "dashboard.html"},
 		{Route: "kontrol-pagu", File: "kontrol_pagu.html"},
+		{Route: "qna", File: "qna.html"},
 	}
 }
 
@@ -67,6 +72,7 @@ func registerShortRoutes(r *gin.Engine) {
 		"/rencana-kerja":   "/ui/rencana-kerja",
 		"/target-evaluasi": "/ui/target-evaluasi",
 		"/informasi":       "/ui/informasi",
+		"/qna":             "/ui/qna",
 	}
 
 	for shortPath, uiPath := range shortToUI {

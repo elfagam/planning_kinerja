@@ -300,7 +300,8 @@
     "/ui/dokumen_pdf",
     "/ui/dashboard",
     "/ui/unit-pengusul",
-    "/ui/kontrol-pagu"
+    "/ui/kontrol-pagu",
+    "/ui/qna"
   ];
 
   function applyRoleBasedAccessControl(rawRole) {
