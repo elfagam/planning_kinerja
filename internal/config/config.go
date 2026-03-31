@@ -50,9 +50,11 @@ func Load() *Config {
 	dbName := getenv("MYSQLDATABASE", getenv("DB_NAME", "e-plan-ai"))
 
 	// 3. Rakit DSN (Data Source Name)
-	// Kita prioritaskan variabel MYSQL_URL jika Railway menyediakannya,
-	// jika tidak, kita rakit sendiri menggunakan komponen di atas.
+	// Prioritas: MYSQL_URL -> MYSQL_DSN -> Komponen individual
 	dsn := os.Getenv("MYSQL_URL")
+	if dsn == "" {
+		dsn = os.Getenv("MYSQL_DSN")
+	}
 	if dsn == "" {
 		dsn = fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?charset=utf8mb4&parseTime=True&loc=Local",
 			dbUser, dbPass, dbHost, dbPort, dbName)

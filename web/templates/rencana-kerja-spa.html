@@ -96,15 +96,15 @@
                     <select
                       v-model="filters.sub_kegiatan_id"
                       class="form-select form-select-sm"
+                      @mousedown="logSubKegiatanDropdown"
                     >
                       <option value="">Semua Sub Kegiatan</option>
                       <option
                         v-for="sk in filteredSkItems"
                         :key="sk.id"
                         :value="sk.id"
+                        v-text="sk.kode + ' - ' + sk.nama"
                       >
-                        <span v-text="sk.kode"></span> -
-                        <span v-text="sk.nama"></span>
                       </option>
                     </select>
                   </div>
@@ -302,9 +302,8 @@
                     v-for="sk in filteredSkItemsDrawer"
                     :key="sk.id"
                     :value="sk.id"
+                    v-text="sk.kode + ' - ' + sk.nama"
                   >
-                    <span v-text="sk.kode"></span> -
-                    <span v-text="sk.nama"></span>
                   </option>
                 </select>
               </div>
@@ -324,9 +323,8 @@
                 v-for="isk in filteredIskItemsDrawer"
                 :key="isk.id"
                 :value="isk.id"
+                v-text="isk.kode + ' - ' + isk.nama"
               >
-                <span v-text="isk.kode"></span> -
-                <span v-text="isk.nama"></span>
               </option>
             </select>
             <div
@@ -400,9 +398,12 @@
           <div class="mb-4">
             <label class="form-label fw-bold">Unit Pengusul</label>
             <select v-model="rkForm.unit_pengusul_id" class="form-select">
-              <option v-for="u in unitItems" :key="u.id" :value="u.id">
-                <span v-text="u.nama"></span>
-              </option>
+              <option 
+                v-for="u in unitItems" 
+                :key="u.id" 
+                :value="u.id"
+                v-text="u.nama"
+              ></option>
             </select>
           </div>
 
