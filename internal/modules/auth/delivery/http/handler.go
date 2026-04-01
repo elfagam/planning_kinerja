@@ -3,6 +3,7 @@ package http
 import (
 	"errors"
 	"fmt"
+	"log"
 	"net/http"
 	"strings"
 	"time"
