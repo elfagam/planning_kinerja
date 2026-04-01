@@ -103,7 +103,7 @@
                         v-for="sk in filteredSkItems"
                         :key="sk.id"
                         :value="sk.id"
-                        v-text="sk.kode + ' - ' + sk.nama"
+                        v-text="sk.display_name"
                       >
                       </option>
                     </select>
@@ -302,7 +302,7 @@
                     v-for="sk in filteredSkItemsDrawer"
                     :key="sk.id"
                     :value="sk.id"
-                    v-text="sk.kode + ' - ' + sk.nama"
+                    v-text="sk.display_name"
                   >
                   </option>
                 </select>
@@ -323,7 +323,7 @@
                 v-for="isk in filteredIskItemsDrawer"
                 :key="isk.id"
                 :value="isk.id"
-                v-text="isk.kode + ' - ' + isk.nama"
+                v-text="isk.display_name"
               >
               </option>
             </select>

@@ -86,10 +86,19 @@ createApp({
         };
 
         const normalizeData = (item) => {
-            return {
-                id: item.id || item.ID,
-                kode: item.kode || item.Kode,
-                nama: item.nama || item.Nama,
+            if (!item) return null;
+            
+            // Map common fields with fallback for casing
+            const id = item.id || item.ID;
+            const kode = (item.kode || item.Kode || "").toString().trim();
+            const nama = (item.nama || item.Nama || "").toString().trim();
+
+            const normalized = {
+                id: id,
+                kode: kode,
+                nama: nama,
+                // Pre-generate display name for robust browser rendering (fixing Firefox issue)
+                display_name: kode && nama ? `${kode} - ${nama}` : (kode || nama || "-"),
                 tahun: item.tahun || item.Tahun,
                 triwulan: item.triwulan || item.Triwulan || 1,
                 status: item.status || item.Status,
@@ -105,6 +114,8 @@ createApp({
                 harga_satuan: item.harga_satuan || item.HargaSatuan,
                 anggaran_tahunan: item.anggaran_tahunan || item.AnggaranTahunan
             };
+
+            return normalized;
         };
 
         const fetchData = async () => {
@@ -345,23 +356,24 @@ createApp({
         };
 
         const filteredSkItems = computed(() => {
-            const q = filters.sk_search.toLowerCase();
-            return subKegiatanItems.value.filter(s => 
-                s.kode.toLowerCase().includes(q) || s.nama.toLowerCase().includes(q)
+            const q = (filters.sk_search || "").toLowerCase().trim();
+            const items = subKegiatanItems.value.filter(s => 
+                (s.kode || "").toLowerCase().includes(q) || (s.nama || "").toLowerCase().includes(q)
             );
+            return items;
         });
 
         const filteredSkItemsDrawer = computed(() => {
-            const q = rkForm.sk_search.toLowerCase();
+            const q = (rkForm.sk_search || "").toLowerCase().trim();
             return subKegiatanItems.value.filter(s => 
-                s.kode.toLowerCase().includes(q) || s.nama.toLowerCase().includes(q)
+                (s.kode || "").toLowerCase().includes(q) || (s.nama || "").toLowerCase().includes(q)
             );
         });
 
         const filteredIskItemsDrawer = computed(() => {
             if (!rkForm.sub_kegiatan_id) return [];
             return indikatorSkItems.value.filter(i => 
-                (i.sub_kegiatan_id || i.SubKegiatanID) == rkForm.sub_kegiatan_id
+                String(i.sub_kegiatan_id || i.SubKegiatanID) === String(rkForm.sub_kegiatan_id)
             );
         });
 
