@@ -45,21 +45,15 @@ func Load() *Config {
 
 	// 2. Ambil Variabel Database dengan sistem Prioritas (Railway -> Lokal -> Default)
 	// Railway standar: MYSQLHOST, MYSQLPORT, MYSQLUSER, MYSQLPASSWORD, MYSQLDATABASE
-	// Beberapa sistem lain: DB_HOST, DB_USER, DB_PASSWORD, dll.
-	dbHost := getenv("DB_HOST", getenv("MYSQLHOST", "localhost"))
-	dbPort := getenv("DB_PORT", getenv("MYSQLPORT", "3306"))
-	dbUser := getenv("DB_USER", getenv("MYSQLUSER", "root"))
-	dbPass := getenv("DB_PASSWORD", getenv("MYSQLPASSWORD", ""))
-	dbName := getenv("DB_NAME", getenv("MYSQLDATABASE", "e-plan-ai"))
+	dbHost := getenv("MYSQLHOST", getenv("DB_HOST", "127.0.0.1"))
+	dbPort := getenv("MYSQLPORT", getenv("DB_PORT", "3306"))
+	dbUser := getenv("MYSQLUSER", getenv("DB_USER", "root"))
+	dbPass := getenv("MYSQLPASSWORD", getenv("DB_PASSWORD", ""))
+	dbName := getenv("MYSQLDATABASE", getenv("DB_NAME", "e-plan-ai"))
 
 	// 3. Rakit DSN (Data Source Name)
-	dsn := os.Getenv("MYSQL_URL")
-	if dsn == "" {
-		dsn = os.Getenv("DATABASE_URL")
-	}
-	if dsn == "" {
-		dsn = os.Getenv("MYSQL_DSN")
-	}
+	// Railway biasanya menyediakan MYSQL_URL atau DATABASE_URL
+	dsn := getenv("MYSQL_URL", getenv("DATABASE_URL", getenv("MYSQL_DSN", "")))
 
 	// Jika DSN dalam format URI (mysql://), konversi ke format DSN driver Go-MySQL
 	if strings.HasPrefix(dsn, "mysql://") {
@@ -85,10 +79,22 @@ func Load() *Config {
 	}
 
 	// 4. Diagnostic Logging (Membantu kita melihat apa yang terbaca di Railway Logs)
-	if os.Getenv("RAILWAY_ENVIRONMENT_NAME") != "" || os.Getenv("PORT") != "" {
+	isRailway := os.Getenv("RAILWAY_ENVIRONMENT_NAME") != "" || os.Getenv("PORT") != ""
+	if isRailway {
 		fmt.Printf("[CONFIG] Railway environment detected\n")
+		
+		// Deteksi apakah menggunakan URL atau Komponen
+		if getenv("MYSQL_URL", "") != "" {
+			fmt.Printf("[CONFIG] Source: MYSQL_URL env var\n")
+		} else if getenv("MYSQLHOST", "") != "" {
+			fmt.Printf("[CONFIG] Source: MYSQLHOST components\n")
+		} else {
+			fmt.Printf("[CONFIG] Source: Fallback defaults (Local/Docker)\n")
+		}
+
 		fmt.Printf("[CONFIG] Target DB Host: %s:%s\n", dbHost, dbPort)
 		fmt.Printf("[CONFIG] Target DB User: %s\n", dbUser)
+		
 		if dsn != "" {
 			// Sembunyikan password jika ada di DSN saat logging
 			maskedDSN := dsn
@@ -97,7 +103,7 @@ func Load() *Config {
 					maskedDSN = dsn[:colonIdx+1] + "****" + dsn[atIdx:]
 				}
 			}
-			fmt.Printf("[CONFIG] Using connection string (DSN): %s\n", maskedDSN)
+			fmt.Printf("[CONFIG] Final DSN: %s\n", maskedDSN)
 		}
 	}
 
@@ -120,7 +126,7 @@ func Load() *Config {
 		GinMode:                  getenv("GIN_MODE", "debug"),
 		LogLevel:                 getenv("LOG_LEVEL", "info"),
 		AuthEnabled:              getenvBool("AUTH_ENABLED", true),
-		AuthToken:                getenv("AUTH_TOKEN", "rahasia-super-kuat-123"), // Default fallback agar JWT tidak crash
+		AuthToken:                getenv("AUTH_TOKEN", "rahasia-super-kuat-123"),
 		DevAuthUserEmail:         getenv("DEV_AUTH_USER_EMAIL", "superadmin@rsudcontoh.go.id"),
 		JWTIssuer:                getenv("JWT_ISSUER", "e-plan-ai"),
 		JWTAccessTokenTTLMinutes: getenvInt("JWT_ACCESS_TOKEN_TTL_MINUTES", 15),

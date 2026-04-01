@@ -16,6 +16,9 @@ import (
 
 // NewGormMySQL creates a GORM connection backed by MySQL.
 func NewGormMySQL(cfg *config.Config) (*gorm.DB, error) {
+	if cfg.MySQLDSN == "" {
+		return nil, fmt.Errorf("MySQL DSN is empty, check your environment variables")
+	}
 	dbCfg := NewGormMySQLConfig(cfg)
 	gormCfg := &gorm.Config{Logger: logger.Default.LogMode(dbCfg.LogMode)}
 
