@@ -211,17 +211,28 @@ func convertURIToDSN(uriStr string) (string, error) {
 		return uriStr, nil
 	}
 
-	user := u.User.Username()
-	pass, _ := u.User.Password()
+	user := ""
+	pass := ""
+	if u.User != nil {
+		user = u.User.Username()
+		pass, _ = u.User.Password()
+	}
+
 	host := u.Host
 	db := strings.TrimPrefix(u.Path, "/")
 	
 	// Default MySQL port jika tidak ada di host
-	if !strings.Contains(host, ":") {
+	if !strings.Contains(host, ":") && host != "" {
 		host = host + ":3306"
 	}
 
-	dsn := fmt.Sprintf("%s:%s@tcp(%s)/%s", user, pass, host, db)
+	var dsn string
+	if user != "" || pass != "" {
+		dsn = fmt.Sprintf("%s:%s@tcp(%s)/%s", user, pass, host, db)
+	} else {
+		// DSN tanpa user/pass (misalnya localhost)
+		dsn = fmt.Sprintf("tcp(%s)/%s", host, db)
+	}
 	
 	// Tambahkan query parameters jika ada
 	if u.RawQuery != "" {

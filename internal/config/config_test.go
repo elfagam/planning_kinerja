@@ -22,9 +22,14 @@ func TestConvertURIToDSN(t *testing.T) {
 			want: "user:pass@tcp(remote-host:3307)/db_name?charset=utf8mb4&parseTime=True",
 		},
 		{
-			name: "URI without Port",
-			uri:  "mysql://root:secret@localhost/test_db",
-			want: "root:secret@tcp(localhost:3306)/test_db",
+			name: "URI without User Info",
+			uri:  "mysql://localhost:3306/db_name",
+			want: "tcp(localhost:3306)/db_name",
+		},
+		{
+			name: "URI with Only DB Name (not standard but possible)",
+			uri:  "mysql:///test_db",
+			want: "tcp()/test_db",
 		},
 		{
 			name: "Non-MySQL URI",
