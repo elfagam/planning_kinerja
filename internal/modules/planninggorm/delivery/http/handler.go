@@ -59,6 +59,13 @@ type userUpsertPayload struct {
 	PasswordHash    string
 }
 
+type PaginationMetadata struct {
+	Total      int64 `json:"total"`
+	Page       int   `json:"page"`
+	Limit      int   `json:"limit"`
+	TotalPages int   `json:"total_pages"`
+}
+
 func NewHandler(cfg *config.Config) *Handler {
 	db, err := database.NewGormMySQL(cfg)
 	if err != nil {
@@ -193,6 +200,7 @@ func (h *Handler) list(rc resourceConfig) gin.HandlerFunc {
 			response.Success(c, gin.H{"items": out, "total": len(out)})
 			return
 		}
+
 		if rc.path == "indikator_kegiatan" {
 			sortBy := strings.TrimSpace(c.Query("sort_by"))
 			order := strings.ToLower(strings.TrimSpace(c.Query("order")))
@@ -236,14 +244,10 @@ func (h *Handler) list(rc resourceConfig) gin.HandlerFunc {
 				)
 			}
 
-			err := queryx.Order(sortColumn + " " + strings.ToUpper(order)).Find(items).Error
-			if err != nil {
-				response.Error(c, http.StatusInternalServerError, mapReadError(rc, "list", err))
-				return
-			}
-			response.Success(c, gin.H{"items": items, "total": reflect.ValueOf(items).Elem().Len()})
+			h.respondPaginated(c, queryx.Order(sortColumn+" "+strings.ToUpper(order)), items, rc)
 			return
 		}
+
 		if rc.path == "indikator_sub_kegiatan" {
 			sortBy := strings.TrimSpace(c.Query("sort_by"))
 			order := strings.ToLower(strings.TrimSpace(c.Query("order")))
@@ -287,63 +291,10 @@ func (h *Handler) list(rc resourceConfig) gin.HandlerFunc {
 				)
 			}
 
-			// ?all=true returns every record (for dropdowns / reference data)
-			if c.Query("all") == "true" {
-				err := queryx.Order(sortColumn + " " + strings.ToUpper(order)).Find(items).Error
-				if err != nil {
-					response.Error(c, http.StatusInternalServerError, mapReadError(rc, "list", err))
-					return
-				}
-				response.Success(c, gin.H{"items": items, "total": reflect.ValueOf(items).Elem().Len()})
-				return
-			}
-
-			page := 1
-			if v := strings.TrimSpace(c.Query("page")); v != "" {
-				if parsed, err := strconv.Atoi(v); err == nil && parsed > 0 {
-					page = parsed
-				}
-			}
-
-			limit := 5
-			if v := strings.TrimSpace(c.Query("limit")); v != "" {
-				if parsed, err := strconv.Atoi(v); err == nil && parsed > 0 {
-					limit = parsed
-				}
-			}
-			if limit > 100 {
-				limit = 100
-			}
-
-			var total int64
-			if err := queryx.Session(&gorm.Session{}).Count(&total).Error; err != nil {
-				response.Error(c, http.StatusInternalServerError, mapReadError(rc, "list", err))
-				return
-			}
-
-			totalPages := int((total + int64(limit) - 1) / int64(limit))
-			if totalPages < 1 {
-				totalPages = 1
-			}
-			if page > totalPages {
-				page = totalPages
-			}
-
-			offset := (page - 1) * limit
-			err := queryx.Order(sortColumn + " " + strings.ToUpper(order)).Offset(offset).Limit(limit).Find(items).Error
-			if err != nil {
-				response.Error(c, http.StatusInternalServerError, mapReadError(rc, "list", err))
-				return
-			}
-			response.Success(c, gin.H{
-				"items":       items,
-				"total":       total,
-				"page":        page,
-				"limit":       limit,
-				"total_pages": totalPages,
-			})
+			h.respondPaginated(c, queryx.Order(sortColumn+" "+strings.ToUpper(order)), items, rc)
 			return
 		}
+
 		if rc.path == "rencana_kerja" {
 			sortBy := strings.TrimSpace(c.Query("sort_by"))
 			order := strings.ToLower(strings.TrimSpace(c.Query("order")))
@@ -440,63 +391,10 @@ func (h *Handler) list(rc resourceConfig) gin.HandlerFunc {
 				queryx = queryx.Where("rencana_kerja.status = ?", "DISETUJUI")
 			}
 
-			if c.Query("all") == "true" {
-				err := queryx.Order(sortColumn + " " + strings.ToUpper(order)).Find(items).Error
-				if err != nil {
-					response.Error(c, http.StatusInternalServerError, mapReadError(rc, "list", err))
-					return
-				}
-				response.Success(c, gin.H{"items": items, "total": reflect.ValueOf(items).Elem().Len()})
-				return
-			}
-
-			page := 1
-			if v := strings.TrimSpace(c.Query("page")); v != "" {
-				if parsed, err := strconv.Atoi(v); err == nil && parsed > 0 {
-					page = parsed
-				}
-			}
-
-			limit := 10
-			if v := strings.TrimSpace(c.Query("limit")); v != "" {
-				if parsed, err := strconv.Atoi(v); err == nil && parsed > 0 {
-					limit = parsed
-				}
-			}
-			if limit > 100 {
-				limit = 100
-			}
-
-			var total int64
-			if err := queryx.Session(&gorm.Session{}).Count(&total).Error; err != nil {
-				response.Error(c, http.StatusInternalServerError, mapReadError(rc, "list", err))
-				return
-			}
-
-			totalPages := int((total + int64(limit) - 1) / int64(limit))
-			if totalPages < 1 {
-				totalPages = 1
-			}
-			if page > totalPages {
-				page = totalPages
-			}
-
-			offset := (page - 1) * limit
-			err := queryx.Order(sortColumn + " " + strings.ToUpper(order)).Offset(offset).Limit(limit).Find(items).Error
-			if err != nil {
-				response.Error(c, http.StatusInternalServerError, mapReadError(rc, "list", err))
-				return
-			}
-
-			response.Success(c, gin.H{
-				"items":       items,
-				"total":       total,
-				"page":        page,
-				"limit":       limit,
-				"total_pages": totalPages,
-			})
+			h.respondPaginated(c, queryx.Order(sortColumn+" "+strings.ToUpper(order)), items, rc)
 			return
 		}
+
 		if rc.path == "indikator_rencana_kerja" {
 			query = query.Preload("StandarHarga")
 			
@@ -536,11 +434,13 @@ func (h *Handler) list(rc resourceConfig) gin.HandlerFunc {
 				}
 			}
 		}
+
 		if rc.path == "realisasi_rencana_kerja" && isTruthy(c.Query("final_only")) {
 			query = query.Joins("JOIN indikator_rencana_kerja irk ON irk.id = realisasi_rencana_kerja.indikator_rencana_kerja_id").
 				Joins("JOIN rencana_kerja rk ON rk.id = irk.rencana_kerja_id").
 				Where("rk.status = ?", "DISETUJUI")
 		}
+
 		if rc.path == "pagu_sub_kegiatan" {
 			tahunRaw := strings.TrimSpace(c.Query("tahun"))
 			if tahunRaw != "" {
@@ -553,23 +453,89 @@ func (h *Handler) list(rc resourceConfig) gin.HandlerFunc {
 			}
 			query = query.Preload("SubKegiatan")
 		}
-		if err := query.Order(rc.name + ".id DESC").Find(items).Error; err != nil {
-			response.Error(c, http.StatusInternalServerError, mapReadError(rc, "list", err))
-			return
-		}
 
 		if rc.path == "program" {
+			var total int64
+			if err := query.Session(&gorm.Session{}).Count(&total).Error; err != nil {
+				response.Error(c, http.StatusInternalServerError, mapReadError(rc, "list", err))
+				return
+			}
+			// Program has a specific response field mapping
+			if err := query.Order(rc.name + ".id DESC").Find(items).Error; err != nil {
+				response.Error(c, http.StatusInternalServerError, mapReadError(rc, "list", err))
+				return
+			}
 			programs := items.(*[]database.Program)
 			responseItems := make([]gin.H, 0, len(*programs))
 			for _, p := range *programs {
 				responseItems = append(responseItems, programToResponse(p))
 			}
-			response.Success(c, gin.H{"items": responseItems, "total": len(responseItems)})
+			response.Success(c, gin.H{"items": responseItems, "total": total})
 			return
 		}
 
-		response.Success(c, gin.H{"items": items, "total": reflect.ValueOf(items).Elem().Len()})
+		h.respondPaginated(c, query.Order(rc.name+".id DESC"), items, rc)
 	}
+}
+
+func (h *Handler) respondPaginated(c *gin.Context, query *gorm.DB, items any, rc resourceConfig) {
+	if c.Query("all") == "true" {
+		if err := query.Find(items).Error; err != nil {
+			response.Error(c, http.StatusInternalServerError, mapReadError(rc, "list", err))
+			return
+		}
+		response.Success(c, gin.H{"items": items, "total": reflect.ValueOf(items).Elem().Len()})
+		return
+	}
+
+	page, limit := h.parsePagination(c, 20)
+	var total int64
+	if err := query.Session(&gorm.Session{}).Count(&total).Error; err != nil {
+		response.Error(c, http.StatusInternalServerError, mapReadError(rc, "list", err))
+		return
+	}
+
+	totalPages := int((total + int64(limit) - 1) / int64(limit))
+	if totalPages < 1 {
+		totalPages = 1
+	}
+	if page > totalPages {
+		page = totalPages
+	}
+
+	offset := (page - 1) * limit
+	if err := query.Offset(offset).Limit(limit).Find(items).Error; err != nil {
+		response.Error(c, http.StatusInternalServerError, mapReadError(rc, "list", err))
+		return
+	}
+
+	response.Success(c, gin.H{
+		"items":       items,
+		"total":       total,
+		"page":        page,
+		"limit":       limit,
+		"total_pages": totalPages,
+	})
+}
+
+func (h *Handler) parsePagination(c *gin.Context, defaultLimit int) (page, limit int) {
+	page = 1
+	if v := strings.TrimSpace(c.Query("page")); v != "" {
+		if parsed, err := strconv.Atoi(v); err == nil && parsed > 0 {
+			page = parsed
+		}
+	}
+
+	limit = defaultLimit
+	if v := strings.TrimSpace(c.Query("limit")); v != "" {
+		if parsed, err := strconv.Atoi(v); err == nil && parsed > 0 {
+			limit = parsed
+		}
+	}
+	if limit > 100 {
+		limit = 100
+	}
+	return
 }
 
 func (h *Handler) get(rc resourceConfig) gin.HandlerFunc {
