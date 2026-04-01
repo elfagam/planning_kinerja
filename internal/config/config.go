@@ -3,6 +3,7 @@ package config
 import (
 	"bufio"
 	"fmt"
+	"net/url"
 	"os"
 	"strconv"
 	"strings"
@@ -43,21 +44,61 @@ func Load() *Config {
 	loadDotEnvIfExists(".env")
 
 	// 2. Ambil Variabel Database dengan sistem Prioritas (Railway -> Lokal -> Default)
-	dbHost := getenv("MYSQLHOST", getenv("DB_HOST", "localhost"))
-	dbPort := getenv("MYSQLPORT", getenv("DB_PORT", "3306"))
-	dbUser := getenv("MYSQLUSER", getenv("DB_USER", "root"))
-	dbPass := getenv("MYSQLPASSWORD", getenv("DB_PASSWORD", ""))
-	dbName := getenv("MYSQLDATABASE", getenv("DB_NAME", "e-plan-ai"))
+	// Railway standar: MYSQLHOST, MYSQLPORT, MYSQLUSER, MYSQLPASSWORD, MYSQLDATABASE
+	// Beberapa sistem lain: DB_HOST, DB_USER, DB_PASSWORD, dll.
+	dbHost := getenv("DB_HOST", getenv("MYSQLHOST", "localhost"))
+	dbPort := getenv("DB_PORT", getenv("MYSQLPORT", "3306"))
+	dbUser := getenv("DB_USER", getenv("MYSQLUSER", "root"))
+	dbPass := getenv("DB_PASSWORD", getenv("MYSQLPASSWORD", ""))
+	dbName := getenv("DB_NAME", getenv("MYSQLDATABASE", "e-plan-ai"))
 
 	// 3. Rakit DSN (Data Source Name)
-	// Prioritas: MYSQL_URL -> MYSQL_DSN -> Komponen individual
 	dsn := os.Getenv("MYSQL_URL")
+	if dsn == "" {
+		dsn = os.Getenv("DATABASE_URL")
+	}
 	if dsn == "" {
 		dsn = os.Getenv("MYSQL_DSN")
 	}
+
+	// Jika DSN dalam format URI (mysql://), konversi ke format DSN driver Go-MySQL
+	if strings.HasPrefix(dsn, "mysql://") {
+		parsedDSN, err := convertURIToDSN(dsn)
+		if err == nil {
+			dsn = parsedDSN
+		}
+	}
+
 	if dsn == "" {
+		// Jika DSN masih kosong, rakit dari komponen individual
 		dsn = fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?charset=utf8mb4&parseTime=True&loc=Local",
 			dbUser, dbPass, dbHost, dbPort, dbName)
+	} else {
+		// Pastikan parseTime=True ada untuk GORM
+		if !strings.Contains(dsn, "parseTime=") {
+			sep := "?"
+			if strings.Contains(dsn, "?") {
+				sep = "&"
+			}
+			dsn += sep + "parseTime=True"
+		}
+	}
+
+	// 4. Diagnostic Logging (Membantu kita melihat apa yang terbaca di Railway Logs)
+	if os.Getenv("RAILWAY_ENVIRONMENT_NAME") != "" || os.Getenv("PORT") != "" {
+		fmt.Printf("[CONFIG] Railway environment detected\n")
+		fmt.Printf("[CONFIG] Target DB Host: %s:%s\n", dbHost, dbPort)
+		fmt.Printf("[CONFIG] Target DB User: %s\n", dbUser)
+		if dsn != "" {
+			// Sembunyikan password jika ada di DSN saat logging
+			maskedDSN := dsn
+			if atIdx := strings.Index(dsn, "@"); atIdx > 0 {
+				if colonIdx := strings.Index(dsn[:atIdx], ":"); colonIdx > 0 {
+					maskedDSN = dsn[:colonIdx+1] + "****" + dsn[atIdx:]
+				}
+			}
+			fmt.Printf("[CONFIG] Using connection string (DSN): %s\n", maskedDSN)
+		}
 	}
 
 	return &Config{
@@ -156,4 +197,36 @@ func getenvBool(key string, fallback bool) bool {
 	}
 
 	return b
+}
+
+// convertURIToDSN mengubah format URI (mysql://user:pass@host:port/db) 
+// ke format DSN yang dimengerti driver go-sql-driver/mysql (user:pass@tcp(host:port)/db)
+func convertURIToDSN(uriStr string) (string, error) {
+	u, err := url.Parse(uriStr)
+	if err != nil {
+		return "", err
+	}
+
+	if u.Scheme != "mysql" {
+		return uriStr, nil
+	}
+
+	user := u.User.Username()
+	pass, _ := u.User.Password()
+	host := u.Host
+	db := strings.TrimPrefix(u.Path, "/")
+	
+	// Default MySQL port jika tidak ada di host
+	if !strings.Contains(host, ":") {
+		host = host + ":3306"
+	}
+
+	dsn := fmt.Sprintf("%s:%s@tcp(%s)/%s", user, pass, host, db)
+	
+	// Tambahkan query parameters jika ada
+	if u.RawQuery != "" {
+		dsn += "?" + u.RawQuery
+	}
+
+	return dsn, nil
 }

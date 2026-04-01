@@ -58,6 +58,7 @@ type systemUser struct {
 func NewHandler(cfg *config.Config) *Handler {
 	db, err := database.NewGormMySQL(cfg)
 	if err != nil {
+		fmt.Printf("[AUTH] CRITICAL: database connection failed in handler initialization: %v\n", err)
 		db = nil
 	}
 

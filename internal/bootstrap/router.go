@@ -20,6 +20,7 @@ import (
 	"e-plan-ai/internal/shared/database"
 	"e-plan-ai/internal/shared/middleware"
 
+	"log"
 	"os"
 	"strings"
 
@@ -32,9 +33,14 @@ func NewRouter(cfg *config.Config) *gin.Engine {
 	r := gin.New()
 	// Inisialisasi template HTML dari folder web/templates
 	r.LoadHTMLGlob("web/templates/*")
-	r.Use(gin.Logger(), middleware.Recovery(), middleware.CORS())
+	r.Use(middleware.Security(), gin.Logger(), middleware.Recovery(), middleware.CORS())
 	
-	db, _ := database.NewGormMySQL(cfg)
+	db, err := database.NewGormMySQL(cfg)
+	if err != nil {
+		log.Printf("[DATABASE] CRITICAL CONNECTION FAILURE: %v", err)
+	} else {
+		log.Printf("[DATABASE] Connection established successfully.")
+	}
 
 	r.Static("/assets", "web/assets")
 	r.GET("/favicon.ico", func(c *gin.Context) {
