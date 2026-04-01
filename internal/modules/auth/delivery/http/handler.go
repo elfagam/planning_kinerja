@@ -141,12 +141,14 @@ func (h *Handler) login(c *gin.Context) {
 
 	accessToken, expiresIn, err := h.generateToken(user, "access", h.accessTTL)
 	if err != nil {
+		log.Printf("[AUTH ERROR] Access token generation failed for user %d: %v", user.ID, err)
 		response.Error(c, http.StatusInternalServerError, "failed to generate access token")
 		return
 	}
 
 	refreshToken, _, err := h.generateToken(user, "refresh", h.refreshTTL)
 	if err != nil {
+		log.Printf("[AUTH ERROR] Refresh token generation failed for user %d: %v", user.ID, err)
 		response.Error(c, http.StatusInternalServerError, "failed to generate refresh token")
 		return
 	}
@@ -189,12 +191,14 @@ func (h *Handler) refresh(c *gin.Context) {
 
 	accessToken, expiresIn, err := h.generateToken(user, "access", h.accessTTL)
 	if err != nil {
+		log.Printf("[AUTH ERROR] Access token generation failed for user %d: %v", user.ID, err)
 		response.Error(c, http.StatusInternalServerError, "failed to generate access token")
 		return
 	}
 
 	refreshToken, _, err := h.generateToken(user, "refresh", h.refreshTTL)
 	if err != nil {
+		log.Printf("[AUTH ERROR] Refresh token generation failed for user %d: %v", user.ID, err)
 		response.Error(c, http.StatusInternalServerError, "failed to generate refresh token")
 		return
 	}
