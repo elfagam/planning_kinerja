@@ -20,7 +20,12 @@
       <header
         class="mb-4 p-4 card shadow-sm border-0 header-gradient text-white"
       >
-        <h1 class="h3 mb-1" id="module-title">CRUD</h1>
+        <div class="d-flex justify-content-between align-items-center mb-1">
+          <h1 class="h3 mb-0" id="module-title">CRUD</h1>
+          <button type="button" class="btn btn-sm btn-light text-primary fw-bold px-3 shadow-sm" data-bs-toggle="modal" data-bs-target="#modalPetunjukIRK">
+            <i class="bi bi-lightbulb-fill me-1"></i> Tata Cara
+          </button>
+        </div>
         <p class="mb-0 opacity-75">
           Kelola data Rencana Aksi Kerja secara terpisah
         </p>
@@ -48,7 +53,7 @@
                   <option value="">Pilih rencana kerja</option>
                 </select>
 
-                <label class="form-label mb-0" for="kode">Kode</label>
+                <label class="form-label mb-0" for="kode">Kode <i class="bi bi-info-circle text-muted" data-bs-toggle="tooltip" title="Gunakan kode unik (contoh: IRK-001). Cek daftar data untuk menghindari duplikat."></i></label>
                 <input
                   id="kode"
                   class="form-control"
@@ -107,7 +112,7 @@
                 />
 
                 <label class="form-label mb-0" for="anggaranTahunan"
-                  >Anggaran Tahunan</label
+                  >Anggaran Tahunan <i class="bi bi-info-circle text-muted" data-bs-toggle="tooltip" title="Dihitung otomatis: Target x Harga Satuan."></i></label
                 >
                 <input
                   id="anggaranTahunan"
@@ -130,6 +135,14 @@
                 <small id="status-text" class="text-muted" aria-live="polite"
                   >Siap</small
                 >
+                <script>
+                  document.addEventListener("DOMContentLoaded", function () {
+                    const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+                    tooltipTriggerList.map(function (tooltipTriggerEl) {
+                      return new bootstrap.Tooltip(tooltipTriggerEl);
+                    });
+                  });
+                </script>
               </form>
             </div>
           </div>
@@ -211,6 +224,59 @@
         </section>
       </div>
     </main>
+
+    <!-- Modal Petunjuk Pengisian IRK -->
+    <div class="modal fade" id="modalPetunjukIRK" tabindex="-1" aria-labelledby="modalPetunjukIRKLabel" aria-hidden="true">
+      <div class="modal-dialog modal-lg">
+        <div class="modal-content border-0 shadow-lg">
+          <div class="modal-header bg-success text-white border-0">
+            <h5 class="modal-title fw-bold" id="modalPetunjukIRKLabel">
+              <i class="bi bi-journal-check me-2"></i> Tata Cara Penginputan Rincian Rencana Kerja
+            </h5>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body p-4">
+            <div class="row g-4">
+              <div class="col-md-6">
+                <div class="p-3 bg-light rounded-3 border h-100">
+                  <h6 class="fw-bold text-success mb-3">1. Pilih Rencana Kerja</h6>
+                  <p class="small text-muted mb-0">
+                    Pilih Rencana Kerja (Parent) yang sudah Anda buat sebelumnya. Gunakan filter pelacak jika data terlalu banyak.
+                  </p>
+                </div>
+              </div>
+              <div class="col-md-6">
+                <div class="p-3 bg-light rounded-3 border h-100">
+                  <h6 class="fw-bold text-success mb-3">2. Cari Standar Harga</h6>
+                  <p class="small text-muted mb-0">
+                    Klik tombol <strong>"Pilih Standar Harga"</strong>. Cari item SSH/SBU yang sesuai. Ini akan otomatis mengisi Nama, Satuan, dan Harga Satuan.
+                  </p>
+                </div>
+              </div>
+              <div class="col-md-6">
+                <div class="p-3 bg-light rounded-3 border h-100">
+                  <h6 class="fw-bold text-success mb-3">3. Tentukan Target</h6>
+                  <p class="small text-muted mb-0">
+                    Masukkan jumlah volume (Target Tahunan) yang dibutuhkan.
+                  </p>
+                </div>
+              </div>
+              <div class="col-md-6">
+                <div class="p-3 bg-light rounded-3 border h-100">
+                  <h6 class="fw-bold text-success mb-3">4. Cek Anggaran</h6>
+                  <p class="small text-muted mb-0">
+                    Total anggaran akan dihitung otomatis. Sesuaikan Harga Satuan jika item bersifat non-standar (atas izin pimpinan).
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer border-0">
+            <button type="button" class="btn btn-success px-4 fw-bold" data-bs-dismiss="modal">Siap, Saya Mengerti</button>
+          </div>
+        </div>
+      </div>
+    </div>
 
     <!-- Modal Standar Harga -->
     <div

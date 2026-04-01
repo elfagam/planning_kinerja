@@ -9,6 +9,7 @@
       rel="stylesheet"
     />
     <link href="/assets/css/app.css" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <script src="/assets/js/auth-client.js?v=20260326"></script>
     <style>
       @keyframes fadeEffect {
@@ -49,7 +50,12 @@
       <header
         class="mb-4 p-4 card shadow-sm border-0 header-gradient text-white"
       >
-        <h1 class="h3 mb-1" id="module-title">CRUD RENCANA KERJA</h1>
+        <div class="d-flex justify-content-between align-items-center mb-1">
+          <h1 class="h3 mb-0" id="module-title">CRUD RENCANA KERJA</h1>
+          <button type="button" class="btn btn-sm btn-light text-primary fw-bold px-3 shadow-sm" data-bs-toggle="modal" data-bs-target="#modalPetunjukRK">
+            <i class="bi bi-question-circle-fill me-1"></i> Petunjuk Pengisian
+          </button>
+        </div>
         <p class="mb-0 opacity-75">Kelola data Rencana Kerja secara terpisah</p>
         <div class="info-switcher">
           <small class="opacity-75">Topik Informasi Berjalan</small>
@@ -123,7 +129,7 @@
                   <option value="">Pilih unit pengusul</option>
                 </select>
 
-                <label class="form-label mb-0" for="kode">Kode</label>
+                <label class="form-label mb-0" for="kode">Kode <i class="bi bi-info-circle text-muted" data-bs-toggle="tooltip" title="Gunakan kode unik (contoh: RK-001). Cek daftar data untuk menghindari duplikat."></i></label>
                 <input
                   id="kode"
                   class="form-control"
@@ -412,6 +418,63 @@
         </section>
       </div>
     </main>
+
+    <!-- Modal Petunjuk Pengisian RK -->
+    <div class="modal fade" id="modalPetunjukRK" tabindex="-1" aria-labelledby="modalPetunjukRKLabel" aria-hidden="true">
+      <div class="modal-dialog modal-lg">
+        <div class="modal-content border-0 shadow-lg">
+          <div class="modal-header bg-primary text-white border-0">
+            <h5 class="modal-title fw-bold" id="modalPetunjukRKLabel">
+              <i class="bi bi-info-circle-fill me-2"></i> Tata Cara Penginputan Rencana Kerja
+            </h5>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body p-4">
+            <div class="row g-4">
+              <div class="col-md-6">
+                <div class="p-3 bg-light rounded-3 border h-100">
+                  <h6 class="fw-bold text-primary mb-3">1. Pilih Sub Kegiatan</h6>
+                  <p class="small text-muted mb-0">
+                    Gunakan kolom filter untuk mencari kode atau nama sub kegiatan. Pilih dari dropdown yang tersedia. 
+                    Pagu anggaran akan muncul secara otomatis.
+                  </p>
+                </div>
+              </div>
+              <div class="col-md-6">
+                <div class="p-3 bg-light rounded-3 border h-100">
+                  <h6 class="fw-bold text-primary mb-3">2. Pilih Indikator Sasaran</h6>
+                  <p class="small text-muted mb-0">
+                    Pilih Indikator Sub Kegiatan yang akan diintervensi oleh Rencana Kerja ini.
+                  </p>
+                </div>
+              </div>
+              <div class="col-md-6">
+                <div class="p-3 bg-light rounded-3 border h-100">
+                  <h6 class="fw-bold text-primary mb-3">3. Detail Rencana Kerja</h6>
+                  <p class="small text-muted mb-0">
+                    Isi <strong>Kode</strong> (disarankan mengikuti saran sistem) dan <strong>Nama</strong> rencana kerja secara spesifik.
+                  </p>
+                </div>
+              </div>
+              <div class="col-md-6">
+                <div class="p-3 bg-light rounded-3 border h-100">
+                  <h6 class="fw-bold text-primary mb-3">4. Waktu Pelaksanaan</h6>
+                  <p class="small text-muted mb-0">
+                    Tentukan <strong>Tahun</strong> dan <strong>Triwulan</strong>. Pilih "Tahunan" jika rencana kerja berlaku sepanjang tahun.
+                  </p>
+                </div>
+              </div>
+            </div>
+            <div class="mt-4 p-3 bg-info-subtle border-start border-info border-4 rounded text-info-emphasis small">
+              <i class="bi bi-lightbulb-fill me-2"></i> <strong>Tips:</strong> Pastikan status dalam keadaan <strong>DRAFT</strong> sebelum pengajuan final ke Perencana.
+            </div>
+          </div>
+          <div class="modal-footer border-0">
+            <button type="button" class="btn btn-primary px-4 fw-bold" data-bs-dismiss="modal">Saya Mengerti</button>
+          </div>
+        </div>
+      </div>
+    </div>
 
     <script>
       document.addEventListener("DOMContentLoaded", function () {
@@ -719,7 +782,14 @@
             paguTahunSebelumnyaInput.value = money(0);
             paguTahunIniInput.value = money(0);
             indikatorInput.value = "";
-            unitPengusulInput.value = "";
+            
+            // Preserve Unit for Operator and Verifikator
+            if (currentUserRole === "OPERATOR" || currentUserRole === "VERIFIKATOR") {
+              unitPengusulInput.value = String(currentUserUnitPengusulId || "");
+            } else {
+              unitPengusulInput.value = "";
+            }
+            
             kodeInput.value = suggestNextKode();
             namaInput.value = "";
             tahunInput.value = defaultTahun();
@@ -1652,6 +1722,12 @@
             setStatus(`Gagal inisialisasi form: ${error.message}`, true);
           }
 
+          // Initialize Tooltips
+          const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+          tooltipTriggerList.map(function (tooltipTriggerEl) {
+            return new bootstrap.Tooltip(tooltipTriggerEl);
+          });
+
           // Handle Export CSV
           btnExportCSV.addEventListener("click", async function () {
             const subId = subKegiatanInput.value;
@@ -1695,5 +1771,6 @@
         })();
       });
     </script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
   </body>
 </html>
