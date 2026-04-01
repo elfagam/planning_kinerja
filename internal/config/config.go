@@ -55,6 +55,13 @@ func Load() *Config {
 	// Railway biasanya menyediakan MYSQL_URL atau DATABASE_URL
 	dsn := getenv("MYSQL_URL", getenv("DATABASE_URL", getenv("MYSQL_DSN", "")))
 
+	// CRITICAL FIX: Jika sedang di Railway dan DSN mengandung 'localhost' padahal 
+	// kita sudah berhasil mendeteksi host Railway, maka abaikan DSN tersebut dan rakit ulang.
+	isRailway := os.Getenv("RAILWAY_ENVIRONMENT_NAME") != "" || os.Getenv("PORT") != ""
+	if isRailway && strings.Contains(dsn, "localhost") && dbHost != "127.0.0.1" && dbHost != "localhost" {
+		dsn = "" 
+	}
+
 	// Jika DSN dalam format URI (mysql://), konversi ke format DSN driver Go-MySQL
 	if strings.HasPrefix(dsn, "mysql://") {
 		parsedDSN, err := convertURIToDSN(dsn)
@@ -64,7 +71,7 @@ func Load() *Config {
 	}
 
 	if dsn == "" {
-		// Jika DSN masih kosong, rakit dari komponen individual
+		// Rakit dari komponen individual (dbUser, dbPass, dbHost, dbPort, dbName)
 		dsn = fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?charset=utf8mb4&parseTime=True&loc=Local",
 			dbUser, dbPass, dbHost, dbPort, dbName)
 	} else {
@@ -79,15 +86,16 @@ func Load() *Config {
 	}
 
 	// 4. Diagnostic Logging (Membantu kita melihat apa yang terbaca di Railway Logs)
-	isRailway := os.Getenv("RAILWAY_ENVIRONMENT_NAME") != "" || os.Getenv("PORT") != ""
 	if isRailway {
 		fmt.Printf("[CONFIG] Railway environment detected\n")
 		
-		// Deteksi apakah menggunakan URL atau Komponen
+		// Deteksi sumber konfigurasi untuk logging akurat
 		if getenv("MYSQL_URL", "") != "" {
 			fmt.Printf("[CONFIG] Source: MYSQL_URL env var\n")
-		} else if getenv("MYSQLHOST", "") != "" {
-			fmt.Printf("[CONFIG] Source: MYSQLHOST components\n")
+		} else if getenv("DATABASE_URL", "") != "" {
+			fmt.Printf("[CONFIG] Source: DATABASE_URL env var\n")
+		} else if getenv("MYSQLHOST", "") != "" || getenv("DB_HOST", "") != "" {
+			fmt.Printf("[CONFIG] Source: Railway host components (DB_HOST/MYSQLHOST)\n")
 		} else {
 			fmt.Printf("[CONFIG] Source: Fallback defaults (Local/Docker)\n")
 		}
