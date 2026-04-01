@@ -1,0 +1,473 @@
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Standar Harga - E-Planning RSUD</title>
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <link href="/assets/css/app.css" rel="stylesheet" />
+    <script src="/assets/js/auth-client.js?v=20260326"></script>
+    <style>
+      .panel-soft {
+        background: rgba(255, 255, 255, 0.9);
+        border: 1px solid rgba(16, 74, 101, 0.1);
+      }
+
+      .muted-label {
+        font-size: 0.78rem;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: #5d7380;
+      }
+
+      .pagination-info {
+        font-size: 0.85rem;
+        color: #6c757d;
+      }
+    </style>
+  </head>
+  <body class="bg-soft-pattern" data-api-endpoint="/api/v1/standar_harga">
+    <div class="container-fluid py-4 px-lg-5">
+      <header
+        class="mb-4 p-4 card shadow-sm border-0 header-gradient text-white"
+      >
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h1 class="h3 mb-1">Manajemen Standar Harga</h1>
+                <p class="mb-0 opacity-75">
+                  Kelola data SBU (Standar Biaya Umum) dan SSH (Standar Satuan Harga)
+                </p>
+            </div>
+            <a href="/ui/dashboard" class="btn btn-sm btn-light shadow-sm text-dark px-3"
+              >Kembali ke Dashboard</a
+            >
+        </div>
+      </header>
+
+      <div class="row g-4">
+        <!-- Form Section -->
+        <div class="col-lg-4">
+          <div class="card border-0 shadow-sm panel-soft position-sticky" style="top: 1rem;">
+            <div class="card-body">
+              <h2 class="h6 mb-3 border-bottom pb-2">Form Input Standar Harga</h2>
+              <form id="main-form" class="vstack gap-3">
+                <input type="hidden" id="entity-id" />
+                
+                <div>
+                    <label class="form-label mb-1 muted-label">Jenis Standar</label>
+                    <select id="jenis_standar" class="form-select" required>
+                        <option value="">-- Pilih Jenis --</option>
+                        <option value="ssh">SSH (Standar Satuan Harga)</option>
+                        <option value="sbu">SBU (Standar Biaya Umum)</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="form-label mb-1 muted-label">Kode Rekening</label>
+                    <input
+                      id="id_rekening"
+                      class="form-control"
+                      placeholder="Contoh: 5.1.02.01.01.0001"
+                      required
+                    />
+                </div>
+
+                <div>
+                    <label class="form-label mb-1 muted-label">Uraian Barang / Jasa</label>
+                    <textarea
+                      id="uraian_barang"
+                      class="form-control"
+                      rows="3"
+                      placeholder="Nama barang atau jasa secara detail"
+                      required
+                    ></textarea>
+                </div>
+
+                <div>
+                    <label class="form-label mb-1 muted-label">Spesifikasi</label>
+                    <textarea
+                      id="spesifikasi"
+                      class="form-control"
+                      rows="2"
+                      placeholder="Spesifikasi teknis, merk, ukuran, dll"
+                    ></textarea>
+                </div>
+
+                <div class="row g-2">
+                    <div class="col-6">
+                        <label class="form-label mb-1 muted-label">Satuan</label>
+                        <input
+                          id="satuan"
+                          class="form-control"
+                          placeholder="Pcs, Rim, Bln, dll"
+                          required
+                        />
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label mb-1 muted-label">Harga Satuan</label>
+                        <div class="input-group">
+                            <span class="input-group-text small">Rp</span>
+                            <input
+                              id="harga_satuan"
+                              type="number"
+                              step="0.01"
+                              class="form-control text-end"
+                              placeholder="0"
+                              required
+                            />
+                        </div>
+                    </div>
+                </div>
+
+                <div class="d-flex gap-2 mt-2 pt-2 border-top">
+                  <button type="submit" class="btn btn-primary px-4 shadow-sm">Simpan</button>
+                  <button
+                    type="button"
+                    id="btn-reset"
+                    class="btn btn-outline-secondary px-3"
+                  >
+                    Batal / Reset
+                  </button>
+                </div>
+                <div id="status-container" class="mt-2">
+                    <small id="status-text" class="text-muted">Siap</small>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+
+        <!-- List Section -->
+        <div class="col-lg-8">
+          <div class="card border-0 shadow-sm panel-soft h-100">
+            <div class="card-body d-flex flex-column">
+              <div class="d-flex justify-content-between align-items-center mb-3">
+                <h2 class="h6 text-uppercase text-muted mb-0">
+                  Daftar Standar Harga
+                </h2>
+              </div>
+
+              <!-- Filter & Search -->
+              <div class="row g-2 mb-4 bg-white p-3 rounded-3 shadow-sm border">
+                <div class="col-md-8">
+                  <div class="input-group">
+                      <span class="input-group-text bg-transparent border-end-0">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-search" viewBox="0 0 16 16">
+                            <path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0z"/>
+                        </svg>
+                      </span>
+                      <input
+                        id="query"
+                        class="form-control border-start-0 ps-0"
+                        placeholder="Cari uraian barang, spesifikasi, atau kode rekening..."
+                      />
+                  </div>
+                </div>
+                <div class="col-md-4 d-grid">
+                  <button
+                    id="btn-search"
+                    type="button"
+                    class="btn btn-primary"
+                  >
+                    Tampilkan Data
+                  </button>
+                </div>
+              </div>
+
+              <!-- Table -->
+              <div class="table-responsive flex-grow-1">
+                <table class="table table-sm table-hover align-middle">
+                  <thead class="table-light">
+                    <tr>
+                      <th style="width: 5%">ID</th>
+                      <th style="width: 10%">Jenis</th>
+                      <th style="width: 15%">Rekening</th>
+                      <th style="width: 30%">Uraian Barang / Jasa</th>
+                      <th style="width: 15%">Satuan</th>
+                      <th style="width: 15%" class="text-end">Harga Satuan</th>
+                      <th style="width: 10%">Aksi</th>
+                    </tr>
+                  </thead>
+                  <tbody id="table-body">
+                    <tr><td colspan="7" class="text-center text-muted py-5">Gunakan tombol cari untuk memuat data...</td></tr>
+                  </tbody>
+                </table>
+              </div>
+
+              <!-- Pagination Info -->
+              <div class="d-flex flex-column flex-md-row justify-content-between align-items-center mt-3 pt-3 border-top gap-3">
+                <div class="pagination-info">
+                    Menampilkan <span id="meta-showing" class="fw-bold">0</span> dari <span id="meta-total" class="fw-bold">0</span> data 
+                    <span id="meta-pages-info">(Halaman 0 dari 0)</span>
+                </div>
+                <nav aria-label="Page navigation">
+                  <ul class="pagination pagination-sm mb-0" id="pagination-list">
+                    <li class="page-item disabled" id="pg-prev">
+                      <a class="page-link" href="#" tabindex="-1">Sebelumnya</a>
+                    </li>
+                    <li class="page-item disabled" id="pg-next">
+                      <a class="page-link" href="#">Berikutnya</a>
+                    </li>
+                  </ul>
+                </nav>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Toast / Notification Area -->
+    <div class="position-fixed bottom-0 end-0 p-3" style="z-index: 1060">
+        <div id="liveToast" class="toast align-items-center text-white bg-primary border-0" role="alert" aria-live="assertive" aria-atomic="true">
+            <div class="d-flex">
+                <div class="toast-body" id="toast-message">
+                    Action successful!
+                </div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+      (() => {
+        const endpoint = document.body.dataset.apiEndpoint;
+        const form = document.getElementById("main-form");
+        const idInput = document.getElementById("entity-id");
+        const jenisInput = document.getElementById("jenis_standar");
+        const rekeningInput = document.getElementById("id_rekening");
+        const uraianInput = document.getElementById("uraian_barang");
+        const spesifikasiInput = document.getElementById("spesifikasi");
+        const satuanInput = document.getElementById("satuan");
+        const hargaInput = document.getElementById("harga_satuan");
+        
+        const statusText = document.getElementById("status-text");
+        const queryInput = document.getElementById("query");
+        const btnSearch = document.getElementById("btn-search");
+        const btnReset = document.getElementById("btn-reset");
+        const tableBody = document.getElementById("table-body");
+        
+        const metaShowing = document.getElementById("meta-showing");
+        const metaTotal = document.getElementById("meta-total");
+        const metaPagesInfo = document.getElementById("meta-pages-info");
+        const pgPrev = document.getElementById("pg-prev");
+        const pgNext = document.getElementById("pg-next");
+
+        let currentPage = 1;
+        let lastQuery = "";
+        let totalPages = 1;
+
+        const MUTATION_ROLES = new Set(["ADMIN", "PERENCANA", "OPERATOR"]);
+        let currentUserRole = "";
+
+        const toastEl = document.getElementById('liveToast');
+        const toast = new bootstrap.Toast(toastEl);
+
+        function showMessage(msg, isError = false) {
+            const toastMsg = document.getElementById('toast-message');
+            toastMsg.textContent = msg;
+            toastEl.className = `toast align-items-center text-white border-0 ${isError ? 'bg-danger' : 'bg-success'}`;
+            toast.show();
+            statusText.textContent = msg;
+            statusText.className = isError ? "text-danger small" : "text-success small";
+        }
+
+        function normalizeRole(raw) {
+          return String(raw || "").trim().toUpperCase();
+        }
+
+        function canMutateByRole(role) {
+          return MUTATION_ROLES.has(normalizeRole(role));
+        }
+
+        function applyRoleAccess() {
+          if (canMutateByRole(currentUserRole)) return;
+          form.querySelectorAll("input, textarea, select, button[type='submit']").forEach((el) => {
+            el.disabled = true;
+          });
+          const info = document.createElement("p");
+          info.className = "text-warning small mt-2 mb-0";
+          info.textContent = "Mode baca saja — tidak memiliki hak akses mengubah data.";
+          form.querySelector('#status-container').appendChild(info);
+        }
+
+        function formatCurrency(val) {
+            return new Intl.NumberFormat('id-ID', {
+                style: 'currency',
+                currency: 'IDR',
+                minimumFractionDigits: 0
+            }).format(val || 0);
+        }
+
+        function resetForm() {
+          idInput.value = "";
+          jenisInput.value = "";
+          rekeningInput.value = "";
+          uraianInput.value = "";
+          spesifikasiInput.value = "";
+          satuanInput.value = "";
+          hargaInput.value = "";
+          setStatus("Siap");
+        }
+
+        function setStatus(msg) {
+            statusText.textContent = msg;
+            statusText.className = "text-muted small";
+        }
+
+        function rowTemplate(item) {
+          const tr = document.createElement("tr");
+          tr.innerHTML = `
+            <td>${item.id}</td>
+            <td><span class="badge ${item.jenis_standar === 'sbu' ? 'bg-info' : 'bg-secondary'}">${String(item.jenis_standar || '-').toUpperCase()}</span></td>
+            <td class="font-monospace small">${item.id_rekening || '-'}</td>
+            <td>
+                <div class="fw-bold">${item.uraian_barang || '-'}</div>
+                <div class="small text-muted">${item.spesifikasi || '-'}</div>
+            </td>
+            <td>${item.satuan || '-'}</td>
+            <td class="text-end fw-bold">${formatCurrency(item.harga_satuan)}</td>
+            <td class="text-nowrap">
+              ${canMutateByRole(currentUserRole) ? 
+                '<button class="btn btn-sm btn-outline-primary me-1" data-action="edit" title="Edit Data">Edit</button>' +
+                '<button class="btn btn-sm btn-outline-danger" data-action="delete" title="Hapus Data">Hapus</button>' 
+                : '<span class="text-muted small">Read-only</span>'}
+            </td>
+          `;
+          
+          tr.querySelector('[data-action="edit"]')?.addEventListener("click", () => {
+              idInput.value = item.id;
+              jenisInput.value = item.jenis_standar || "";
+              rekeningInput.value = item.id_rekening || "";
+              uraianInput.value = item.uraian_barang || "";
+              spesifikasiInput.value = item.spesifikasi || "";
+              satuanInput.value = item.satuan || "";
+              hargaInput.value = item.harga_satuan || 0;
+              window.scrollTo({ top: 0, behavior: 'smooth' });
+              showMessage(`Editing ID ${item.id}`);
+          });
+
+          tr.querySelector('[data-action="delete"]')?.addEventListener("click", async () => {
+              if (!confirm(`Hapus standar harga: ${item.uraian_barang}?`)) return;
+              try {
+                await fetchJSON(`${endpoint}/${item.id}`, { method: "DELETE" });
+                showMessage("Data berhasil dihapus");
+                if (idInput.value == item.id) resetForm();
+                await loadList(currentPage);
+              } catch (error) {
+                showMessage(error.message, true);
+              }
+          });
+
+          return tr;
+        }
+
+        async function loadList(page = 1) {
+          currentPage = page;
+          tableBody.innerHTML = '<tr><td colspan="7" class="text-center text-muted py-5"><div class="spinner-border spinner-border-sm me-2"></div> Memuat data...</td></tr>';
+          
+          try {
+            const q = queryInput.value.trim();
+            const params = new URLSearchParams();
+            params.set("page", page);
+            params.set("limit", 15);
+            if (q) params.set("q", q);
+            
+            const data = await fetchJSON(`${endpoint}?${params.toString()}`);
+            const items = Array.isArray(data?.items) ? data.items : [];
+            
+            tableBody.innerHTML = "";
+            if (items.length === 0) {
+              tableBody.innerHTML = '<tr><td colspan="7" class="text-center text-muted py-5">Data tidak ditemukan</td></tr>';
+            } else {
+              items.forEach(item => tableBody.appendChild(rowTemplate(item)));
+            }
+
+            // Update Meta & Pagination
+            const total = data.total || 0;
+            totalPages = data.total_pages || 1;
+            
+            metaShowing.textContent = items.length;
+            metaTotal.textContent = total;
+            metaPagesInfo.textContent = `(Halaman ${page} dari ${totalPages})`;
+
+            pgPrev.className = `page-item ${page <= 1 ? 'disabled' : ''}`;
+            pgNext.className = `page-item ${page >= totalPages ? 'disabled' : ''}`;
+
+          } catch (error) {
+            tableBody.innerHTML = '<tr><td colspan="7" class="text-center text-danger py-5">Gagal memuat data: ' + error.message + '</td></tr>';
+          }
+        }
+
+        pgPrev.addEventListener("click", (e) => {
+            e.preventDefault();
+            if (currentPage > 1) loadList(currentPage - 1);
+        });
+
+        pgNext.addEventListener("click", (e) => {
+            e.preventDefault();
+            if (currentPage < totalPages) loadList(currentPage + 1);
+        });
+
+        form.addEventListener("submit", async (event) => {
+          event.preventDefault();
+          if (!canMutateByRole(currentUserRole)) {
+            showMessage("Akses ditolak", true);
+            return;
+          }
+
+          const payload = {
+            jenis_standar: jenisInput.value,
+            id_rekening: rekeningInput.value.trim(),
+            uraian_barang: uraianInput.value.trim(),
+            spesifikasi: spesifikasiInput.value.trim(),
+            satuan: satuanInput.value.trim(),
+            harga_satuan: parseFloat(hargaInput.value)
+          };
+
+          const id = idInput.value;
+          const method = id ? "PUT" : "POST";
+          const url = id ? `${endpoint}/${id}` : endpoint;
+
+          try {
+            await fetchJSON(url, {
+              method,
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(payload)
+            });
+
+            showMessage(id ? "Data diperbarui" : "Data disimpan");
+            resetForm();
+            await loadList(id ? currentPage : 1);
+          } catch (error) {
+            showMessage(error.message, true);
+          }
+        });
+
+        btnSearch.addEventListener("click", () => loadList(1));
+        queryInput.addEventListener("keypress", (e) => { if(e.key === 'Enter') loadList(1); });
+        btnReset.addEventListener("click", resetForm);
+
+        async function loadCurrentUser() {
+          try {
+            const token = localStorage.getItem("AUTH_TOKEN") || localStorage.getItem("authToken");
+            if (!token) return;
+            const res = await fetch("/api/v1/auth/me", { headers: { Authorization: `Bearer ${token}` } });
+            if (res.ok) {
+                const body = await res.json();
+                currentUserRole = normalizeRole(body?.data?.role ?? "");
+            }
+          } catch (_) {}
+        }
+
+        loadCurrentUser().then(() => {
+          applyRoleAccess();
+        });
+      })();
+    </script>
+  </body>
+</html>

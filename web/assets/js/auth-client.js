@@ -301,6 +301,8 @@
     "/ui/dashboard",
     "/ui/unit-pengusul",
     "/ui/kontrol-pagu",
+    "/ui/standar-harga",
+    "/ui/standar_harga",
     "/ui/qna"
   ];
 
