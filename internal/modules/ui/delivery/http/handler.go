@@ -64,6 +64,7 @@ func pages() []page {
 		{Route: "standar-harga", File: "standar-harga.html"},
 		{Route: "standar_harga", File: "standar-harga.html"},
 		{Route: "qna", File: "qna.html"},
+		{Route: "kontrol-pagu", File: "kontrol_pagu.html"},
 	}
 }
 
