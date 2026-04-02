@@ -483,12 +483,12 @@
             "/api/v1/performance/informasi/latest";
           const activeInfoRoute = "/rencana-kerja";
           const endpoint = document.body.dataset.apiEndpoint;
-          const subKegiatanEndpoint = "/api/v1/sub_kegiatan";
+          const subKegiatanEndpoint = "/api/v1/sub_kegiatan?all=true";
           const indikatorEndpoint = "/api/v1/indikator_sub_kegiatan?all=true";
           const indikatorRencanaKerjaEndpoint =
             "/api/v1/indikator_rencana_kerja?all=true";
           const paguSubKegiatanEndpoint = "/api/v1/pagu_sub_kegiatan?all=true";
-          const unitPengusulEndpoint = "/api/v1/unit_pengusul";
+          const unitPengusulEndpoint = "/api/v1/unit_pengusul?all=true";
           const DEFAULT_YEAR_KEY = "DEFAULT_YEAR";
 
           const form = document.getElementById("crud-form");
@@ -547,6 +547,7 @@
             document.getElementById("info-switcher-text");
 
           const subKegiatanMap = new Map();
+          const subKegiatanLabelMap = new Map();
           const indikatorMap = new Map();
           const indikatorDetailMap = new Map();
           const paguSubKegiatanMap = new Map();
@@ -815,6 +816,20 @@
                 const label = `${item.kode} ${item.nama}`.toLowerCase();
                 return label.includes(normalizedFilter);
               });
+
+              // Tetapkan agar item yang sudah terpilih tetap muncul di list
+              // meskipun tidak cocok dengan kata kunci filter (menjaga konsistensi)
+              if (selectedValue) {
+                const selectedItem = subKegiatanItemsCache.find(
+                  (item) => String(item.id) === selectedValue,
+                );
+                if (
+                  selectedItem &&
+                  !visibleItems.some((i) => String(i.id) === selectedValue)
+                ) {
+                  visibleItems.unshift(selectedItem);
+                }
+              }
             }
 
             fillSelect(
@@ -824,15 +839,8 @@
               "Pilih sub kegiatan",
             );
 
-            if (
-              selectedValue &&
-              visibleItems.some((item) => String(item.id) === selectedValue)
-            ) {
-              subKegiatanInput.value = selectedValue;
-              return;
-            }
-
-            if (!normalizedFilter) {
+            // Re-apply selected value if it was set
+            if (selectedValue) {
               subKegiatanInput.value = selectedValue;
             }
           }
@@ -1097,7 +1105,7 @@
             if (!indikator) {
               return "";
             }
-            return subKegiatanMap.get(Number(indikator.subKegiatanId)) || "";
+            return subKegiatanLabelMap.get(Number(indikator.subKegiatanId)) || "";
           }
 
           function indikatorSubKegiatanSearchText(item) {
@@ -1380,6 +1388,12 @@
                   );
                 });
               subKegiatanItemsCache = subKegiatanItems;
+              // Simpan seluruh label ke map permanen agar pencarian label 
+              // tidak terganggu oleh filter di dropdown
+              subKegiatanLabelMap.clear();
+              subKegiatanItemsCache.forEach(item => {
+                subKegiatanLabelMap.set(item.id, `${item.kode} - ${item.nama}`);
+              });
             }
 
             if (indikatorResult.status === "fulfilled") {
