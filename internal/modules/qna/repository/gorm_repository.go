@@ -11,6 +11,7 @@ type QnaGormRepository struct {
 }
 
 func NewQnaGormRepository(db *gorm.DB) *QnaGormRepository {
+	db.AutoMigrate(&domain.Question{}, &domain.Answer{}, &domain.QnaNotification{})
 	return &QnaGormRepository{db: db}
 }
 

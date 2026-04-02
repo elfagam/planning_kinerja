@@ -19,13 +19,14 @@ type Question struct {
 }
 
 type Answer struct {
-	ID         uint64    `json:"id" gorm:"primaryKey"`
-	QuestionID uint64    `json:"question_id"`
-	UserID     uint64    `json:"user_id"`
-	Username   string    `json:"username" gorm:"-"`
-	Content    string    `json:"content"`
-	CreatedAt  time.Time `json:"created_at"`
-	UpdatedAt  time.Time `json:"updated_at"`
+	ID           uint64    `json:"id" gorm:"primaryKey"`
+	QuestionID   uint64    `json:"question_id"`
+	UserID       uint64    `json:"user_id"`
+	Username     string    `json:"username" gorm:"-"`
+	Content      string    `json:"content"`
+	BestPractice string    `json:"best_practice"`
+	CreatedAt    time.Time `json:"created_at"`
+	UpdatedAt    time.Time `json:"updated_at"`
 }
 
 type QnaNotification struct {

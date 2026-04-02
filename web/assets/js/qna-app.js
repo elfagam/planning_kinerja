@@ -16,7 +16,7 @@ const app = createApp({
         // Thread View State
         const currentThread = ref(null);
         const loadingThread = ref(false);
-        const replyForm = ref({ content: '' });
+        const replyForm = ref({ content: '', best_practice: '' });
         const submittingReply = ref(false);
 
         // Sidebar FAQ State
@@ -104,9 +104,11 @@ const app = createApp({
             submittingReply.value = true;
             try {
                 await api.post(`/qna/questions/${currentThread.value.id}/answers`, {
-                    content: replyForm.value.content
+                    content: replyForm.value.content,
+                    best_practice: replyForm.value.best_practice
                 });
                 replyForm.value.content = '';
+                replyForm.value.best_practice = '';
                 // Refresh thread
                 await showThread(currentThread.value.id);
             } catch (err) {
