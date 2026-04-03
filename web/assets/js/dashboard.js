@@ -196,11 +196,29 @@
         document.getElementById("kpiAnggaran").textContent = fmtRupiah(
           summary.total_anggaran,
         );
-        document.getElementById("kpiRealisasiAnggaran").textContent = fmtRupiah(
-          summary.total_realisasi_anggaran,
-        );
-        document.getElementById("kpiPersenAnggaran").textContent =
-          `${fmtPct(summary.persentase_realisasi_anggaran)} dari total anggaran`;
+
+        const realisasiVal = document.getElementById("kpiRealisasiAnggaran");
+        const persenVal = document.getElementById("kpiPersenAnggaran");
+        
+        realisasiVal.textContent = fmtRupiah(summary.total_realisasi_anggaran);
+        
+        const pct = Number(summary.persentase_realisasi_anggaran || 0);
+        persenVal.textContent = `${fmtPct(pct)} dari total anggaran`;
+
+        // Semantic Coloring
+        realisasiVal.classList.remove("text-success-bright", "text-warning-bright", "text-danger-bright");
+        persenVal.classList.remove("text-success-bright", "text-warning-bright", "text-danger-bright");
+
+        if (pct >= 80) {
+          realisasiVal.classList.add("text-success-bright");
+          persenVal.classList.add("text-success-bright");
+        } else if (pct >= 40) {
+          realisasiVal.classList.add("text-warning-bright");
+          persenVal.classList.add("text-warning-bright");
+        } else {
+          realisasiVal.classList.add("text-danger-bright");
+          persenVal.classList.add("text-danger-bright");
+        }
       }
 
       function drawStatusChart(stats) {
@@ -208,13 +226,24 @@
         const warning = Number(stats.total_status_warning || 0);
         const offTrack = Number(stats.total_status_off_track || 0);
         const unknown = Number(stats.total_status_unknown || 0);
+        const total = onTrack + warning + offTrack + unknown;
+
         const ctx = document.getElementById("statusDistributionChart");
         if (statusChart) statusChart.destroy();
 
-        const labels = ["OnTrack", "Warning", "OffTrack", "UnKnown"];
-        const values = [onTrack, warning, offTrack, unknown];
-        const bgColors = ["#1f8f67", "#cb8a1b", "#c9434f", "#5b6970"];
-        const borderColors = ["#ffffff", "#ffffff", "#ffffff", "#ffffff"];
+        let labels, values, bgColors;
+        
+        if (total === 0) {
+          labels = ["Belum ada data"];
+          values = [1];
+          bgColors = ["#e9ecef"];
+        } else {
+          labels = ["OnTrack", "Warning", "OffTrack", "UnKnown"];
+          values = [onTrack, warning, offTrack, unknown];
+          bgColors = ["#1f8f67", "#cb8a1b", "#c9434f", "#5b6970"];
+        }
+
+        const borderColors = total === 0 ? ["#dee2e6"] : ["#ffffff", "#ffffff", "#ffffff", "#ffffff"];
 
         statusChart = new Chart(ctx, {
           type: "doughnut",
@@ -226,13 +255,16 @@
                 backgroundColor: bgColors,
                 borderColor: borderColors,
                 borderWidth: 2,
-                hoverOffset: 6,
+                hoverOffset: total === 0 ? 0 : 6,
               },
             ],
           },
           options: {
             responsive: true,
-            plugins: { legend: { position: "bottom" } },
+            plugins: { 
+              legend: { display: false },
+              tooltip: { enabled: total > 0 }
+            },
             cutout: "62%",
           },
         });
@@ -323,6 +355,8 @@
         const targets = isFinance ? chartData.series?.target_anggaran : chartData.series?.target;
         const reals = isFinance ? chartData.series?.realisasi_anggaran : chartData.series?.realisasi;
 
+        const isEmpty = !targets || !reals || (targets.every(v => v === 0) && reals.every(v => v === 0));
+
         targetChart = new Chart(ctx, {
           type: "line",
           data: {
@@ -351,6 +385,7 @@
             plugins: { 
               legend: { position: "bottom" },
               tooltip: {
+                enabled: !isEmpty,
                 callbacks: {
                   label: function(context) {
                     let label = context.dataset.label || '';
@@ -365,12 +400,28 @@
             },
             scales: { 
               y: { 
+                beginAtZero: true,
                 ticks: { 
                   callback: (v) => isFinance ? fmtRupiah(v) : fmtNum(v) 
                 } 
               } 
             },
           },
+          plugins: [{
+            id: 'emptyState',
+            afterDraw: function(chart) {
+              if (isEmpty) {
+                const {ctx, width, height} = chart;
+                ctx.save();
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.font = '14px "Plus Jakarta Sans"';
+                ctx.fillStyle = '#6c757d';
+                ctx.fillText('Belum ada data target/realisasi untuk periode ini', width / 2, height / 2);
+                ctx.restore();
+              }
+            }
+          }]
         });
       }
 
@@ -848,13 +899,17 @@
         }
       }
 
-      async function retryWidget(label, loader) {
+      async function retryWidget(id, label, loader) {
+        const btn = document.getElementById(id);
+        if (btn) btn.classList.add("d-none");
+        
         msg.textContent = `Memuat ulang ${label}...`;
         try {
           await loader();
           msg.textContent = `${label} berhasil diperbarui.`;
         } catch (err) {
           msg.textContent = `Gagal memuat ${label}: ${err.message}`;
+          if (btn) btn.classList.remove("d-none");
         }
       }
 
@@ -879,30 +934,32 @@
 
         const failedWidgets = [];
 
-        if (summaryRes.status !== "fulfilled") {
-          failedWidgets.push("ringkasan KPI");
-        }
+        const widgets = [
+          { res: summaryRes, id: "retrySummary", label: "ringkasan KPI" },
+          { res: statsRes, id: "retryStats", label: "statistik status" },
+          { res: yearlyRes, id: "retryYearly", label: "tabel tahunan" },
+          { res: chartRes, id: "retryChart", label: "grafik target vs realisasi" },
+          { res: rankingRes, id: "retryRanking", label: "ranking program" },
+        ];
 
-        if (statsRes.status !== "fulfilled") {
-          failedWidgets.push("statistik status");
-        }
-
-        if (yearlyRes.status !== "fulfilled") {
-          failedWidgets.push("tabel tahunan");
-        }
-
-        if (chartRes.status !== "fulfilled") {
-          failedWidgets.push("grafik target vs realisasi");
-        }
-
-        if (rankingRes.status !== "fulfilled") {
-          failedWidgets.push("ranking program");
-        }
+        widgets.forEach(w => {
+          const btn = document.getElementById(w.id);
+          if (w.res.status !== "fulfilled") {
+            failedWidgets.push(w.label);
+            if (btn) btn.classList.remove("d-none");
+          } else {
+            if (btn) btn.classList.add("d-none");
+          }
+        });
 
         try {
           await loadTargetTable();
+          const btn = document.getElementById("retryTargetTable");
+          if (btn) btn.classList.add("d-none");
         } catch (_) {
           failedWidgets.push("tabel target/realisasi");
+          const btn = document.getElementById("retryTargetTable");
+          if (btn) btn.classList.remove("d-none");
         }
 
         if (failedWidgets.length === 0) {
@@ -945,22 +1002,22 @@
       });
 
       retrySummary.addEventListener("click", () =>
-        retryWidget("ringkasan KPI", loadSummaryWidget),
+        retryWidget("retrySummary", "ringkasan KPI", loadSummaryWidget),
       );
       retryStats.addEventListener("click", () =>
-        retryWidget("statistik status", loadStatsWidget),
+        retryWidget("retryStats", "statistik status", loadStatsWidget),
       );
       retryChart.addEventListener("click", () =>
-        retryWidget("grafik target vs realisasi", loadChartWidget),
+        retryWidget("retryChart", "grafik target vs realisasi", loadChartWidget),
       );
       retryYearly.addEventListener("click", () =>
-        retryWidget("ringkasan tahunan", loadYearlyWidget),
+        retryWidget("retryYearly", "ringkasan tahunan", loadYearlyWidget),
       );
       retryRanking.addEventListener("click", () =>
-        retryWidget("ranking program", loadRankingWidget),
+        retryWidget("retryRanking", "ranking program", loadRankingWidget),
       );
       retryTargetTable.addEventListener("click", () =>
-        retryWidget("tabel target/realisasi", loadTargetTable),
+        retryWidget("retryTargetTable", "tabel target/realisasi", loadTargetTable),
       );
 
       async function initDashboard() {
