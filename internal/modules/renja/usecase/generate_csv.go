@@ -35,16 +35,20 @@ func (s *Service) GenerateIndikatorCSV(ctx context.Context, rencanaKerjaID, unit
 	w.Write([]string{}) // Empty row
 
 	// Table Headers
-	headers := []string{"Kode Rencana", "Nama Rencana", "ID Rekening", "ID Standar Harga", "Kode", "Uraian", "Satuan", "Harga Satuan", "Target", "Anggaran"}
+	headers := []string{"Kode Rencana", "Nama Rencana", "Satuan RK", "Target RK", "ID Rekening", "ID Standar Harga", "Kode", "Uraian", "Satuan", "Harga Satuan", "Target", "Anggaran"}
 	_ = w.Write(headers)
 
 	// Grouping logic: leave grouped columns blank if same as previous row
 	var prev domain.ExportIndikatorCSVFlatDTO
+	var totalAnggaran float64
 	for i, row := range data {
-		var rkKode, rkNama, rek, shID string
+		totalAnggaran += row.AnggaranTahunan
+		var rkKode, rkNama, rkSatuan, rkTarget, rek, shID string
 		if i == 0 || row.RencanaKerjaNama != prev.RencanaKerjaNama {
 			rkKode = row.RencanaKerjaKode
 			rkNama = row.RencanaKerjaNama
+			rkSatuan = row.RencanaKerjaSatuan
+			rkTarget = fmt.Sprintf("%.2f", row.RencanaKerjaTarget)
 		}
 		if i == 0 || row.StandarHargaIdRekening != prev.StandarHargaIdRekening {
 			rek = row.StandarHargaIdRekening
@@ -55,6 +59,8 @@ func (s *Service) GenerateIndikatorCSV(ctx context.Context, rencanaKerjaID, unit
 		w.Write([]string{
 			rkKode,
 			rkNama,
+			rkSatuan,
+			rkTarget,
 			rek,
 			shID,
 			row.IndikatorKode,
@@ -67,11 +73,16 @@ func (s *Service) GenerateIndikatorCSV(ctx context.Context, rencanaKerjaID, unit
 		prev = row
 	}
 
+	// Baris Total Anggaran
+	_ = w.Write([]string{"", "", "", "", "", "", "", "", "", "", "TOTAL ANGGARAN:", fmt.Sprintf("%.2f", totalAnggaran)})
 	w.Write([]string{}) // Empty row
 
 	// Bottom Layout (signatures)
 	_ = w.Write([]string{"", "", "", "Mengetahui,"})
 	_ = w.Write([]string{"", "", "", top.JabatanPenanggungJawab})
+	for i := 0; i < 5; i++ {
+		_ = w.Write([]string{""})
+	}
 	_ = w.Write([]string{"", "", "", top.NamaPenanggungJawab})
 	_ = w.Write([]string{"", "", "", top.NipPenanggungJawab})
 
@@ -112,6 +123,8 @@ func (s *Service) GenerateRencanaKerjaCSV(ctx context.Context, subKegiatanID uin
 		"Anggaran",
 		"Kode Rencana",
 		"Nama Rencana",
+		"Target RK",
+		"Satuan RK",
 		"Unit Pengusul",
 	}
 	_ = w.Write(headers)
@@ -144,6 +157,8 @@ func (s *Service) GenerateRencanaKerjaCSV(ctx context.Context, subKegiatanID uin
 			fmt.Sprintf("%.2f", row.AnggaranTahunan),
 			row.RencanaKerjaKode,
 			row.RencanaKerjaNama,
+			fmt.Sprintf("%.2f", row.RencanaKerjaTarget),
+			row.RencanaKerjaSatuan,
 			row.UnitPengusulNama,
 		})
 	}

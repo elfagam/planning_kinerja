@@ -11,7 +11,7 @@ type Question struct {
 	Username  string    `json:"username" gorm:"-"` // Virtual field for UI
 	Title     string    `json:"title"`
 	Content   string    `json:"content"`
-	Status    string    `json:"status"` // open, resolved
+	Status    string    `json:"status" gorm:"size:50;not null;default:'open';index:idx_question_status"` // open, resolved
 	ViewCount uint32    `json:"view_count"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`

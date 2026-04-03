@@ -33,15 +33,15 @@ type updateTargetRealisasiRequest struct {
 }
 
 type createTargetRealisasiRequest struct {
-	IndikatorRencanaKerjaID uint64  `json:"indikator_rencana_kerja_id"`
-	Tahun                   int16   `json:"tahun"`
-	Triwulan                int8    `json:"triwulan"`
-	TargetNilai             float64 `json:"target_nilai"`
-	RealisasiNilai          float64 `json:"realisasi_nilai"`
-	Status                  string  `json:"status"`
-	Catatan                 string  `json:"catatan"`
-	DiverifikasiOleh        *uint64 `json:"diverifikasi_oleh"`
-	TanggalVerifikasi       string  `json:"tanggal_verifikasi"`
+	RencanaKerjaID    uint64  `json:"rencana_kerja_id"`
+	Tahun             int16   `json:"tahun"`
+	Triwulan          int8    `json:"triwulan"`
+	TargetNilai       float64 `json:"target_nilai"`
+	RealisasiNilai    float64 `json:"realisasi_nilai"`
+	Status            string  `json:"status"`
+	Catatan           string  `json:"catatan"`
+	DiverifikasiOleh  *uint64 `json:"diverifikasi_oleh"`
+	TanggalVerifikasi string  `json:"tanggal_verifikasi"`
 }
 
 type calculateAchievementRequest struct {
@@ -56,22 +56,26 @@ type informasiUpsertRequest struct {
 }
 
 type chartTargetVsRealisasiRow struct {
-	Tahun          int     `gorm:"column:tahun"`
-	Triwulan       int     `gorm:"column:triwulan"`
-	TotalTarget    float64 `gorm:"column:total_target"`
-	TotalRealisasi float64 `gorm:"column:total_realisasi"`
+	Tahun                 int     `gorm:"column:tahun"`
+	Triwulan              int     `gorm:"column:triwulan"`
+	TotalTarget           float64 `gorm:"column:total_target"`
+	TotalRealisasi        float64 `gorm:"column:total_realisasi"`
+	TotalTargetAnggaran   float64 `gorm:"column:total_target_anggaran"`
+	TotalRealisasiAnggaran float64 `gorm:"column:total_realisasi_anggaran"`
 }
 
 type yearlyPerformanceSummaryRow struct {
-	Tahun               int     `gorm:"column:tahun"`
-	TotalData           int64   `gorm:"column:total_data"`
-	TotalIndikator      int64   `gorm:"column:total_indikator"`
-	TotalTargetNilai    float64 `gorm:"column:total_target_nilai"`
-	TotalRealisasiNilai float64 `gorm:"column:total_realisasi_nilai"`
-	RataRataCapaian     float64 `gorm:"column:rata_rata_capaian"`
-	TotalOnTrack        int64   `gorm:"column:total_on_track"`
-	TotalWarning        int64   `gorm:"column:total_warning"`
-	TotalOffTrack       int64   `gorm:"column:total_off_track"`
+	Tahun                  int     `gorm:"column:tahun"`
+	TotalData              int64   `gorm:"column:total_data"`
+	TotalIndikator         int64   `gorm:"column:total_indikator"`
+	TotalTargetNilai       float64 `gorm:"column:total_target_nilai"`
+	TotalRealisasiNilai    float64 `gorm:"column:total_realisasi_nilai"`
+	TotalTargetAnggaran    float64 `gorm:"column:total_target_anggaran"`
+	TotalRealisasiAnggaran float64 `gorm:"column:total_realisasi_anggaran"`
+	RataRataCapaian        float64 `gorm:"column:rata_rata_capaian"`
+	TotalOnTrack           int64   `gorm:"column:total_on_track"`
+	TotalWarning           int64   `gorm:"column:total_warning"`
+	TotalOffTrack          int64   `gorm:"column:total_off_track"`
 }
 
 type programPerformanceRankingRow struct {
@@ -376,12 +380,12 @@ func (h *Handler) GetStatusDistribution(c *gin.Context) {
 		"ELSE 0",
 		"END",
 	}, " ")
-	statusExpr := "CASE WHEN COALESCE(irk.target_tahunan, 0) <= 0 THEN 'UNKNOWN' WHEN ((rr.nilai_realisasi / irk.target_tahunan) * 100) >= 100 THEN 'ON_TRACK' WHEN ((rr.nilai_realisasi / irk.target_tahunan) * 100) >= 80 THEN 'WARNING' ELSE 'OFF_TRACK' END"
-	capaianExpr := "CASE WHEN COALESCE(irk.target_tahunan, 0) = 0 THEN 0 ELSE (rr.nilai_realisasi / irk.target_tahunan) * 100 END"
+	statusExpr := "CASE WHEN COALESCE(rk.target, 0) <= 0 THEN 'UNKNOWN' WHEN ((rr.nilai_realisasi / rk.target) * 100) >= 100 THEN 'ON_TRACK' WHEN ((rr.nilai_realisasi / rk.target) * 100) >= 80 THEN 'WARNING' ELSE 'OFF_TRACK' END"
+	capaianExpr := "CASE WHEN COALESCE(rk.target, 0) = 0 THEN 0 ELSE (rr.nilai_realisasi / rk.target) * 100 END"
 
 	q := h.db.WithContext(c.Request.Context()).
 		Table("realisasi_rencana_kerja rr").
-		Joins("LEFT JOIN indikator_rencana_kerja irk ON irk.id = rr.indikator_rencana_kerja_id")
+		Joins("LEFT JOIN rencana_kerja rk ON rk.id = rr.rencana_kerja_id")
 	if hasTahun {
 		q = q.Where("rr.tahun = ?", tahun)
 	}
@@ -391,7 +395,7 @@ func (h *Handler) GetStatusDistribution(c *gin.Context) {
 	if query != "" {
 		like := "%" + strings.ToLower(query) + "%"
 		q = q.Where(
-			"LOWER(irk.kode) LIKE ? OR LOWER(irk.nama) LIKE ? OR LOWER(rr.keterangan) LIKE ? OR CAST(rr.indikator_rencana_kerja_id AS CHAR) LIKE ? OR LOWER("+statusExpr+") LIKE ?",
+			"LOWER(rk.kode) LIKE ? OR LOWER(rk.nama) LIKE ? OR LOWER(rr.keterangan) LIKE ? OR CAST(rr.rencana_kerja_id AS CHAR) LIKE ? OR LOWER("+statusExpr+") LIKE ?",
 			like, like, like, like, like,
 		)
 	}
@@ -491,7 +495,7 @@ func (h *Handler) GetTargetRealisasi(c *gin.Context) {
 
 	dbQuery := h.db.WithContext(c.Request.Context()).
 		Table("target_dan_realisasi tr").
-		Joins("LEFT JOIN indikator_rencana_kerja irk ON irk.id = tr.indikator_rencana_kerja_id")
+		Joins("LEFT JOIN rencana_kerja rk ON rk.id = tr.rencana_kerja_id")
 	if hasTahun {
 		dbQuery = dbQuery.Where("tr.tahun = ?", tahun)
 	}
@@ -499,7 +503,7 @@ func (h *Handler) GetTargetRealisasi(c *gin.Context) {
 	if query != "" {
 		like := "%" + strings.ToLower(query) + "%"
 		dbQuery = dbQuery.Where(
-			"CAST(tr.id AS CHAR) LIKE ? OR CAST(tr.indikator_rencana_kerja_id AS CHAR) LIKE ? OR CAST(tr.tahun AS CHAR) LIKE ? OR CAST(tr.triwulan AS CHAR) LIKE ? OR LOWER(irk.kode) LIKE ? OR LOWER(irk.nama) LIKE ? OR LOWER(tr.catatan) LIKE ? OR LOWER("+statusExpr+") LIKE ?",
+			"CAST(tr.id AS CHAR) LIKE ? OR CAST(tr.rencana_kerja_id AS CHAR) LIKE ? OR CAST(tr.tahun AS CHAR) LIKE ? OR CAST(tr.triwulan AS CHAR) LIKE ? OR LOWER(rk.kode) LIKE ? OR LOWER(rk.nama) LIKE ? OR LOWER(tr.catatan) LIKE ? OR LOWER("+statusExpr+") LIKE ?",
 			like, like, like, like, like, like, like, like,
 		)
 	}
@@ -524,7 +528,7 @@ func (h *Handler) GetTargetRealisasi(c *gin.Context) {
 
 	var items []database.TargetDanRealisasi
 	if err := dbQuery.
-		Select("tr.id, tr.indikator_rencana_kerja_id, tr.tahun, tr.triwulan, COALESCE(tr.target_nilai, 0) AS target_nilai, COALESCE(tr.realisasi_nilai, 0) AS realisasi_nilai, (" + capaianExpr + ") AS capaian_persen, (" + statusExpr + ") AS status, tr.diverifikasi_oleh, tr.tanggal_verifikasi, tr.catatan, tr.created_at, tr.updated_at").
+		Select("tr.id, tr.rencana_kerja_id, tr.tahun, tr.triwulan, COALESCE(tr.target_nilai, 0) AS target_nilai, COALESCE(tr.realisasi_nilai, 0) AS realisasi_nilai, (" + capaianExpr + ") AS capaian_persen, COALESCE(tr.target_anggaran, 0) AS target_anggaran, COALESCE(tr.realisasi_anggaran, 0) AS realisasi_anggaran, COALESCE(tr.capaian_anggaran, 0) AS capaian_anggaran, (" + statusExpr + ") AS status, tr.diverifikasi_oleh, tr.tanggal_verifikasi, tr.catatan, tr.created_at, tr.updated_at").
 		Order("tr.id DESC").
 		Limit(limit).
 		Offset(offset).
@@ -544,12 +548,12 @@ func (h *Handler) GetTargetRealisasi(c *gin.Context) {
 			"ELSE 0",
 			"END",
 		}, " ")
-		fallbackCapaianExpr := "CASE WHEN COALESCE(irk.target_tahunan, 0) = 0 THEN 0 ELSE (rr.nilai_realisasi / irk.target_tahunan) * 100 END"
-		fallbackStatusExpr := "CASE WHEN COALESCE(irk.target_tahunan, 0) <= 0 THEN 'UNKNOWN' WHEN ((rr.nilai_realisasi / irk.target_tahunan) * 100) >= 100 THEN 'ON_TRACK' WHEN ((rr.nilai_realisasi / irk.target_tahunan) * 100) >= 80 THEN 'WARNING' ELSE 'OFF_TRACK' END"
+		fallbackCapaianExpr := "CASE WHEN COALESCE(rk.target, 0) = 0 THEN 0 ELSE (rr.nilai_realisasi / rk.target) * 100 END"
+		fallbackStatusExpr := "CASE WHEN COALESCE(rk.target, 0) <= 0 THEN 'UNKNOWN' WHEN ((rr.nilai_realisasi / rk.target) * 100) >= 100 THEN 'ON_TRACK' WHEN ((rr.nilai_realisasi / rk.target) * 100) >= 80 THEN 'WARNING' ELSE 'OFF_TRACK' END"
 
 		fallbackQuery := h.db.WithContext(c.Request.Context()).
 			Table("realisasi_rencana_kerja rr").
-			Joins("LEFT JOIN indikator_rencana_kerja irk ON irk.id = rr.indikator_rencana_kerja_id")
+			Joins("LEFT JOIN rencana_kerja rk ON rk.id = rr.rencana_kerja_id")
 
 		if hasTahun {
 			fallbackQuery = fallbackQuery.Where("rr.tahun = ?", tahun)
@@ -558,7 +562,7 @@ func (h *Handler) GetTargetRealisasi(c *gin.Context) {
 		if query != "" {
 			like := "%" + strings.ToLower(query) + "%"
 			fallbackQuery = fallbackQuery.Where(
-				"CAST(rr.id AS CHAR) LIKE ? OR CAST(rr.indikator_rencana_kerja_id AS CHAR) LIKE ? OR CAST(rr.tahun AS CHAR) LIKE ? OR CAST(("+fallbackTriwulanExpr+") AS CHAR) LIKE ? OR LOWER(irk.kode) LIKE ? OR LOWER(irk.nama) LIKE ? OR LOWER(rr.keterangan) LIKE ? OR LOWER("+fallbackStatusExpr+") LIKE ?",
+				"CAST(rr.id AS CHAR) LIKE ? OR CAST(rr.rencana_kerja_id AS CHAR) LIKE ? OR CAST(rr.tahun AS CHAR) LIKE ? OR CAST(("+fallbackTriwulanExpr+") AS CHAR) LIKE ? OR LOWER(rk.kode) LIKE ? OR LOWER(rk.nama) LIKE ? OR LOWER(rr.keterangan) LIKE ? OR LOWER("+fallbackStatusExpr+") LIKE ?",
 				like, like, like, like, like, like, like, like,
 			)
 		}
@@ -580,7 +584,7 @@ func (h *Handler) GetTargetRealisasi(c *gin.Context) {
 		items = nil
 
 		if err := fallbackQuery.
-			Select("rr.id, rr.indikator_rencana_kerja_id, rr.tahun, (" + fallbackTriwulanExpr + ") AS triwulan, COALESCE(irk.target_tahunan, 0) AS target_nilai, COALESCE(rr.nilai_realisasi, 0) AS realisasi_nilai, (" + fallbackCapaianExpr + ") AS capaian_persen, (" + fallbackStatusExpr + ") AS status, NULL AS diverifikasi_oleh, NULL AS tanggal_verifikasi, rr.keterangan AS catatan, rr.created_at, rr.updated_at").
+			Select("rr.id, rr.rencana_kerja_id, rr.tahun, (" + fallbackTriwulanExpr + ") AS triwulan, COALESCE(rk.target, 0) AS target_nilai, COALESCE(rr.nilai_realisasi, 0) AS realisasi_nilai, (" + fallbackCapaianExpr + ") AS capaian_persen, 0 AS target_anggaran, COALESCE(rr.realisasi_anggaran, 0) AS realisasi_anggaran, 0 AS capaian_anggaran, (" + fallbackStatusExpr + ") AS status, NULL AS diverifikasi_oleh, NULL AS tanggal_verifikasi, rr.keterangan AS catatan, rr.created_at, rr.updated_at").
 			Order("rr.id DESC").
 			Limit(limit).
 			Offset(offset).
@@ -618,8 +622,8 @@ func (h *Handler) CreateTargetRealisasi(c *gin.Context) {
 		return
 	}
 
-	if req.IndikatorRencanaKerjaID == 0 || req.Tahun == 0 || req.Triwulan == 0 {
-		response.Error(c, http.StatusBadRequest, "indikator_rencana_kerja_id, tahun, and triwulan are required")
+	if req.RencanaKerjaID == 0 || req.Tahun == 0 || req.Triwulan == 0 {
+		response.Error(c, http.StatusBadRequest, "rencana_kerja_id, tahun, and triwulan are required")
 		return
 	}
 	if req.Triwulan < 1 || req.Triwulan > 4 {
@@ -628,14 +632,14 @@ func (h *Handler) CreateTargetRealisasi(c *gin.Context) {
 	}
 
 	item := database.TargetDanRealisasi{
-		IndikatorRencanaKerjaID: req.IndikatorRencanaKerjaID,
-		Tahun:                   req.Tahun,
-		Triwulan:                req.Triwulan,
-		TargetNilai:             req.TargetNilai,
-		RealisasiNilai:          req.RealisasiNilai,
-		Status:                  strings.TrimSpace(req.Status),
-		Catatan:                 req.Catatan,
-		DiverifikasiOleh:        req.DiverifikasiOleh,
+		RencanaKerjaID:   req.RencanaKerjaID,
+		Tahun:            req.Tahun,
+		Triwulan:         req.Triwulan,
+		TargetNilai:      req.TargetNilai,
+		RealisasiNilai:   req.RealisasiNilai,
+		Status:           strings.TrimSpace(req.Status),
+		Catatan:          req.Catatan,
+		DiverifikasiOleh: req.DiverifikasiOleh,
 	}
 
 	if item.Status == "" {
@@ -881,13 +885,13 @@ func (h *Handler) GetPerformanceStatistics(c *gin.Context) {
 		"ELSE 0",
 		"END",
 	}, " ")
-	statusExpr := "CASE WHEN COALESCE(irk.target_tahunan, 0) <= 0 THEN 'UNKNOWN' WHEN ((rr.nilai_realisasi / irk.target_tahunan) * 100) >= 100 THEN 'ON_TRACK' WHEN ((rr.nilai_realisasi / irk.target_tahunan) * 100) >= 80 THEN 'WARNING' ELSE 'OFF_TRACK' END"
-	capaianExpr := "CASE WHEN COALESCE(irk.target_tahunan, 0) = 0 THEN 0 ELSE (rr.nilai_realisasi / irk.target_tahunan) * 100 END"
+	statusExpr := "CASE WHEN COALESCE(rk.target, 0) <= 0 THEN 'UNKNOWN' WHEN ((rr.nilai_realisasi / rk.target) * 100) >= 100 THEN 'ON_TRACK' WHEN ((rr.nilai_realisasi / rk.target) * 100) >= 80 THEN 'WARNING' ELSE 'OFF_TRACK' END"
+	capaianExpr := "CASE WHEN COALESCE(rk.target, 0) = 0 THEN 0 ELSE (rr.nilai_realisasi / rk.target) * 100 END"
 
 	buildTargetQuery := func() *gorm.DB {
 		q := h.db.WithContext(c.Request.Context()).
 			Table("realisasi_rencana_kerja rr").
-			Joins("LEFT JOIN indikator_rencana_kerja irk ON irk.id = rr.indikator_rencana_kerja_id")
+			Joins("LEFT JOIN rencana_kerja rk ON rk.id = rr.rencana_kerja_id")
 		if hasTahun {
 			q = q.Where("rr.tahun = ?", tahun)
 		}
@@ -897,7 +901,7 @@ func (h *Handler) GetPerformanceStatistics(c *gin.Context) {
 		if query != "" {
 			like := "%" + strings.ToLower(query) + "%"
 			q = q.Where(
-				"LOWER(irk.kode) LIKE ? OR LOWER(irk.nama) LIKE ? OR LOWER(rr.keterangan) LIKE ? OR CAST(rr.indikator_rencana_kerja_id AS CHAR) LIKE ? OR LOWER("+statusExpr+") LIKE ?",
+				"LOWER(rk.kode) LIKE ? OR LOWER(rk.nama) LIKE ? OR LOWER(rr.keterangan) LIKE ? OR CAST(rr.rencana_kerja_id AS CHAR) LIKE ? OR LOWER("+statusExpr+") LIKE ?",
 				like, like, like, like,
 				like,
 			)
@@ -906,7 +910,7 @@ func (h *Handler) GetPerformanceStatistics(c *gin.Context) {
 	}
 
 	var totalIndikator int64
-	if err := buildTargetQuery().Distinct("rr.indikator_rencana_kerja_id").Count(&totalIndikator).Error; err != nil {
+	if err := buildTargetQuery().Distinct("rr.rencana_kerja_id").Count(&totalIndikator).Error; err != nil {
 		response.Error(c, http.StatusInternalServerError, "failed to count indikator")
 		return
 	}
@@ -928,7 +932,7 @@ func (h *Handler) GetPerformanceStatistics(c *gin.Context) {
 			"COALESCE(SUM(CASE WHEN UPPER(TRIM(" + statusExpr + ")) = 'WARNING' THEN 1 ELSE 0 END), 0) AS total_warning",
 			"COALESCE(SUM(CASE WHEN UPPER(TRIM(" + statusExpr + ")) = 'OFF_TRACK' THEN 1 ELSE 0 END), 0) AS total_off_track",
 			"COALESCE(SUM(CASE WHEN UPPER(TRIM(" + statusExpr + ")) NOT IN ('ON_TRACK', 'WARNING', 'OFF_TRACK') THEN 1 ELSE 0 END), 0) AS total_status_unknown",
-			"COALESCE(SUM(irk.target_tahunan), 0) AS total_target_nilai",
+			"COALESCE(SUM(rk.target), 0) AS total_target_nilai",
 			"COALESCE(SUM(rr.nilai_realisasi), 0) AS total_realisasi_nilai",
 			"COALESCE(AVG(" + capaianExpr + "), 0) AS rata_rata_capaian",
 		}, ", ")).
@@ -967,7 +971,7 @@ func (h *Handler) GetPerformanceStatistics(c *gin.Context) {
 				"COALESCE(SUM(CASE WHEN UPPER(TRIM(" + statusExpr + ")) = 'OFF_TRACK' THEN 1 ELSE 0 END), 0) AS total_off_track",
 				"COALESCE(SUM(CASE WHEN UPPER(TRIM(" + statusExpr + ")) NOT IN ('ON_TRACK', 'WARNING', 'OFF_TRACK') THEN 1 ELSE 0 END), 0) AS total_unknown",
 				"COALESCE(AVG(" + capaianExpr + "), 0) AS rata_rata_capaian",
-				"COALESCE(SUM(irk.target_tahunan), 0) AS total_target_nilai",
+				"COALESCE(SUM(rk.target), 0) AS total_target_nilai",
 				"COALESCE(SUM(rr.nilai_realisasi), 0) AS total_realisasi_nilai",
 			}, ", ")).
 			Group("(" + fallbackTriwulanExpr + ")").
@@ -1047,44 +1051,175 @@ func (h *Handler) GetChartTargetVsRealisasi(c *gin.Context) {
 		return
 	}
 
-	q := h.db.WithContext(c.Request.Context()).
-		Table("target_dan_realisasi tr")
-	if hasTahun {
-		q = q.Where("tr.tahun = ?", tahun)
+	groupBy := strings.ToLower(strings.TrimSpace(c.Query("group_by")))
+	if groupBy != "bulan" {
+		groupBy = "triwulan"
 	}
 
 	var rows []chartTargetVsRealisasiRow
-	if err := q.
-		Select("tr.triwulan AS triwulan, COALESCE(SUM(tr.target_nilai), 0) AS total_target, COALESCE(SUM(tr.realisasi_nilai), 0) AS total_realisasi").
-		Where("tr.triwulan BETWEEN 1 AND 4").
-		Group("tr.triwulan").
-		Order("tr.triwulan ASC").
-		Scan(&rows).Error; err != nil {
-		response.Error(c, http.StatusInternalServerError, "failed to aggregate chart data")
-		return
+	dataSource := "target_dan_realisasi"
+
+	if groupBy == "bulan" {
+		dataSource = "realisasi_rencana_kerja"
+		// Monthly always uses raw table as the aggregate table is quarterly only.
+		subquery := h.db.WithContext(c.Request.Context()).
+			Table("realisasi_rencana_kerja rrk").
+			Select("rrk.rencana_kerja_id, rrk.bulan, SUM(rrk.nilai_realisasi) AS realisasi_val, SUM(rrk.realisasi_anggaran) AS realisasi_anggaran_val").
+			Where("rrk.tahun = ?", tahun).
+			Group("rrk.rencana_kerja_id, rrk.bulan")
+
+		if err := h.db.WithContext(c.Request.Context()).
+			Table("(?) as stats", subquery).
+			Joins("JOIN rencana_kerja rk ON rk.id = stats.rencana_kerja_id").
+			Joins("JOIN indikator_rencana_kerja irk ON irk.rencana_kerja_id = rk.id").
+			Select(strings.Join([]string{
+				"stats.bulan AS triwulan",
+				"COALESCE(SUM(rk.target / 12), 0) AS total_target",
+				"COALESCE(SUM(stats.realisasi_val), 0) AS total_realisasi",
+				"COALESCE(SUM(irk.anggaran_tahunan / 12), 0) AS total_target_anggaran",
+				"COALESCE(SUM(stats.realisasi_anggaran_val), 0) AS total_realisasi_anggaran",
+			}, ", ")).
+			Group("stats.bulan").
+			Order("stats.bulan ASC").
+			Scan(&rows).Error; err != nil {
+			response.Error(c, http.StatusInternalServerError, "failed to aggregate chart data (monthly)")
+			return
+		}
+	} else {
+		// Quarterly Logic
+		q := h.db.WithContext(c.Request.Context()).
+			Table("target_dan_realisasi tr").
+			Joins("JOIN rencana_kerja rk ON rk.id = tr.rencana_kerja_id").
+			Joins("JOIN indikator_rencana_kerja irk ON irk.rencana_kerja_id = rk.id")
+		
+		if hasTahun {
+			q = q.Where("tr.tahun = ?", tahun)
+		}
+
+		if err := q.
+			Select(strings.Join([]string{
+				"tr.triwulan AS triwulan",
+				"COALESCE(SUM(tr.target_nilai), 0) AS total_target",
+				"COALESCE(SUM(tr.realisasi_nilai), 0) AS total_realisasi",
+				"COALESCE(SUM(irk.anggaran_tahunan / 4), 0) AS total_target_anggaran",
+				"COALESCE(SUM(0), 0) AS total_realisasi_anggaran", // Aggregate table doesn't have finance yet, use fallback if needed or pull separately
+			}, ", ")).
+			Where("tr.triwulan BETWEEN 1 AND 4").
+			Group("tr.triwulan").
+			Order("tr.triwulan ASC").
+			Scan(&rows).Error; err != nil {
+			response.Error(c, http.StatusInternalServerError, "failed to aggregate chart data")
+			return
+		}
+
+		// Fallback/Supplement with Finance from realisasi_rencana_kerja
+		// For finance, we almost always want raw data because aggregate table is mostly performance-focused
+		dataSource = "hybrid (performance: aggregate, finance: raw)"
+		fallbackTriwulanExpr := "CASE WHEN rrk.triwulan IS NOT NULL THEN rrk.triwulan WHEN rrk.bulan BETWEEN 1 AND 3 THEN 1 WHEN rrk.bulan BETWEEN 4 AND 6 THEN 2 WHEN rrk.bulan BETWEEN 7 AND 9 THEN 3 WHEN rrk.bulan BETWEEN 10 AND 12 THEN 4 ELSE 0 END"
+		
+		financeSubquery := h.db.WithContext(c.Request.Context()).
+			Table("realisasi_rencana_kerja rrk").
+			Select("rrk.rencana_kerja_id, "+fallbackTriwulanExpr+" AS triwulan, SUM(rrk.realisasi_anggaran) AS realisasi_anggaran_val").
+			Where("rrk.tahun = ?", tahun).
+			Group("rrk.rencana_kerja_id, (" + fallbackTriwulanExpr + ")")
+
+		var financeRows []chartTargetVsRealisasiRow
+		if err := h.db.WithContext(c.Request.Context()).
+			Table("(?) as stats", financeSubquery).
+			Select("stats.triwulan AS triwulan, COALESCE(SUM(stats.realisasi_anggaran_val), 0) AS total_realisasi_anggaran").
+			Group("stats.triwulan").
+			Scan(&financeRows).Error; err == nil {
+			
+			// If aggregate was empty, we need to also pull performance from raw
+			if len(rows) == 0 {
+				dataSource = "realisasi_rencana_kerja"
+				perfSubquery := h.db.WithContext(c.Request.Context()).
+					Table("realisasi_rencana_kerja rrk").
+					Select("rrk.rencana_kerja_id, "+fallbackTriwulanExpr+" AS triwulan, SUM(rrk.nilai_realisasi) AS realisasi_val").
+					Where("rrk.tahun = ?", tahun).
+					Group("rrk.rencana_kerja_id, (" + fallbackTriwulanExpr + ")")
+
+				if err := h.db.WithContext(c.Request.Context()).
+					Table("(?) as stats", perfSubquery).
+					Joins("JOIN rencana_kerja rk ON rk.id = stats.rencana_kerja_id").
+					Joins("JOIN indikator_rencana_kerja irk ON irk.rencana_kerja_id = rk.id").
+					Select(strings.Join([]string{
+						"stats.triwulan AS triwulan",
+						"COALESCE(SUM(rk.target), 0) AS total_target", // RK target is annual, show it as benchmark
+						"COALESCE(SUM(stats.realisasi_val), 0) AS total_realisasi",
+						"COALESCE(SUM(irk.anggaran_tahunan), 0) AS total_target_anggaran",
+					}, ", ")).
+					Group("stats.triwulan").
+					Order("stats.triwulan ASC").
+					Scan(&rows).Error; err != nil {
+					response.Error(c, http.StatusInternalServerError, "failed to aggregate performance data (fallback)")
+					return
+				}
+			}
+
+			// Merge finance rows into rows
+			for i := range rows {
+				for _, fr := range financeRows {
+					if rows[i].Triwulan == fr.Triwulan {
+						rows[i].TotalRealisasiAnggaran = fr.TotalRealisasiAnggaran
+					}
+				}
+			}
+		}
 	}
 
-	categories := []string{"T1", "T2", "T3", "T4"}
-	seriesTarget := []float64{0, 0, 0, 0}
-	seriesRealisasi := []float64{0, 0, 0, 0}
+	var categories []string
+	var seriesTarget []float64
+	var seriesRealisasi []float64
+	var seriesTargetAnggaran []float64
+	var seriesRealisasiAnggaran []float64
 
-	for _, row := range rows {
-		if row.Triwulan < 1 || row.Triwulan > 4 {
-			continue
+	if groupBy == "bulan" {
+		categories = []string{"Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"}
+		seriesTarget = make([]float64, 12)
+		seriesRealisasi = make([]float64, 12)
+		seriesTargetAnggaran = make([]float64, 12)
+		seriesRealisasiAnggaran = make([]float64, 12)
+		for _, row := range rows {
+			if row.Triwulan < 1 || row.Triwulan > 12 {
+				continue
+			}
+			idx := row.Triwulan - 1
+			seriesTarget[idx] = math.Round(row.TotalTarget*100) / 100
+			seriesRealisasi[idx] = math.Round(row.TotalRealisasi*100) / 100
+			seriesTargetAnggaran[idx] = math.Round(row.TotalTargetAnggaran*100) / 100
+			seriesRealisasiAnggaran[idx] = math.Round(row.TotalRealisasiAnggaran*100) / 100
 		}
-		idx := row.Triwulan - 1
-		seriesTarget[idx] = math.Round(row.TotalTarget*100) / 100
-		seriesRealisasi[idx] = math.Round(row.TotalRealisasi*100) / 100
+	} else {
+		categories = []string{"T1", "T2", "T3", "T4"}
+		seriesTarget = make([]float64, 4)
+		seriesRealisasi = make([]float64, 4)
+		seriesTargetAnggaran = make([]float64, 4)
+		seriesRealisasiAnggaran = make([]float64, 4)
+		for _, row := range rows {
+			if row.Triwulan < 1 || row.Triwulan > 4 {
+				continue
+			}
+			idx := row.Triwulan - 1
+			seriesTarget[idx] = math.Round(row.TotalTarget*100) / 100
+			seriesRealisasi[idx] = math.Round(row.TotalRealisasi*100) / 100
+			seriesTargetAnggaran[idx] = math.Round(row.TotalTargetAnggaran*100) / 100
+			seriesRealisasiAnggaran[idx] = math.Round(row.TotalRealisasiAnggaran*100) / 100
+		}
 	}
 
 	response.Success(c, gin.H{
 		"filter": gin.H{
-			"tahun": queryValueOrAll(hasTahun, tahun),
+			"tahun":    queryValueOrAll(hasTahun, tahun),
+			"group_by": groupBy,
 		},
-		"categories": categories,
+		"data_source": dataSource,
+		"categories":  categories,
 		"series": gin.H{
-			"target":    seriesTarget,
-			"realisasi": seriesRealisasi,
+			"target":             seriesTarget,
+			"realisasi":          seriesRealisasi,
+			"target_anggaran":    seriesTargetAnggaran,
+			"realisasi_anggaran": seriesRealisasiAnggaran,
 		},
 	})
 }
@@ -1113,52 +1248,91 @@ func (h *Handler) GetYearlyPerformanceSummary(c *gin.Context) {
 
 	dataSource := "target_dan_realisasi"
 
-	q := h.db.WithContext(c.Request.Context()).Model(&database.TargetDanRealisasi{})
+	q := h.db.WithContext(c.Request.Context()).
+		Table("target_dan_realisasi tr").
+		Joins("JOIN rencana_kerja rk ON rk.id = tr.rencana_kerja_id").
+		Joins("JOIN indikator_rencana_kerja irk ON irk.rencana_kerja_id = rk.id")
+	
 	if hasTahunStart {
-		q = q.Where("tahun >= ?", tahunStart)
+		q = q.Where("tr.tahun >= ?", tahunStart)
 	}
 	if hasTahunEnd {
-		q = q.Where("tahun <= ?", tahunEnd)
+		q = q.Where("tr.tahun <= ?", tahunEnd)
 	}
 
 	var rows []yearlyPerformanceSummaryRow
 	if err := q.
-		Select("tahun, COUNT(*) AS total_data, COUNT(DISTINCT indikator_rencana_kerja_id) AS total_indikator, COALESCE(SUM(target_nilai), 0) AS total_target_nilai, COALESCE(SUM(realisasi_nilai), 0) AS total_realisasi_nilai, COALESCE(AVG(capaian_persen), 0) AS rata_rata_capaian, COALESCE(SUM(CASE WHEN status = 'ON_TRACK' THEN 1 ELSE 0 END), 0) AS total_on_track, COALESCE(SUM(CASE WHEN status = 'WARNING' THEN 1 ELSE 0 END), 0) AS total_warning, COALESCE(SUM(CASE WHEN status = 'OFF_TRACK' THEN 1 ELSE 0 END), 0) AS total_off_track").
-		Group("tahun").
-		Order("tahun ASC").
+		Select(strings.Join([]string{
+			"tr.tahun AS tahun",
+			"COUNT(*) AS total_data",
+			"COUNT(DISTINCT tr.rencana_kerja_id) AS total_indikator",
+			"COALESCE(SUM(tr.target_nilai), 0) AS total_target_nilai",
+			"COALESCE(SUM(tr.realisasi_nilai), 0) AS total_realisasi_nilai",
+			"COALESCE(SUM(irk.anggaran_tahunan), 0) AS total_target_anggaran",
+			"COALESCE(SUM(0), 0) AS total_realisasi_anggaran", // Need raw table for finance realization usually
+			"COALESCE(AVG(tr.capaian_persen), 0) AS rata_rata_capaian",
+			"COALESCE(SUM(CASE WHEN tr.status = 'ON_TRACK' THEN 1 ELSE 0 END), 0) AS total_on_track",
+			"COALESCE(SUM(CASE WHEN tr.status = 'WARNING' THEN 1 ELSE 0 END), 0) AS total_warning",
+			"COALESCE(SUM(CASE WHEN tr.status = 'OFF_TRACK' THEN 1 ELSE 0 END), 0) AS total_off_track",
+		}, ", ")).
+		Group("tr.tahun").
+		Order("tr.tahun ASC").
 		Scan(&rows).Error; err != nil {
 		response.Error(c, http.StatusInternalServerError, "failed to aggregate yearly summary")
 		return
 	}
 
-	// Fallback: when target_dan_realisasi has no data for the given period,
-	// aggregate from realisasi_rencana_kerja; target proxied by irk.target_tahunan.
+	// Always pull finance realization from raw table for accuracy
+	if len(rows) > 0 {
+		financeSub := h.db.WithContext(c.Request.Context()).
+			Table("realisasi_rencana_kerja rrk").
+			Select("rrk.tahun, SUM(rrk.realisasi_anggaran) AS real_anggaran").
+			Group("rrk.tahun")
+		if hasTahunStart { financeSub = financeSub.Where("tahun >= ?", tahunStart) }
+		if hasTahunEnd { financeSub = financeSub.Where("tahun <= ?", tahunEnd) }
+
+		var finRows []struct {
+			Tahun        int     `gorm:"column:tahun"`
+			RealAnggaran float64 `gorm:"column:real_anggaran"`
+		}
+		if err := financeSub.Scan(&finRows).Error; err == nil {
+			for i := range rows {
+				for _, fr := range finRows {
+					if rows[i].Tahun == fr.Tahun {
+						rows[i].TotalRealisasiAnggaran = fr.RealAnggaran
+					}
+				}
+			}
+		}
+	}
+
+	// Fallback/Fallback (Target vs Realisasi from Raw)
 	if len(rows) == 0 {
 		dataSource = "realisasi_rencana_kerja"
-		q2 := h.db.WithContext(c.Request.Context()).
+		subquery := h.db.WithContext(c.Request.Context()).
 			Table("realisasi_rencana_kerja rrk").
-			Joins("JOIN indikator_rencana_kerja irk ON irk.id = rrk.indikator_rencana_kerja_id")
-		if hasTahunStart {
-			q2 = q2.Where("rrk.tahun >= ?", tahunStart)
-		}
-		if hasTahunEnd {
-			q2 = q2.Where("rrk.tahun <= ?", tahunEnd)
-		}
-		if err := q2.
+			Select("rrk.tahun, rrk.rencana_kerja_id, SUM(rrk.nilai_realisasi) AS realisasi_val, SUM(rrk.realisasi_anggaran) AS real_anggaran_val").
+			Group("rrk.tahun, rrk.rencana_kerja_id")
+
+		if hasTahunStart { subquery = subquery.Where("tahun >= ?", tahunStart) }
+		if hasTahunEnd { subquery = subquery.Where("tahun <= ?", tahunEnd) }
+
+		if err := h.db.WithContext(c.Request.Context()).
+			Table("(?) as stats", subquery).
+			Joins("JOIN rencana_kerja rk ON rk.id = stats.rencana_kerja_id").
+			Joins("JOIN indikator_rencana_kerja irk ON irk.rencana_kerja_id = rk.id").
 			Select(strings.Join([]string{
-				"rrk.tahun AS tahun",
+				"stats.tahun AS tahun",
 				"COUNT(*) AS total_data",
-				"COUNT(DISTINCT rrk.indikator_rencana_kerja_id) AS total_indikator",
-				"COALESCE(SUM(irk.target_tahunan), 0) AS total_target_nilai",
-				"COALESCE(SUM(rrk.nilai_realisasi), 0) AS total_realisasi_nilai",
-				"COALESCE(AVG(CASE WHEN irk.target_tahunan > 0 THEN (rrk.nilai_realisasi / irk.target_tahunan * 100) ELSE 0 END), 0) AS rata_rata_capaian",
-				"0 AS total_on_track",
-				"0 AS total_warning",
-				"0 AS total_off_track",
+				"COUNT(DISTINCT stats.rencana_kerja_id) AS total_indikator",
+				"COALESCE(SUM(rk.target), 0) AS total_target_nilai",
+				"COALESCE(SUM(stats.realisasi_val), 0) AS total_realisasi_nilai",
+				"COALESCE(SUM(irk.anggaran_tahunan), 0) AS total_target_anggaran",
+				"COALESCE(SUM(stats.real_anggaran_val), 0) AS total_realisasi_anggaran",
+				"COALESCE(AVG(CASE WHEN rk.target > 0 THEN (stats.realisasi_val / rk.target * 100) ELSE 0 END), 0) AS rata_rata_capaian",
+				"0 AS total_on_track", "0 AS total_warning", "0 AS total_off_track",
 			}, ", ")).
-			Group("rrk.tahun").
-			Order("rrk.tahun ASC").
-			Scan(&rows).Error; err != nil {
+			Group("tahun"). Order("tahun ASC"). Scan(&rows).Error; err != nil {
 			response.Error(c, http.StatusInternalServerError, "failed to aggregate yearly summary (fallback)")
 			return
 		}
@@ -1170,6 +1344,10 @@ func (h *Handler) GetYearlyPerformanceSummary(c *gin.Context) {
 		if row.TotalTargetNilai > 0 {
 			persentaseRealisasiTarget = math.Round((row.TotalRealisasiNilai/row.TotalTargetNilai)*100*100) / 100
 		}
+		persentaseRealisasiAnggaran := 0.0
+		if row.TotalTargetAnggaran > 0 {
+			persentaseRealisasiAnggaran = math.Round((row.TotalRealisasiAnggaran/row.TotalTargetAnggaran)*100*100) / 100
+		}
 
 		items = append(items, gin.H{
 			"tahun":                       row.Tahun,
@@ -1177,8 +1355,11 @@ func (h *Handler) GetYearlyPerformanceSummary(c *gin.Context) {
 			"total_indikator":             row.TotalIndikator,
 			"total_target_nilai":          math.Round(row.TotalTargetNilai*100) / 100,
 			"total_realisasi_nilai":       math.Round(row.TotalRealisasiNilai*100) / 100,
+			"total_target_anggaran":       math.Round(row.TotalTargetAnggaran*100) / 100,
+			"total_realisasi_anggaran":    math.Round(row.TotalRealisasiAnggaran*100) / 100,
 			"rata_rata_capaian_persen":    math.Round(row.RataRataCapaian*100) / 100,
 			"persentase_realisasi_target": persentaseRealisasiTarget,
+			"persentase_realisasi_anggaran": persentaseRealisasiAnggaran,
 			"total_status_on_track":       row.TotalOnTrack,
 			"total_status_warning":        row.TotalWarning,
 			"total_status_off_track":      row.TotalOffTrack,
@@ -1245,8 +1426,7 @@ func (h *Handler) GetProgramPerformanceRanking(c *gin.Context) {
 	dataSource := "target_dan_realisasi"
 
 	q := h.db.WithContext(c.Request.Context()).Table("target_dan_realisasi tr").
-		Joins("JOIN indikator_rencana_kerja irk ON irk.id = tr.indikator_rencana_kerja_id").
-		Joins("LEFT JOIN rencana_kerja rk ON rk.id = irk.rencana_kerja_id").
+		Joins("JOIN rencana_kerja rk ON rk.id = tr.rencana_kerja_id").
 		Joins("LEFT JOIN indikator_sub_kegiatan isk ON isk.id = rk.indikator_sub_kegiatan_id").
 		Joins("LEFT JOIN sub_kegiatan sk ON sk.id = isk.sub_kegiatan_id").
 		Joins("LEFT JOIN kegiatan k ON k.id = sk.kegiatan_id").
@@ -1273,7 +1453,7 @@ func (h *Handler) GetProgramPerformanceRanking(c *gin.Context) {
 		"COALESCE(NULLIF(TRIM(p.nama), ''), 'Program Belum Terpetakan') AS program_nama",
 		"COALESCE(SUM(tr.target_nilai), 0) AS total_target_nilai",
 		"COALESCE(SUM(tr.realisasi_nilai), 0) AS total_realisasi_nilai",
-		"COUNT(DISTINCT tr.indikator_rencana_kerja_id) AS total_indikator",
+		"COUNT(DISTINCT tr.rencana_kerja_id) AS total_indikator",
 		"COALESCE(AVG(tr.capaian_persen), 0) AS rata_rata_capaian",
 	}, ", ")).
 		Group(strings.Join([]string{
@@ -1291,23 +1471,30 @@ func (h *Handler) GetProgramPerformanceRanking(c *gin.Context) {
 	}
 
 	// Fallback: when target_dan_realisasi has no data, aggregate from realisasi_rencana_kerja.
-	// target_nilai is proxied by irk.target_tahunan; capaian is derived on-the-fly.
+	// We use a subquery approach to avoid double-counting targets.
 	if total == 0 {
 		dataSource = "realisasi_rencana_kerja"
-		q2 := h.db.WithContext(c.Request.Context()).Table("realisasi_rencana_kerja rrk").
-			Joins("JOIN indikator_rencana_kerja irk ON irk.id = rrk.indikator_rencana_kerja_id").
-			Joins("LEFT JOIN rencana_kerja rk ON rk.id = irk.rencana_kerja_id").
+		
+		subquery := h.db.WithContext(c.Request.Context()).
+			Table("realisasi_rencana_kerja rrk").
+			Select("rrk.rencana_kerja_id, SUM(rrk.nilai_realisasi) AS realisasi_val")
+		
+		if hasTahun {
+			subquery = subquery.Where("rrk.tahun = ?", tahun)
+		}
+		if hasTriwulan {
+			subquery = subquery.Where("rrk.triwulan = ?", triwulan)
+		}
+		subquery = subquery.Group("rrk.rencana_kerja_id")
+
+		q2 := h.db.WithContext(c.Request.Context()).
+			Table("(?) AS stats", subquery).
+			Joins("JOIN rencana_kerja rk ON rk.id = stats.rencana_kerja_id").
 			Joins("LEFT JOIN indikator_sub_kegiatan isk ON isk.id = rk.indikator_sub_kegiatan_id").
 			Joins("LEFT JOIN sub_kegiatan sk ON sk.id = isk.sub_kegiatan_id").
 			Joins("LEFT JOIN kegiatan k ON k.id = sk.kegiatan_id").
 			Joins("LEFT JOIN program p ON p.id = k.program_id")
 
-		if hasTahun {
-			q2 = q2.Where("rrk.tahun = ?", tahun)
-		}
-		if hasTriwulan {
-			q2 = q2.Where("rrk.triwulan = ?", triwulan)
-		}
 		if query != "" {
 			like := "%" + strings.ToLower(query) + "%"
 			q2 = q2.Where(
@@ -1321,10 +1508,10 @@ func (h *Handler) GetProgramPerformanceRanking(c *gin.Context) {
 			"COALESCE(p.id, 0) AS program_id",
 			"COALESCE(NULLIF(TRIM(p.kode), ''), '-') AS program_kode",
 			"COALESCE(NULLIF(TRIM(p.nama), ''), 'Program Belum Terpetakan') AS program_nama",
-			"COALESCE(SUM(irk.target_tahunan), 0) AS total_target_nilai",
-			"COALESCE(SUM(rrk.nilai_realisasi), 0) AS total_realisasi_nilai",
-			"COUNT(DISTINCT rrk.indikator_rencana_kerja_id) AS total_indikator",
-			"COALESCE(AVG(CASE WHEN irk.target_tahunan > 0 THEN (rrk.nilai_realisasi / irk.target_tahunan * 100) ELSE 0 END), 0) AS rata_rata_capaian",
+			"COALESCE(SUM(rk.target), 0) AS total_target_nilai",
+			"COALESCE(SUM(stats.realisasi_val), 0) AS total_realisasi_nilai",
+			"COUNT(DISTINCT stats.rencana_kerja_id) AS total_indikator",
+			"COALESCE(AVG(CASE WHEN rk.target > 0 THEN (stats.realisasi_val / rk.target * 100) ELSE 0 END), 0) AS rata_rata_capaian",
 		}, ", ")).
 			Group(strings.Join([]string{
 				"COALESCE(p.id, 0)",

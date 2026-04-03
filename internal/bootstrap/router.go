@@ -40,6 +40,11 @@ func NewRouter(cfg *config.Config) *gin.Engine {
 		log.Printf("[DATABASE] CRITICAL CONNECTION FAILURE: %v", err)
 	} else {
 		log.Printf("[DATABASE] Connection established successfully.")
+		if err := database.AutoMigrateAll(db); err != nil {
+			log.Printf("[DATABASE] MIGRATION FAILURE: %v", err)
+		} else {
+			log.Printf("[DATABASE] Schema synchronized.")
+		}
 	}
 
 	r.Static("/assets", "web/assets")

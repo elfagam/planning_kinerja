@@ -17,6 +17,14 @@ import (
 
 func main() {
 	cfg := config.Load()
+
+	// Robustness: Tunggu sampai database siap (penting untuk Railway/Docker)
+	log.Printf("[MIGRATE] Memeriksa koneksi ke host %s...", cfg.DBHost)
+	if err := database.PingMySQL(cfg); err != nil {
+		log.Fatalf("[MIGRATE] GAGAL: tidak bisa terhubung ke database setelah beberapa kali percobaan: %v", err)
+	}
+	log.Printf("[MIGRATE] Database terhubung, mulai proses migrasi")
+
 	dsn := withMultiStatements(cfg.MySQLDSN)
 
 	db, err := sql.Open("mysql", dsn)
@@ -28,14 +36,6 @@ func main() {
 		log.Fatalf("failed to open mysql connection: %v", err)
 	}
 	defer db.Close()
-
-	if err := db.Ping(); err != nil {
-		err = database.WrapConnectionError("sql ping", fmt.Errorf("failed to ping mysql: %w", err))
-		if database.IsConnectionError(err) {
-			log.Fatalf("%v; %s", err, database.ConnectionFailureHint())
-		}
-		log.Fatalf("failed to ping mysql: %v", err)
-	}
 
 	migrationDir := os.Getenv("MIGRATIONS_DIR")
 	if migrationDir == "" {

@@ -27,6 +27,8 @@ createApp({
             unit_pengusul_id: '',
             kode: '',
             nama: '',
+            target: 0,
+            satuan: '',
             tahun: new Date().getFullYear(),
             triwulan: 1, // Default Triwulan 1
             status: 'DRAFT',
@@ -37,15 +39,22 @@ createApp({
         // Form IRK (Child)
         const irkForm = reactive({
             id: null,
-            rencana_kerja_id: null,
-            tb_standar_harga_id: null,
+            rencana_kerja_id: '',
             kode: '',
             nama: '',
-            satuan: '',
             target_tahunan: 0,
             harga_satuan: 0,
             anggaran_tahunan: 0,
+            satuan: '',
+            tb_standar_harga_id: null,
             isManual: false
+        });
+
+        // Watchers
+        watch(() => irkForm.value.isManual, (newVal) => {
+            if (newVal) {
+                irkForm.value.tb_standar_harga_id = null;
+            }
         });
 
         // Standar Harga Modal
@@ -105,6 +114,8 @@ createApp({
                 unit_pengusul_id: item.unit_pengusul_id || item.UnitPengusulID,
                 indikator_sub_kegiatan_id: item.indikator_sub_kegiatan_id || item.IndikatorSubKegiatanID,
                 sub_kegiatan_id: item.sub_kegiatan_id || item.SubKegiatanID,
+                target: item.target || item.Target || 0,
+                satuan: item.satuan || item.Satuan || '',
                 dibuat_oleh: item.dibuat_oleh || item.DibuatOleh,
                 // For Indikator
                 rencana_kerja_id: item.rencana_kerja_id || item.RencanaKerjaID,
@@ -186,6 +197,8 @@ createApp({
                     unit_pengusul_id: rk.unit_pengusul_id,
                     kode: rk.kode,
                     nama: rk.nama,
+                    target: rk.target,
+                    satuan: rk.satuan,
                     tahun: rk.tahun,
                     triwulan: rk.triwulan || 1,
                     status: rk.status,
@@ -199,6 +212,8 @@ createApp({
                     unit_pengusul_id: unitItems.value[0]?.id || '',
                     kode: 'RK-' + Math.floor(Math.random() * 1000).toString().padStart(3, '0'),
                     nama: '',
+                    target: 0,
+                    satuan: '',
                     tahun: filters.tahun,
                     triwulan: 1,
                     status: 'DRAFT',

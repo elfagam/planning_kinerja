@@ -35,6 +35,8 @@
       const rencanaKerjaLookup = new Map();
       let indikatorLookupLoaded = false;
       let rencanaKerjaLookupLoaded = false;
+      let currentChartMode = "triwulan";
+      let currentMetricMode = "kinerja"; // 'kinerja' or 'keuangan'
       let currentUserProfile = null;
 
       function normalizeYearValue(raw) {
@@ -317,24 +319,28 @@
         const ctx = document.getElementById("targetRealisasiChart");
         if (targetChart) targetChart.destroy();
 
+        const isFinance = currentMetricMode === "keuangan";
+        const targets = isFinance ? chartData.series?.target_anggaran : chartData.series?.target;
+        const reals = isFinance ? chartData.series?.realisasi_anggaran : chartData.series?.realisasi;
+
         targetChart = new Chart(ctx, {
           type: "line",
           data: {
             labels: chartData.categories || [],
             datasets: [
               {
-                label: "Target",
-                data: chartData.series?.target || [],
-                borderColor: "#1f6fa8",
-                backgroundColor: "rgba(31,111,168,.16)",
+                label: isFinance ? "Target Anggaran" : "Target",
+                data: targets || [],
+                borderColor: isFinance ? "#1f6fa8" : "#1f6fa8",
+                backgroundColor: isFinance ? "rgba(31,111,168,.16)" : "rgba(31,111,168,.16)",
                 fill: true,
                 tension: 0.3,
               },
               {
-                label: "Realisasi",
-                data: chartData.series?.realisasi || [],
-                borderColor: "#0a6b65",
-                backgroundColor: "rgba(10,107,101,.16)",
+                label: isFinance ? "Realisasi Anggaran" : "Realisasi",
+                data: reals || [],
+                borderColor: isFinance ? "#e67e22" : "#0a6b65",
+                backgroundColor: isFinance ? "rgba(230,126,34,.16)" : "rgba(10,107,101,.16)",
                 fill: true,
                 tension: 0.3,
               },
@@ -342,8 +348,28 @@
           },
           options: {
             responsive: true,
-            plugins: { legend: { position: "bottom" } },
-            scales: { y: { ticks: { callback: (v) => fmtNum(v) } } },
+            plugins: { 
+              legend: { position: "bottom" },
+              tooltip: {
+                callbacks: {
+                  label: function(context) {
+                    let label = context.dataset.label || '';
+                    if (label) label += ': ';
+                    if (context.parsed.y !== null) {
+                      label += isFinance ? fmtRupiah(context.parsed.y) : fmtNum(context.parsed.y);
+                    }
+                    return label;
+                  }
+                }
+              }
+            },
+            scales: { 
+              y: { 
+                ticks: { 
+                  callback: (v) => isFinance ? fmtRupiah(v) : fmtNum(v) 
+                } 
+              } 
+            },
           },
         });
       }
@@ -364,9 +390,18 @@
             "beforeend",
             `<tr>
               <td>${item.tahun}</td>
-              <td class="text-end">${fmtNum(item.total_target_nilai)}</td>
-              <td class="text-end">${fmtNum(item.total_realisasi_nilai)}</td>
-              <td class="text-end fw-semibold">${fmtPct(item.persentase_realisasi_target)}</td>
+              <td class="text-end">
+                <div class="fw-semibold">${fmtNum(item.total_target_nilai)}</div>
+                <div class="small text-muted">${fmtRupiah(item.total_target_anggaran)}</div>
+              </td>
+              <td class="text-end">
+                <div class="fw-semibold">${fmtNum(item.total_realisasi_nilai)}</div>
+                <div class="small text-muted">${fmtRupiah(item.total_realisasi_anggaran)}</div>
+              </td>
+              <td class="text-end">
+                <div class="fw-semibold">${fmtPct(item.persentase_realisasi_target)}</div>
+                <div class="small text-muted">${fmtPct(item.persentase_realisasi_anggaran)}</div>
+              </td>
             </tr>`,
           );
         });
@@ -469,11 +504,7 @@
         );
       }
 
-      function rencanaKerjaLabelByIndikator(indikatorID) {
-        const rkID = indikatorToRencanaKerjaLookup.get(Number(indikatorID));
-        if (!rkID) {
-          return "-";
-        }
+      function rencanaKerjaLabel(rkID) {
         return rencanaKerjaLookup.get(Number(rkID)) || `Rencana Kerja #${rkID}`;
       }
 
@@ -546,9 +577,8 @@
             `<tr>
               <td>${item.ID}</td>
               <td>
-                <div class="small text-muted">ID #${item.IndikatorRencanaKerjaID}</div>
-                <div class="fw-semibold">${indikatorLabel(item.IndikatorRencanaKerjaID)}</div>
-                <div class="small text-muted">Rencana kerja: ${rencanaKerjaLabelByIndikator(item.IndikatorRencanaKerjaID)}</div>
+                <div class="small text-muted">ID #${item.RencanaKerjaID}</div>
+                <div class="fw-semibold">${rencanaKerjaLabel(item.RencanaKerjaID)}</div>
               </td>
               <td>${item.Tahun}-T${item.Triwulan}</td>
               <td class="text-end">${fmtNum(item.TargetNilai)}</td>
@@ -656,6 +686,47 @@
         updateYearlyActiveYearLabel();
       }
 
+      const viewTriwulan = document.getElementById("viewTriwulan");
+      const viewBulan = document.getElementById("viewBulan");
+      const modeKinerja = document.getElementById("modeKinerja");
+      const modeKeuangan = document.getElementById("modeKeuangan");
+      const chartSubTitle = document.getElementById("chartSubTitle");
+
+      if (viewTriwulan) {
+        viewTriwulan.addEventListener("change", () => {
+          if (viewTriwulan.checked) {
+            currentChartMode = "triwulan";
+            if (chartSubTitle) chartSubTitle.textContent = "Agregat per triwulan";
+            loadChartWidget();
+          }
+        });
+      }
+      if (viewBulan) {
+        viewBulan.addEventListener("change", () => {
+          if (viewBulan.checked) {
+            currentChartMode = "bulan";
+            if (chartSubTitle) chartSubTitle.textContent = "Agregat per bulan";
+            loadChartWidget();
+          }
+        });
+      }
+      if (modeKinerja) {
+        modeKinerja.addEventListener("change", () => {
+          if (modeKinerja.checked) {
+            currentMetricMode = "kinerja";
+            loadChartWidget();
+          }
+        });
+      }
+      if (modeKeuangan) {
+        modeKeuangan.addEventListener("change", () => {
+          if (modeKeuangan.checked) {
+            currentMetricMode = "keuangan";
+            loadChartWidget();
+          }
+        });
+      }
+
       async function loadSummaryWidget() {
         const summary = await fetchJSON(
           "/api/v1/performance/dashboard-summary",
@@ -690,9 +761,12 @@
 
       async function loadChartWidget() {
         const tahun = getEffectiveYearFilter();
-        const q = tahun ? `?tahun=${encodeURIComponent(tahun)}` : "";
+        const params = new URLSearchParams();
+        if (tahun) params.set("tahun", tahun);
+        params.set("group_by", currentChartMode);
+
         const chartData = await fetchJSON(
-          `/api/v1/performance/chart-target-vs-realisasi${q}`,
+          `/api/v1/performance/chart-target-vs-realisasi?${params.toString()}`,
         );
         drawTargetChart(chartData);
       }

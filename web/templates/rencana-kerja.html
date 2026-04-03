@@ -147,6 +147,29 @@
 
                 <div class="row g-2">
                   <div class="col-md-6">
+                    <label class="form-label mb-0" for="target">Target</label>
+                    <input
+                      id="target"
+                      type="number"
+                      step="0.01"
+                      class="form-control"
+                      placeholder="0.00"
+                      required
+                    />
+                  </div>
+                  <div class="col-md-6">
+                    <label class="form-label mb-0" for="satuan">Satuan</label>
+                    <input
+                      id="satuan"
+                      class="form-control"
+                      placeholder="Contoh: Paket, Dokumen"
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div class="row g-2">
+                  <div class="col-md-6">
                     <label class="form-label mb-0" for="tahun">Tahun</label>
                     <input
                       id="tahun"
@@ -183,22 +206,7 @@
                       <option value="DITOLAK">DITOLAK</option>
                     </select>
                   </div>
-                  <div class="col-md-6">
-                    <label class="form-label mb-0" for="dibuatOleh"
-                      >Dibuat Oleh (ID User)</label
-                    >
-                    <input
-                      id="dibuatOleh"
-                      type="number"
-                      min="1"
-                      class="form-control"
-                      readonly
-                      required
-                    />
-                    <small class="text-muted"
-                      >Terisi otomatis dari user login</small
-                    >
-                  </div>
+                    <input type="hidden" id="dibuatOleh" />
                 </div>
 
                 <label class="form-label mb-0" for="catatan">Catatan</label>
@@ -379,6 +387,8 @@
                       <th scope="col">Indikator Sub Kegiatan</th>
                       <th scope="col">Kode</th>
                       <th scope="col">Nama Rencana Kerja</th>
+                      <th scope="col">Target</th>
+                      <th scope="col">Satuan</th>
                       <th scope="col">Tahun</th>
                       <th scope="col">Triwulan</th>
 
@@ -506,6 +516,8 @@
           const unitPengusulInput = document.getElementById("unitPengusulId");
           const kodeInput = document.getElementById("kode");
           const namaInput = document.getElementById("nama");
+          const targetInput = document.getElementById("target");
+          const satuanInput = document.getElementById("satuan");
           const tahunInput = document.getElementById("tahun");
           const triwulanInput = document.getElementById("triwulan");
           const statusInput = document.getElementById("status");
@@ -599,19 +611,54 @@
             return MUTATION_ROLES.has(normalizeRole(role));
           }
 
-          function applyRoleAccess() {
+          function applyRoleAccess(forceStatus = null) {
             const canMutate = canMutateByRole(currentUserRole);
+            const role = normalizeRole(currentUserRole);
+            const currentStatus = forceStatus || (statusInput ? statusInput.value : "DRAFT");
+            
+            // Basic role-based mutation check
+            let effectivelyCanMutate = canMutate;
+            
+            // Level-specific logic: Inputters can only edit DRAFT or DITOLAK
+            if (role === "OPERATOR" || role === "PERENCANA") {
+              if (currentStatus !== "DRAFT" && currentStatus !== "DITOLAK") {
+                effectivelyCanMutate = false;
+              }
+            }
+
             const fields = form.querySelectorAll(
               "input, select, textarea, button[type='submit'], #btn-reset",
             );
 
             fields.forEach((field) => {
               if (field && field.id !== "status-text") {
-                field.disabled = !canMutate;
+                field.disabled = !effectivelyCanMutate;
               }
             });
 
-            if (!canMutate) {
+            // Special handling for Status Dropdown options (always filter if we can mutate)
+            if (effectivelyCanMutate && statusInput) {
+              Array.from(statusInput.options).forEach((option) => {
+                const val = option.value.toUpperCase();
+                if (role === "OPERATOR" || role === "PERENCANA") {
+                  // Only DRAFT is allowed for inputters (DIAJUKAN is now Verifikator's job)
+                  option.disabled = val !== "DRAFT";
+                } else if (role === "VERIFIKATOR") {
+                  // Verificators can submit (DIAJUKAN) or reject (DITOLAK)
+                  option.disabled = val !== "DIAJUKAN" && val !== "DITOLAK";
+                } else if (role === "PIMPINAN" || role === "ADMIN") {
+                  // Leaders can approve (DISETUJUI) or reject (DITOLAK)
+                  option.disabled = val !== "DISETUJUI" && val !== "DITOLAK" && role !== "ADMIN";
+                }
+              });
+            }
+
+            if (!effectivelyCanMutate && canMutate) {
+               setStatus(
+                `Data dengan status ${currentStatus} tidak dapat diubah oleh ${role}`,
+                true
+              );
+            } else if (!canMutate) {
               setStatus(
                 `Role ${currentUserRole || "UNKNOWN"} hanya dapat melihat data rencana kerja`,
               );
@@ -718,6 +765,8 @@
               ),
               kode: raw.kode ?? raw.Kode ?? "",
               nama: raw.nama ?? raw.Nama ?? "",
+              target: Number(raw.target ?? raw.Target ?? 0),
+              satuan: raw.satuan ?? raw.Satuan ?? "",
               tahun: Number(raw.tahun ?? raw.Tahun ?? 0),
               triwulan: raw.triwulan ?? raw.Triwulan ?? null,
               status: raw.status ?? raw.Status ?? "DRAFT",
@@ -793,12 +842,19 @@
             
             kodeInput.value = suggestNextKode();
             namaInput.value = "";
+            targetInput.value = "";
+            satuanInput.value = "";
             tahunInput.value = defaultTahun();
             triwulanInput.value = "";
             statusInput.value = "DRAFT";
             dibuatOlehInput.value =
-              currentUserID > 0 ? String(currentUserID) : "";
+              currentUserID > 0
+              ? String(currentUserID)
+              : "";
             catatanInput.value = "";
+            
+            // Restore default role access (DRAFT)
+            applyRoleAccess("DRAFT");
             applyIndikatorFilter("", "");
           }
 
@@ -1154,6 +1210,8 @@
             <td>${indikatorLabel}</td>
             <td>${item.kode}</td>
             <td>${item.nama}</td>
+            <td>${money(item.target)}</td>
+            <td>${item.satuan}</td>
 
             <td>${item.tahun || "-"}</td>
             <td>${item.triwulan || "Tahunan"}</td>
@@ -1248,6 +1306,8 @@
                 unitPengusulInput.value = unitIdStr;
                 kodeInput.value = item.kode;
                 namaInput.value = item.nama;
+                targetInput.value = (item.target !== undefined && item.target !== null) ? String(item.target) : "";
+                satuanInput.value = item.satuan || "";
                 tahunInput.value = String(item.tahun || "");
                 triwulanInput.value =
                   item.triwulan == null ? "" : String(item.triwulan);
@@ -1258,6 +1318,9 @@
                     : String(item.dibuatOleh || "");
                 catatanInput.value = item.catatan || "";
                 setStatus(`Mode edit ID ${item.id}`);
+                
+                // Re-apply role access based on this item's status
+                applyRoleAccess(item.status);
               },
             );
 
@@ -1564,7 +1627,7 @@
               const totalPages = updatePaginationUI(0);
               renderAkumulasiByKode([], currentPage, totalPages);
               tableBody.innerHTML =
-                '<tr><td colspan="11" class="text-center text-danger py-4">Gagal memuat data</td></tr>';
+                '<tr><td colspan="13" class="text-center text-danger py-4">Gagal memuat data</td></tr>';
               setStatus(error.message, true);
             }
           }
@@ -1585,6 +1648,8 @@
               unit_pengusul_id: Number(unitPengusulInput.value),
               kode: kodeInput.value.trim(),
               nama: namaInput.value.trim(),
+              target: Number(targetInput.value || 0),
+              satuan: satuanInput.value.trim(),
               tahun: Number(tahunInput.value || 0),
               status: statusInput.value,
               dibuat_oleh: Number(currentUserID || dibuatOlehInput.value || 0),
@@ -1606,6 +1671,12 @@
             }
             if (!payload.dibuat_oleh) {
               setStatus("ID user login tidak valid", true);
+              return;
+            }
+
+            if (payload.status === "DITOLAK" && !payload.catatan) {
+              setStatus("Catatan wajib diisi saat menolak data", true);
+              catatanInput.focus();
               return;
             }
 

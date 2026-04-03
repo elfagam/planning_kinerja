@@ -232,6 +232,8 @@ type RencanaKerja struct {
 	Nama                   string                `json:"nama" gorm:"size:255;not null"`
 	Tahun                  int16                 `json:"tahun" gorm:"not null;index:idx_rencana_kerja_tahun;index:idx_rencana_kerja_periode_status,priority:1;index:idx_rencana_kerja_unit_periode,priority:2"`
 	Triwulan               *int8                 `json:"triwulan" gorm:"index:idx_rencana_kerja_periode_status,priority:2;index:idx_rencana_kerja_unit_periode,priority:3"`
+	Target                 float64               `json:"target" gorm:"type:decimal(18,2);not null;default:0"`
+	Satuan                 string                `json:"satuan" gorm:"size:60"`
 	UnitPengusulID         uint64                `json:"unit_pengusul_id" gorm:"not null;index:idx_rencana_kerja_unit_periode,priority:1"`
 	UnitPengusul           *UnitPengusul         `json:"unit_pengusul" gorm:"foreignKey:UnitPengusulID;constraint:fk_gorm_rencana_kerja_unit_pengusul"`
 	Status                 string                `json:"status" gorm:"type:enum('DRAFT','DIAJUKAN','DISETUJUI','DITOLAK');not null;default:'DRAFT';index:idx_rencana_kerja_status;index:idx_rencana_kerja_periode_status,priority:3"`
@@ -256,6 +258,7 @@ type IndikatorRencanaKerja struct {
 	TargetTahunan   float64   `json:"target_tahunan" gorm:"type:decimal(18,2);not null;default:0"`
 	HargaSatuan     float64   `json:"harga_satuan" gorm:"type:decimal(18,2);not null;default:0"`
 	AnggaranTahunan float64   `json:"anggaran_tahunan" gorm:"type:decimal(18,2);not null;default:0"`
+	DibuatOleh      uint64    `json:"dibuat_oleh" gorm:"not null"`
 	CreatedAt       time.Time `json:"created_at" gorm:"not null"`
 	UpdatedAt       time.Time `json:"updated_at" gorm:"not null"`
 }
@@ -263,36 +266,39 @@ type IndikatorRencanaKerja struct {
 func (IndikatorRencanaKerja) TableName() string { return "indikator_rencana_kerja" }
 
 type RealisasiRencanaKerja struct {
-	ID                      uint64    `gorm:"primaryKey;autoIncrement"`
-	IndikatorRencanaKerjaID uint64    `gorm:"not null;index:idx_realisasi_rk_tahun;uniqueIndex:uq_realisasi_rk_periode,priority:1"`
-	Tahun                   int16     `gorm:"not null;index:idx_realisasi_rk_tahun;index:idx_realisasi_rk_periode,priority:1;index:idx_realisasi_rk_input_user,priority:2;uniqueIndex:uq_realisasi_rk_periode,priority:2"`
-	Bulan                   *int8     `gorm:"index:idx_realisasi_rk_periode,priority:3;uniqueIndex:uq_realisasi_rk_periode,priority:3"`
-	Triwulan                *int8     `gorm:"index:idx_realisasi_rk_periode,priority:2;index:idx_realisasi_rk_input_user,priority:3;uniqueIndex:uq_realisasi_rk_periode,priority:4"`
-	NilaiRealisasi          float64   `gorm:"type:decimal(18,2);not null;default:0"`
-	RealisasiAnggaran       float64   `gorm:"type:decimal(18,2);not null;default:0"`
-	Keterangan              string    `gorm:"type:text"`
-	DiinputOleh             uint64    `gorm:"not null;index:idx_realisasi_rk_input_user,priority:1"`
-	CreatedAt               time.Time `gorm:"not null"`
-	UpdatedAt               time.Time `gorm:"not null"`
+	ID                uint64    `gorm:"primaryKey;autoIncrement"`
+	RencanaKerjaID    uint64    `gorm:"not null;column:rencana_kerja_id;index:idx_realisasi_rk_tahun;uniqueIndex:uq_realisasi_rk_periode,priority:1"`
+	Tahun             int16     `gorm:"not null;index:idx_realisasi_rk_tahun;index:idx_realisasi_rk_periode,priority:1;index:idx_realisasi_rk_input_user,priority:2;uniqueIndex:uq_realisasi_rk_periode,priority:2"`
+	Bulan             *int8     `gorm:"index:idx_realisasi_rk_periode,priority:3;uniqueIndex:uq_realisasi_rk_periode,priority:3"`
+	Triwulan          *int8     `gorm:"index:idx_realisasi_rk_periode,priority:2;index:idx_realisasi_rk_input_user,priority:3;uniqueIndex:uq_realisasi_rk_periode,priority:4"`
+	NilaiRealisasi    float64   `gorm:"type:decimal(18,2);not null;default:0"`
+	RealisasiAnggaran float64   `gorm:"type:decimal(18,2);not null;default:0"`
+	Keterangan        string    `gorm:"type:text"`
+	DiinputOleh       uint64    `gorm:"not null;index:idx_realisasi_rk_input_user,priority:1"`
+	CreatedAt         time.Time `gorm:"not null"`
+	UpdatedAt         time.Time `gorm:"not null"`
 }
 
 func (RealisasiRencanaKerja) TableName() string { return "realisasi_rencana_kerja" }
 
 type TargetDanRealisasi struct {
-	ID                      uint64     `gorm:"primaryKey;autoIncrement"`
-	IndikatorRencanaKerjaID uint64     `gorm:"not null;uniqueIndex:uq_target_realisasi_periode,priority:1"`
-	IndikatorRencanaKerja   *IndikatorRencanaKerja `gorm:"foreignKey:IndikatorRencanaKerjaID;constraint:fk_gorm_target_realisasi_ind_rk"`
-	Tahun                   int16      `gorm:"not null;index:idx_target_realisasi_periode_status,priority:1;index:idx_target_realisasi_verifikator_periode,priority:2;uniqueIndex:uq_target_realisasi_periode,priority:2"`
-	Triwulan                int8       `gorm:"not null;index:idx_target_realisasi_periode_status,priority:2;index:idx_target_realisasi_verifikator_periode,priority:3;uniqueIndex:uq_target_realisasi_periode,priority:3"`
-	TargetNilai             float64    `gorm:"type:decimal(18,2);not null;default:0"`
-	RealisasiNilai          float64    `gorm:"type:decimal(18,2);not null;default:0"`
-	CapaianPersen           float64    `gorm:"type:decimal(8,2)"`
-	Status                  string     `gorm:"type:enum('ON_TRACK','WARNING','OFF_TRACK');not null;default:'ON_TRACK';index:idx_target_realisasi_status;index:idx_target_realisasi_periode_status,priority:3"`
-	DiverifikasiOleh        *uint64    `gorm:"index:idx_target_realisasi_verifikator_periode,priority:1"`
-	TanggalVerifikasi       *time.Time `gorm:""`
-	Catatan                 string     `gorm:"type:text"`
-	CreatedAt               time.Time  `gorm:"not null"`
-	UpdatedAt               time.Time  `gorm:"not null"`
+	ID                uint64     `gorm:"primaryKey;autoIncrement"`
+	RencanaKerjaID    uint64     `gorm:"not null;column:rencana_kerja_id;uniqueIndex:uq_target_realisasi_periode,priority:1"`
+	RencanaKerja      *RencanaKerja `gorm:"foreignKey:RencanaKerjaID;constraint:fk_target_realisasi_rk"`
+	Tahun             int16      `gorm:"not null;index:idx_target_realisasi_periode_status,priority:1;index:idx_target_realisasi_verifikator_periode,priority:2;uniqueIndex:uq_target_realisasi_periode,priority:2"`
+	Triwulan          int8       `gorm:"not null;index:idx_target_realisasi_periode_status,priority:2;index:idx_target_realisasi_verifikator_periode,priority:3;uniqueIndex:uq_target_realisasi_periode,priority:3"`
+	TargetNilai       float64    `gorm:"type:decimal(18,2);not null;default:0"`
+	RealisasiNilai    float64    `gorm:"type:decimal(18,2);not null;default:0"`
+	CapaianPersen     float64    `gorm:"type:decimal(8,2)"`
+	TargetAnggaran    float64    `gorm:"type:decimal(18,2);not null;default:0"`
+	RealisasiAnggaran float64    `gorm:"type:decimal(18,2);not null;default:0"`
+	CapaianAnggaran   float64    `gorm:"type:decimal(8,2)"`
+	Status            string     `gorm:"type:enum('ON_TRACK','WARNING','OFF_TRACK');not null;default:'ON_TRACK';index:idx_target_realisasi_status;index:idx_target_realisasi_periode_status,priority:3"`
+	DiverifikasiOleh  *uint64    `gorm:"index:idx_target_realisasi_verifikator_periode,priority:1"`
+	TanggalVerifikasi *time.Time `gorm:""`
+	Catatan           string     `gorm:"type:text"`
+	CreatedAt         time.Time  `gorm:"not null"`
+	UpdatedAt         time.Time  `gorm:"not null"`
 }
 
 func (TargetDanRealisasi) TableName() string { return "target_dan_realisasi" }
