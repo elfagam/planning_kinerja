@@ -43,6 +43,7 @@
         place-items: center;
         font-weight: 700;
         background: rgba(255, 255, 255, 0.18);
+        flex-shrink: 0;
       }
 
       .nav-link.admin-link {
@@ -57,14 +58,48 @@
         background: rgba(255, 255, 255, 0.14);
       }
 
-      .menu-group-label {
-        margin-top: 0.65rem;
-        margin-bottom: 0.15rem;
-        padding: 0 0.75rem;
-        font-size: 0.68rem;
-        letter-spacing: 0.08em;
-        text-transform: uppercase;
-        color: rgba(220, 245, 241, 0.7);
+      .menu-item-group {
+        margin-bottom: 0.25rem;
+      }
+
+      .group-toggle {
+        font-size: 0.82rem;
+        font-weight: 600;
+        letter-spacing: 0.01em;
+        background: transparent !important;
+        border: none;
+        padding: 0.65rem 0.75rem !important;
+        transition: all 0.2s ease;
+      }
+
+      .group-toggle:hover {
+        background: rgba(255, 255, 255, 0.08) !important;
+      }
+
+      .toggle-icon {
+        font-size: 0.7rem;
+        transition: transform 0.3s ease;
+        opacity: 0.6;
+      }
+
+      .group-toggle[aria-expanded="true"] .toggle-icon {
+        transform: rotate(180deg);
+        opacity: 1;
+      }
+
+      .nav-link.admin-link.small {
+        font-size: 0.76rem;
+        padding: 0.4rem 0.75rem 0.4rem 2.2rem;
+        opacity: 0.85;
+      }
+
+      .nav-link.admin-link.small:hover {
+        opacity: 1;
+        background: rgba(255, 255, 255, 0.1);
+      }
+
+      .border-white-10 {
+        border-color: rgba(255, 255, 255, 0.1) !important;
       }
 
       .nav-link.admin-link.grouped-link {
@@ -75,6 +110,35 @@
         background: transparent;
       }
 
+      .accordion-nav {
+        display: flex;
+        flex-direction: column;
+        min-height: calc(100vh - 120px);
+      }
+
+      .sidebar-logout-card {
+        background: rgba(255, 255, 255, 0.07);
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        backdrop-filter: blur(8px);
+        margin: 0 0.5rem;
+      }
+
+      .btn-logout-sidebar {
+        background: rgba(201, 67, 79, 0.25);
+        color: #ffadb5;
+        border: 1px solid rgba(201, 67, 79, 0.5);
+        font-weight: 700;
+        transition: all 0.2s ease;
+        letter-spacing: 0.02em;
+      }
+
+      .btn-logout-sidebar:hover {
+        background: #e34d5a;
+        color: #fff;
+        border-color: #e34d5a;
+        box-shadow: 0 4px 15px rgba(201, 67, 79, 0.5);
+      }
+
       .mobile-menu-btn {
         border-color: rgba(255, 255, 255, 0.45);
         color: #fff;
@@ -83,6 +147,23 @@
       .mobile-menu-btn:hover {
         background: rgba(255, 255, 255, 0.14);
         color: #fff;
+      }
+
+      .mobile-logout-icon-btn {
+        width: 36px;
+        height: 36px;
+        border-radius: 10px;
+        background: rgba(255, 255, 255, 0.15);
+        border: 1px solid rgba(255, 255, 255, 0.25);
+        color: #fff;
+        transition: all 0.2s ease;
+        font-size: 1.1rem;
+      }
+
+      .mobile-logout-icon-btn:hover {
+        background: rgba(201, 67, 79, 0.8);
+        color: #fff;
+        border-color: #c9434f;
       }
 
       .offcanvas.admin-offcanvas {
@@ -166,17 +247,25 @@
       }
 
       .metric-label {
-        font-size: 0.76rem;
+        font-size: 0.8rem;
         text-transform: uppercase;
-        letter-spacing: 0.06em;
-        color: var(--adm-muted);
+        letter-spacing: 0.08em;
+        font-weight: 600;
+        color: #4b5e68; /* Darker for better contrast */
       }
 
       .metric-value {
-        font-size: clamp(1.2rem, 2.4vw, 2rem);
-        letter-spacing: -0.03em;
-        line-height: 1.1;
+        font-size: clamp(1.5rem, 3vw, 2.4rem);
+        font-weight: 700;
+        letter-spacing: -0.04em;
+        line-height: 1;
+        margin-top: 0.25rem;
       }
+
+      /* Semantic Colors */
+      .text-success-bright { color: #1f8f67 !important; }
+      .text-warning-bright { color: #cb8a1b !important; }
+      .text-danger-bright { color: #c9434f !important; }
 
       .status-pill {
         border-radius: 999px;
@@ -250,6 +339,15 @@
         height: 0.5rem;
         border-radius: 999px;
         background: var(--adm-muted);
+      }
+
+      #refreshBtn i {
+        display: inline-block;
+        transition: transform 0.4s ease;
+      }
+
+      #refreshBtn:active i {
+        transform: rotate(180deg);
       }
 
       .session-status.session-active {

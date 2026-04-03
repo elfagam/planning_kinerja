@@ -9,6 +9,7 @@
       rel="stylesheet"
     />
     <link href="/assets/css/app.css" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <script src="/assets/js/auth-client.js?v=20260326"></script>
     <link href="/assets/css/dashboard.css" rel="stylesheet" />
   </head>
@@ -39,48 +40,91 @@
           ></button>
         </div>
         <div class="offcanvas-body pt-0">
-          <nav class="nav flex-column gap-1">
-            <div class="menu-group-label">DATA MASTER</div>
-            <a class="nav-link admin-link" href="/ui/manajemen-user">Manajemen User</a>
-            <a class="nav-link admin-link" href="/ui/unit-pengusul">Unit Pengusul</a>
-            <a class="nav-link admin-link" href="/ui/informasi">Informasi</a>
-            <a class="nav-link admin-link" href="/ui/dokumen_pdf">Dokumen PDF</a>
-            <a class="nav-link admin-link" href="/ui/program">Program</a>
-            <a class="nav-link admin-link" href="/ui/kegiatan">Kegiatan</a>
-            <a class="nav-link admin-link" href="/ui/sub-kegiatan">Sub Kegiatan</a>
-            <a class="nav-link admin-link" href="/ui/pagu-sub-kegiatan">Pagu Sub Kegiatan</a>
-            <a class="nav-link admin-link" href="/ui/kontrol-pagu">Kontrol Pagu</a>
-            <a class="nav-link admin-link" href="/ui/standar-harga">Standar Harga</a>
-            <a class="nav-link admin-link" href="/ui/qna">Q&A Forum</a>
+          <nav class="nav flex-column gap-2 accordion-nav" id="sidebarNavMobile">
+            <a class="nav-link admin-link active" href="/ui/dashboard">
+              <i class="bi bi-speedometer2 me-2"></i> Dashboard
+            </a>
 
-            <div class="menu-group-label">Perencanaan Strategis</div>
-            <a class="nav-link admin-link" href="/ui/visi">Visi</a>
-            <a class="nav-link admin-link" href="/ui/misi">Misi</a>
-            <a class="nav-link admin-link" href="/ui/tujuan">Tujuan</a>
-            <a class="nav-link admin-link" href="/ui/indikator-tujuan">Indikator Tujuan</a>
-            <a class="nav-link admin-link" href="/ui/sasaran">Sasaran</a>
-            <a class="nav-link admin-link" href="/ui/indikator-sasaran">Indikator Sasaran</a>
-            <a class="nav-link admin-link" href="/ui/visi">Visi</a>
-            <a class="nav-link admin-link" href="/ui/misi">Misi</a>
-            <a class="nav-link admin-link" href="/ui/tujuan">Tujuan</a>
-            <a class="nav-link admin-link" href="/ui/indikator-tujuan"
-              >Indikator Tujuan</a
-            >
+            <!-- MASTER DATA -->
+            <div class="menu-item-group">
+              <button class="nav-link admin-link group-toggle d-flex justify-content-between align-items-center w-100" type="button" data-bs-toggle="collapse" data-bs-target="#menuMasterDataMob">
+                <span><i class="bi bi-folder-fill me-2"></i> Master Data</span>
+                <i class="bi bi-chevron-down toggle-icon"></i>
+              </button>
+              <div class="collapse show" id="menuMasterDataMob">
+                <div class="flex-column nav gap-1 ps-2 mt-1">
+                  <a class="nav-link admin-link" href="/ui/manajemen-user"><i class="bi bi-people me-2"></i> Manajemen User</a>
+                  <a class="nav-link admin-link" href="/ui/unit-pengusul"><i class="bi bi-building me-2"></i> Unit Pengusul</a>
+                  <a class="nav-link admin-link" href="/ui/informasi"><i class="bi bi-info-circle me-2"></i> Informasi</a>
+                  <a class="nav-link admin-link" href="/ui/dokumen_pdf"><i class="bi bi-file-earmark-pdf me-2"></i> Dokumen PDF</a>
+                  <a class="nav-link admin-link" href="/ui/standar-harga"><i class="bi bi-tag me-2"></i> Standar Harga</a>
+                  <a class="nav-link admin-link" href="/ui/qna"><i class="bi bi-chat-dots me-2"></i> Forum Q&A</a>
+                </div>
+              </div>
+            </div>
 
-            <a class="nav-link admin-link" href="/ui/indikator-program"
-              >Indikator Program</a
-            >
+            <!-- PERENCANAAN STRATEGIS -->
+            <div class="menu-item-group">
+              <button class="nav-link admin-link group-toggle d-flex justify-content-between align-items-center w-100" type="button" data-bs-toggle="collapse" data-bs-target="#menuPerencanaanMob">
+                <span><i class="bi bi-bullseye me-2"></i> Perencanaan Strategis</span>
+                <i class="bi bi-chevron-down toggle-icon"></i>
+              </button>
+              <div class="collapse" id="menuPerencanaanMob">
+                <div class="flex-column nav gap-1 ps-2 mt-1">
+                  <a class="nav-link admin-link" href="/ui/visi">Visi</a>
+                  <a class="nav-link admin-link" href="/ui/misi">Misi</a>
+                  <a class="nav-link admin-link" href="/ui/tujuan">Tujuan</a>
+                  <a class="nav-link admin-link" href="/ui/indikator-tujuan">Indikator Tujuan</a>
+                  <a class="nav-link admin-link" href="/ui/sasaran">Sasaran</a>
+                  <a class="nav-link admin-link" href="/ui/indikator-sasaran">Indikator Sasaran</a>
+                </div>
+              </div>
+            </div>
 
-            <a class="nav-link admin-link" href="/ui/indikator-kegiatan"
-              >Indikator Kegiatan</a
-            >
+            <!-- PROGRAM & KEGIATAN -->
+            <div class="menu-item-group">
+              <button class="nav-link admin-link group-toggle d-flex justify-content-between align-items-center w-100" type="button" data-bs-toggle="collapse" data-bs-target="#menuProgKegMob">
+                <span><i class="bi bi-journal-text me-2"></i> Program & Kegiatan</span>
+                <i class="bi bi-chevron-down toggle-icon"></i>
+              </button>
+              <div class="collapse" id="menuProgKegMob">
+                <div class="flex-column nav gap-1 ps-2 mt-1">
+                  <a class="nav-link admin-link" href="/ui/program">Program</a>
+                  <a class="nav-link admin-link" href="/ui/kegiatan">Kegiatan</a>
+                  <a class="nav-link admin-link" href="/ui/sub-kegiatan">Sub Kegiatan</a>
+                  <a class="nav-link admin-link" href="/ui/pagu-sub-kegiatan">Pagu Sub Kegiatan</a>
+                  <a class="nav-link admin-link" href="/ui/kontrol-pagu">Kontrol Pagu</a>
+                  <a class="nav-link admin-link" href="/ui/indikator-program">Indikator Program</a>
+                  <a class="nav-link admin-link" href="/ui/indikator-kegiatan">Indikator Kegiatan</a>
+                  <a class="nav-link admin-link" href="/ui/indikator-sub-kegiatan">Indikator Sub Kegiatan</a>
+                </div>
+              </div>
+            </div>
 
-            <div class="menu-group-label">Monitoring dan Evaluasi</div>
-            <a class="nav-link admin-link" href="/ui/rencana-kerja">Rencana Kerja</a>
-            <a class="nav-link admin-link" href="/ui/indikator-kinerja">Rincian Rencana Kerja</a>
-            <a class="nav-link admin-link" href="/ui/target-realisasi">Target Realisasi</a>
-            <div class="menu-group-label">Workflow Persetujuan</div>
-            <a class="nav-link admin-link" href="/ui/clients">Clients</a>
+            <!-- MONITORING & EVALUASI -->
+            <div class="menu-item-group">
+              <button class="nav-link admin-link group-toggle d-flex justify-content-between align-items-center w-100" type="button" data-bs-toggle="collapse" data-bs-target="#menuMonevMob">
+                <span><i class="bi bi-activity me-2"></i> Monev</span>
+                <i class="bi bi-chevron-down toggle-icon"></i>
+              </button>
+              <div class="collapse" id="menuMonevMob">
+                <div class="flex-column nav gap-1 ps-2 mt-1">
+                  <a class="nav-link admin-link" href="/ui/rencana-kerja">Rencana Kerja</a> 
+                  <a class="nav-link admin-link" href="/ui/indikator-kinerja">Rincian Rencana Kerja</a> 
+                  <a class="nav-link admin-link" href="/ui/rencana-kerja-spa">Rencana Kerja SPA</a>
+                  <a class="nav-link admin-link" href="/ui/target-realisasi">Target & Realisasi</a>
+                </div>
+              </div>
+            </div>
+
+            <div class="mt-auto pt-4">
+              <div class="sidebar-logout-card p-3 rounded-4">
+                <p class="small text-white mb-2">Akhiri sesi Anda?</p>
+                <a class="btn btn-sm btn-logout-sidebar w-100 d-flex align-items-center justify-content-center gap-2" data-auth-logout href="#">
+                  <i class="bi bi-box-arrow-left"></i> Logout System
+                </a>
+              </div>
+            </div>
           </nav>
         </div>
       </div>
@@ -103,73 +147,91 @@
               </div>
             </div>
 
-            <nav class="nav flex-column gap-1">
-              <a class="nav-link admin-link active" href="/ui/dashboard"
-                >Parameter</a
-              >
-              <a class="nav-link admin-link" href="/ui/dokumen_pdf">Library</a>
-              <a class="nav-link admin-link" href="/ui/manajemen-user"
-                >Manajemen User</a
-              >
+            <nav class="nav flex-column gap-2 accordion-nav" id="sidebarNav">
+              <a class="nav-link admin-link active" href="/ui/dashboard">
+                <i class="bi bi-speedometer2 me-2"></i> Dashboard
+              </a>
 
-              <a class="nav-link admin-link" href="/ui/unit-pengusul"
-                >Unit Pengusul</a
-              >
-              <a class="nav-link admin-link" href="/ui/informasi">Informasi</a>
-              <a class="nav-link admin-link" href="/ui/program">Program</a>
-              <a class="nav-link admin-link" href="/ui/kegiatan">Kegiatan</a>
-              <a class="nav-link admin-link" href="/ui/sub-kegiatan"
-                >Sub Kegiatan</a
-              >
-              <a class="nav-link admin-link" href="/ui/pagu-sub-kegiatan"
-                >Pagu Sub Kegiatan</a
-              >
-              <a class="nav-link admin-link" href="/ui/kontrol-pagu"
-                >Kontrol Pagu</a
-              >
-              <a class="nav-link admin-link" href="/ui/standar-harga">Standar Harga</a>
-              <a class="nav-link admin-link" href="/ui/qna">Q&A Forum</a>
+              <!-- MASTER DATA -->
+              <div class="menu-item-group">
+                <button class="nav-link admin-link group-toggle d-flex justify-content-between align-items-center w-100" type="button" data-bs-toggle="collapse" data-bs-target="#menuMasterData">
+                  <span><i class="bi bi-folder-fill me-2"></i> Master Data</span>
+                  <i class="bi bi-chevron-down toggle-icon"></i>
+                </button>
+                <div class="collapse show" id="menuMasterData">
+                  <div class="flex-column nav gap-1 ps-2 mt-1">
+                    <a class="nav-link admin-link" href="/ui/manajemen-user"><i class="bi bi-people me-2"></i> Manajemen User</a>
+                    <a class="nav-link admin-link" href="/ui/unit-pengusul"><i class="bi bi-building me-2"></i> Unit Pengusul</a>
+                    <a class="nav-link admin-link" href="/ui/informasi"><i class="bi bi-info-circle me-2"></i> Informasi</a>
+                    <a class="nav-link admin-link" href="/ui/dokumen_pdf"><i class="bi bi-file-earmark-pdf me-2"></i> Dokumen PDF</a>
+                    <a class="nav-link admin-link" href="/ui/standar-harga"><i class="bi bi-tag me-2"></i> Standar Harga</a>
+                    <a class="nav-link admin-link" href="/ui/qna"><i class="bi bi-chat-dots me-2"></i> Forum Q&A</a>
+                  </div>
+                </div>
+              </div>
 
-              <div class="menu-group-label">Perencanaan Strategis</div>
-              <a class="nav-link admin-link" href="/ui/visi">Visi</a>
-              <a class="nav-link admin-link" href="/ui/misi">Misi</a>
-              <a class="nav-link admin-link" href="/ui/tujuan">Tujuan</a>
-              <a class="nav-link admin-link" href="/ui/indikator-tujuan"
-                >Indikator Tujuan</a
-              >
-              <a class="nav-link admin-link" href="/ui/sasaran">Sasaran</a>
-              <a class="nav-link admin-link" href="/ui/indikator-sasaran"
-                >Indikator Sasaran</a
-              >
-              <div class="menu-group-label">Program dan Turunan</div>
+              <!-- PERENCANAAN STRATEGIS -->
+              <div class="menu-item-group">
+                <button class="nav-link admin-link group-toggle d-flex justify-content-between align-items-center w-100" type="button" data-bs-toggle="collapse" data-bs-target="#menuPerencanaan">
+                  <span><i class="bi bi-bullseye me-2"></i> Strategis</span>
+                  <i class="bi bi-chevron-down toggle-icon"></i>
+                </button>
+                <div class="collapse" id="menuPerencanaan">
+                  <div class="flex-column nav gap-1 ps-2 mt-1">
+                    <a class="nav-link admin-link" href="/ui/visi">Visi</a>
+                    <a class="nav-link admin-link" href="/ui/misi">Misi</a>
+                    <a class="nav-link admin-link" href="/ui/tujuan">Tujuan</a>
+                    <a class="nav-link admin-link" href="/ui/indikator-tujuan">Indikator Tujuan</a>
+                    <a class="nav-link admin-link" href="/ui/sasaran">Sasaran</a>
+                    <a class="nav-link admin-link" href="/ui/indikator-sasaran">Indikator Sasaran</a>
+                  </div>
+                </div>
+              </div>
 
-              <a class="nav-link admin-link" href="/ui/indikator-program"
-                >Indikator Program</a
-              >
+              <!-- PROGRAM & KEGIATAN -->
+              <div class="menu-item-group">
+                <button class="nav-link admin-link group-toggle d-flex justify-content-between align-items-center w-100" type="button" data-bs-toggle="collapse" data-bs-target="#menuProgKeg">
+                  <span><i class="bi bi-journal-text me-2"></i> Program & Kegiatan</span>
+                  <i class="bi bi-chevron-down toggle-icon"></i>
+                </button>
+                <div class="collapse" id="menuProgKeg">
+                  <div class="flex-column nav gap-1 ps-2 mt-1">
+                    <a class="nav-link admin-link" href="/ui/program">Program</a>
+                    <a class="nav-link admin-link" href="/ui/kegiatan">Kegiatan</a>
+                    <a class="nav-link admin-link" href="/ui/sub-kegiatan">Sub Kegiatan</a>
+                    <a class="nav-link admin-link" href="/ui/pagu-sub-kegiatan">Pagu Sub Kegiatan</a>
+                    <a class="nav-link admin-link" href="/ui/kontrol-pagu">Kontrol Pagu</a>
+                    <a class="nav-link admin-link" href="/ui/indikator-program">Indikator Program</a>
+                    <a class="nav-link admin-link" href="/ui/indikator-kegiatan">Indikator Kegiatan</a>
+                    <a class="nav-link admin-link" href="/ui/indikator-sub-kegiatan">Indikator Sub Kegiatan</a>
+                  </div>
+                </div>
+              </div>
 
-              <a class="nav-link admin-link" href="/ui/indikator-kegiatan"
-                >Indikator Kegiatan</a
-              >
+              <!-- MONITORING & EVALUASI -->
+              <div class="menu-item-group">
+                <button class="nav-link admin-link group-toggle d-flex justify-content-between align-items-center w-100" type="button" data-bs-toggle="collapse" data-bs-target="#menuMonev">
+                  <span><i class="bi bi-activity me-2"></i> Monev</span>
+                  <i class="bi bi-chevron-down toggle-icon"></i>
+                </button>
+                <div class="collapse" id="menuMonev">
+                  <div class="flex-column nav gap-1 ps-2 mt-1">
+                    <a class="nav-link admin-link" href="/ui/rencana-kerja">Rencana Kerja</a> 
+                    <a class="nav-link admin-link" href="/ui/indikator-kinerja">Rincian Rencana Kerja</a> 
+                    <a class="nav-link admin-link" href="/ui/rencana-kerja-spa">Rencana Kerja</a>
+                    <a class="nav-link admin-link" href="/ui/target-realisasi">Target & Realisasi</a>
+                  </div>
+                </div>
+              </div>
 
-              <a class="nav-link admin-link" href="/ui/indikator-sub-kegiatan"
-                >Indikator Sub Kegiatan</a
-              >
-              <a class="nav-link admin-link" href="/ui/rencana-kerja"
-                >Rencana Kerja</a
-              >
-              <a class="nav-link admin-link" href="/ui/indikator-kinerja"
-                >Rincian Rencana Kerja</a
-              >
-              <a class="nav-link admin-link" href="/ui/rencana-kerja-spa"
-                >Rencana Kerja</a
-              >
-              <div class="menu-group-label">Monitoring dan Evaluasi</div>
-              <a class="nav-link admin-link" href="/ui/target-realisasi"
-                >Target dan Realisasi</a
-              >
-
-              <div class="menu-group-label">Workflow Persetujuan</div>
-              <a class="nav-link admin-link" href="/ui/clients">Clients</a>
+              <div class="mt-auto pt-4">
+                <div class="sidebar-logout-card p-3 rounded-4">
+                  <p class="small text-white mb-2">Akhiri sesi Anda?</p>
+                  <a class="btn btn-sm btn-logout-sidebar w-100 d-flex align-items-center justify-content-center gap-2" data-auth-logout href="#">
+                    <i class="bi bi-box-arrow-left"></i> Logout System
+                  </a>
+                </div>
+              </div>
             </nav>
           </div>
         </aside>
@@ -187,15 +249,25 @@
                   <span class="brand-mark">AI</span>
                   <small class="fw-semibold">Menu Admin</small>
                 </div>
-                <button
-                  class="btn btn-sm mobile-menu-btn"
-                  type="button"
-                  data-bs-toggle="offcanvas"
-                  data-bs-target="#mobileSidebar"
-                  aria-controls="mobileSidebar"
-                >
-                  Menu
-                </button>
+                <div class="d-flex align-items-center gap-2">
+                  <a
+                    href="#"
+                    class="btn btn-sm mobile-logout-icon-btn d-flex align-items-center justify-content-center"
+                    data-auth-logout
+                    title="Logout"
+                  >
+                    <i class="bi bi-box-arrow-left"></i>
+                  </a>
+                  <button
+                    class="btn btn-sm mobile-menu-btn"
+                    type="button"
+                    data-bs-toggle="offcanvas"
+                    data-bs-target="#mobileSidebar"
+                    aria-controls="mobileSidebar"
+                  >
+                    Menu
+                  </button>
+                </div>
               </div>
             </div>
           </section>
@@ -224,7 +296,7 @@
                   </p>
                 </div>
               </div>
-              <div class="d-flex gap-2 flex-wrap">
+              <div class="d-flex gap-3 flex-wrap align-items-center">
                 <select
                   id="yearFilter"
                   class="form-select form-select-sm"
@@ -232,19 +304,12 @@
                 >
                   <option value="">Semua Tahun</option>
                 </select>
-                <button id="refreshBtn" class="btn btn-sm btn-primary">
-                  Refresh
+                <button id="refreshBtn" class="btn btn-sm btn-outline-primary" title="Muat Ulang Data">
+                  <i class="bi bi-arrow-clockwise"></i> Refresh
                 </button>
-                <a href="/ui/clients" class="btn btn-sm btn-outline-primary"
-                  >Buka Clients</a
+                <a href="/ui/clients" class="btn btn-sm btn-outline-secondary"
+                  ><i class="bi bi-gear me-1"></i> Clients</a
                 >
-                <button
-                  class="btn btn-sm btn-outline-danger"
-                  data-auth-logout
-                  type="button"
-                >
-                  Logout
-                </button>
               </div>
             </div>
           </section>
@@ -256,10 +321,11 @@
               <h2 class="h6 mb-0">Ringkasan KPI</h2>
               <button
                 id="retrySummary"
-                class="btn btn-sm btn-outline-secondary"
+                class="btn btn-sm btn-link text-secondary d-none p-0"
                 type="button"
+                title="Coba Lagi KPI"
               >
-                Coba Lagi KPI
+                <i class="bi bi-arrow-clockwise"></i>
               </button>
             </div>
             <div class="col-6 col-xl-3">
@@ -315,14 +381,15 @@
 
                     <button
                       id="retryChart"
-                      class="btn btn-sm btn-outline-secondary"
+                      class="btn btn-sm btn-link text-secondary d-none p-0"
                       type="button"
+                      title="Coba Lagi Grafik"
                     >
-                      Coba Lagi Grafik
+                      <i class="bi bi-arrow-clockwise"></i>
                     </button>
                   </div>
                 </div>
-                <p id="chartSubTitle" class="muted-note mb-3">Agregat per triwulan</p>
+                <p id="chartSubTitle" class="muted-note mb-3 fw-medium" style="color: #4b5e68;">Agregat per triwulan</p>
                 <canvas id="targetRealisasiChart" height="120"></canvas>
               </article>
             </div>
@@ -334,53 +401,52 @@
                   <h2 class="h6 mb-0">Distribusi Status</h2>
                   <button
                     id="retryStats"
-                    class="btn btn-sm btn-outline-secondary"
+                    class="btn btn-sm btn-link text-secondary d-none p-0"
                     type="button"
+                    title="Coba Lagi Statistik"
                   >
-                    Coba Lagi Statistik
+                    <i class="bi bi-arrow-clockwise"></i>
                   </button>
                 </div>
-                <div class="mini-stat">
-                  <span class="status-pill status-on-track">OnTrack</span
-                  ><span class="mini-stat-value"
-                    ><strong id="statOnTrack">0</strong
-                    ><span id="statOnTrackPct" class="mini-stat-pct"
-                      >0%</span
-                    ></span
-                  >
+                <div class="row align-items-center g-3">
+                  <div class="col-6">
+                    <div class="mini-stat">
+                      <span class="status-pill status-on-track">OnTrack</span>
+                      <span class="mini-stat-value">
+                        <strong id="statOnTrack">0</strong>
+                        <span id="statOnTrackPct" class="mini-stat-pct">0%</span>
+                      </span>
+                    </div>
+                    <div class="mini-stat">
+                      <span class="status-pill status-warning">Warning</span>
+                      <span class="mini-stat-value">
+                        <strong id="statWarning">0</strong>
+                        <span id="statWarningPct" class="mini-stat-pct">0%</span>
+                      </span>
+                    </div>
+                    <div class="mini-stat">
+                      <span class="status-pill status-off-track">OffTrack</span>
+                      <span class="mini-stat-value">
+                        <strong id="statOffTrack">0</strong>
+                        <span id="statOffTrackPct" class="mini-stat-pct">0%</span>
+                      </span>
+                    </div>
+                    <div class="mini-stat">
+                      <span class="status-pill status-unknown">Unknown</span>
+                      <span class="mini-stat-value">
+                        <strong id="statUnknown">0</strong>
+                        <span id="statUnknownPct" class="mini-stat-pct">0%</span>
+                      </span>
+                    </div>
+                    <div class="mt-3 pt-3 border-top border-light">
+                      <div class="muted-note small" style="font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600;">Rata-rata Capaian</div>
+                      <div id="statRataCapaian" class="h5 mb-0 fw-bold text-success-bright">0%</div>
+                    </div>
+                  </div>
+                  <div class="col-6">
+                    <canvas id="statusDistributionChart" height="220"></canvas>
+                  </div>
                 </div>
-                <div class="mini-stat">
-                  <span class="status-pill status-warning">Warning</span
-                  ><span class="mini-stat-value"
-                    ><strong id="statWarning">0</strong
-                    ><span id="statWarningPct" class="mini-stat-pct"
-                      >0%</span
-                    ></span
-                  >
-                </div>
-                <div class="mini-stat">
-                  <span class="status-pill status-off-track">OffTrack</span
-                  ><span class="mini-stat-value"
-                    ><strong id="statOffTrack">0</strong
-                    ><span id="statOffTrackPct" class="mini-stat-pct"
-                      >0%</span
-                    ></span
-                  >
-                </div>
-                <div class="mini-stat">
-                  <span class="status-pill status-unknown">UnKnown</span
-                  ><span class="mini-stat-value"
-                    ><strong id="statUnknown">0</strong
-                    ><span id="statUnknownPct" class="mini-stat-pct"
-                      >0%</span
-                    ></span
-                  >
-                </div>
-                <div class="my-3">
-                  <canvas id="statusDistributionChart" height="180"></canvas>
-                </div>
-                <div class="muted-note mb-1">Rata-rata Capaian</div>
-                <div id="statRataCapaian" class="h5 mb-0">0%</div>
               </article>
             </div>
           </section>
@@ -399,10 +465,11 @@
                   </div>
                   <button
                     id="retryYearly"
-                    class="btn btn-sm btn-outline-secondary"
+                    class="btn btn-sm btn-link text-secondary d-none p-0"
                     type="button"
+                    title="Coba Lagi Tahunan"
                   >
-                    Coba Lagi Tahunan
+                    <i class="bi bi-arrow-clockwise"></i>
                   </button>
                 </div>
                 <div class="table-responsive">
@@ -429,10 +496,11 @@
                   <h2 class="h6 mb-0">Ranking Program</h2>
                   <button
                     id="retryRanking"
-                    class="btn btn-sm btn-outline-secondary"
+                    class="btn btn-sm btn-link text-secondary d-none p-0"
                     type="button"
+                    title="Coba Lagi Ranking"
                   >
-                    Coba Lagi Ranking
+                    <i class="bi bi-arrow-clockwise"></i>
                   </button>
                 </div>
                 <div class="table-responsive">
@@ -499,10 +567,11 @@
               >
               <button
                 id="retryTargetTable"
-                class="btn btn-sm btn-outline-secondary"
+                class="btn btn-sm btn-link text-secondary d-none p-0"
                 type="button"
+                title="Coba Lagi Tabel"
               >
-                Coba Lagi Tabel
+                <i class="bi bi-arrow-clockwise"></i>
               </button>
             </div>
 
