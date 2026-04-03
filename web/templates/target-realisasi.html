@@ -69,12 +69,6 @@
                   <option value="">Pilih rencana kerja</option>
                 </select>
 
-                <label class="form-label mb-0" for="indikatorRkId"
-                  >Rincian Rencana Kerja</label
-                >
-                <select id="indikatorRkId" class="form-select" required>
-                  <option value="">Pilih rincian rencana kerja</option>
-                </select>
 
                 <label class="form-label mb-0" for="tahun">Tahun</label>
                 <input
@@ -156,20 +150,7 @@
                   </div>
                 </div>
 
-                <label class="form-label mb-0" for="diinputOleh"
-                  >Diinput Oleh (ID User)</label
-                >
-                <input
-                  id="diinputOleh"
-                  type="number"
-                  min="1"
-                  class="form-control"
-                  readonly
-                  required
-                />
-                <small class="text-muted"
-                  >Terisi otomatis dari user login</small
-                >
+                <input type="hidden" id="diinputOleh" />
 
                 <label class="form-label mb-0" for="keterangan"
                   >Keterangan</label
@@ -247,20 +228,16 @@
                   </caption>
                   <thead>
                     <tr>
-                      <th scope="col">ID</th>
-                      <th scope="col">Rincian Rencana Kerja</th>
-                      <th scope="col">Target Tahunan</th>
-                      <th scope="col">Anggaran Tahunan</th>
-                      <th scope="col">Tahun</th>
-                      <th scope="col">Bulan</th>
-                      <th scope="col">Triwulan</th>
-                      <th scope="col">Nilai Realisasi</th>
+                      <th scope="col">No</th>
+                      <th scope="col">Rencana Kerja</th>
+                      <th scope="col">Target (RK)</th>
+                      <th scope="col">Satuan</th>
+                      <th scope="col">Target Anggaran (Total)</th>
+                      <th scope="col">Realisasi Nilai (Kumulatif)</th>
                       <th scope="col">Capaian Nilai (%)</th>
-                      <th scope="col">Realisasi Anggaran</th>
+                      <th scope="col">Realisasi Anggaran (Total)</th>
                       <th scope="col">Capaian Anggaran (%)</th>
-                      <th scope="col">Diinput Oleh</th>
-                      <th scope="col">Keterangan</th>
-                      <th scope="col">Aksi</th>
+                      <th scope="col">Status</th>
                     </tr>
                   </thead>
                   <tbody id="table-body"></tbody>
@@ -276,59 +253,11 @@
         </section>
       </div>
 
-      <section class="mt-4" aria-label="Informasi dan Rute Tujuan">
-        <div class="card border-0 shadow-sm">
-          <div class="card-body">
-            <h2 class="h6 text-uppercase text-muted mb-3">Informasi Dashboard</h2>
-            <div class="row g-3">
-              <div class="col-lg-4">
-                <form id="info-form" class="vstack gap-2" autocomplete="off">
-                  <input type="hidden" id="info-id" />
-                  <label class="form-label mb-0" for="info-text">Informasi</label>
-                  <textarea id="info-text" class="form-control" rows="3" placeholder="Tulis topik informasi" required></textarea>
-                  <label class="form-label mb-0" for="info-year">Tahun</label>
-                  <input id="info-year" type="number" min="2000" max="2100" class="form-control" required />
-                  <label class="form-label mb-0" for="info-route">Rute Halaman Tujuan</label>
-                  <select id="info-route" class="form-select" required>
-                    <option value="/dashboard">Dashboard</option>
-                    <option value="/rencana-kerja">Rencana Kerja</option>
-                    <option value="/target-evaluasi">Target dan Evaluasi</option>
-                    <option value="/dokumen_pdf">Dokumen PDF</option>
-                  </select>
-                  <div class="d-flex gap-2 mt-1">
-                    <button type="submit" class="btn btn-primary btn-sm">Simpan</button>
-                    <button id="info-reset" type="button" class="btn btn-outline-secondary btn-sm">Reset</button>
-                  </div>
-                  <small id="info-status" class="text-muted">Siap</small>
-                </form>
-              </div>
-              <div class="col-lg-8">
-                <div class="table-responsive">
-                  <table class="table table-striped align-middle">
-                    <thead>
-                      <tr>
-                        <th>ID</th>
-                        <th>Informasi</th>
-                        <th>Tahun</th>
-                        <th>Rute Tujuan</th>
-                        <th>Aksi</th>
-                      </tr>
-                    </thead>
-                    <tbody id="info-table-body"></tbody>
-                  </table>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
+      <!-- Informasi Dashboard removed -->
     </main>
 
     <script>
       (() => {
-        const informasiEndpoint = "/api/v1/performance/informasi";
-        const informasiLatestEndpoint = "/api/v1/performance/informasi/latest";
-        const activeInfoRoute = "/target-evaluasi";
         const endpoint = document.body.dataset.apiEndpoint;
         const finalOnlyRefQuery = "all=true&final_only=true";
         const rencanaKerjaEndpoint = `/api/v1/rencana_kerja?${finalOnlyRefQuery}`;
@@ -337,7 +266,6 @@
         const form = document.getElementById("crud-form");
         const idInput = document.getElementById("entity-id");
         const rencanaKerjaInput = document.getElementById("rencanaKerjaId");
-        const indikatorInput = document.getElementById("indikatorRkId");
         const tahunInput = document.getElementById("tahun");
         const bulanInput = document.getElementById("bulan");
         const triwulanInput = document.getElementById("triwulan");
@@ -353,25 +281,16 @@
         const btnReset = document.getElementById("btn-reset");
         const tableBody = document.getElementById("table-body");
         const metaText = document.getElementById("meta-text");
-        const infoForm = document.getElementById("info-form");
-        const infoIDInput = document.getElementById("info-id");
-        const infoTextInput = document.getElementById("info-text");
-        const infoYearInput = document.getElementById("info-year");
-        const infoRouteInput = document.getElementById("info-route");
-        const infoStatus = document.getElementById("info-status");
-        const infoTableBody = document.getElementById("info-table-body");
-        const infoResetBtn = document.getElementById("info-reset");
-        const infoSwitcherText = document.getElementById("info-switcher-text");
         const DEFAULT_YEAR_KEY = "DEFAULT_YEAR";
 
         const rencanaKerjaMap = new Map();
+        const rkDetailMap = new Map();
         const indikatorMap = new Map();
         const indikatorDetailMap = new Map();
         let indikatorItemsCache = [];
         let currentUserID = 0;
         const MUTATION_ROLES = new Set(["ADMIN", "PERENCANA", "OPERATOR"]);
         let currentUserRole = "";
-        let switcherTimerID = null;
 
         function normalizeRole(raw) {
           return String(raw || "")
@@ -424,19 +343,15 @@
             : "text-success small";
         }
 
-        function setInfoStatus(message, isError = false) {
-          if (!infoStatus) {
-            return;
-          }
-          infoStatus.textContent = message;
-          infoStatus.className = isError ? "text-danger small" : "text-success small";
-        }
 
         function normalizeRencanaKerja(raw) {
           return {
             id: Number(raw.id ?? raw.ID ?? 0),
             kode: raw.kode ?? raw.Kode ?? "",
             nama: raw.nama ?? raw.Nama ?? "",
+            tahun: Number(raw.tahun ?? raw.Tahun ?? 0),
+            target: Number(raw.target ?? raw.Target ?? 0),
+            satuan: raw.satuan ?? raw.Satuan ?? "",
           };
         }
 
@@ -458,11 +373,7 @@
         function normalizeItem(raw) {
           return {
             id: Number(raw.id ?? raw.ID ?? 0),
-            indikatorRkId: Number(
-              raw.indikator_rencana_kerja_id ??
-                raw.IndikatorRencanaKerjaID ??
-                0,
-            ),
+            rencanaKerjaId: Number(raw.rencana_kerja_id ?? raw.RencanaKerjaID ?? 0),
             tahun: Number(raw.tahun ?? raw.Tahun ?? 0),
             bulan: raw.bulan ?? raw.Bulan ?? null,
             triwulan: raw.triwulan ?? raw.Triwulan ?? null,
@@ -521,7 +432,6 @@
         function resetForm() {
           idInput.value = "";
           rencanaKerjaInput.value = "";
-          indikatorInput.value = "";
           tahunInput.value = defaultTahun();
           bulanInput.value = "";
           triwulanInput.value = "";
@@ -530,129 +440,12 @@
           diinputOlehInput.value =
             currentUserID > 0 ? String(currentUserID) : "";
           keteranganInput.value = "";
-          applyIndikatorFilter("", "");
         }
 
-        function resetInfoForm() {
-          if (!infoForm) {
-            return;
-          }
-          infoIDInput.value = "";
-          infoTextInput.value = "";
-          infoYearInput.value = defaultTahun();
-          infoRouteInput.value = "/dashboard";
-        }
 
-        function showSwitcher(items) {
-          if (!infoSwitcherText) {
-            return;
-          }
-          if (switcherTimerID) {
-            clearInterval(switcherTimerID);
-            switcherTimerID = null;
-          }
 
-          if (!Array.isArray(items) || items.length === 0) {
-            infoSwitcherText.textContent = "Belum ada topik informasi";
-            return;
-          }
 
-          let index = 0;
-          infoSwitcherText.textContent = items[index].informasi;
-          if (items.length === 1) {
-            return;
-          }
 
-          switcherTimerID = setInterval(() => {
-            index = (index + 1) % items.length;
-            infoSwitcherText.textContent = items[index].informasi;
-          }, 5000);
-        }
-
-        function rowTemplateInformasi(item) {
-          const tr = document.createElement("tr");
-          tr.innerHTML = `
-            <td>${item.id}</td>
-            <td>${item.informasi}</td>
-            <td>${item.tahun}</td>
-            <td><a href="${item.pilihan_route_halaman_tujuan}">${item.pilihan_route_halaman_tujuan}</a></td>
-            <td class="d-flex gap-1">
-              <button type="button" class="btn btn-sm btn-outline-primary" data-action="edit-info">Edit</button>
-              <button type="button" class="btn btn-sm btn-outline-danger" data-action="delete-info">Hapus</button>
-            </td>
-          `;
-
-          tr.querySelector('[data-action="edit-info"]').addEventListener(
-            "click",
-            () => {
-              infoIDInput.value = String(item.id);
-              infoTextInput.value = item.informasi;
-              infoYearInput.value = String(item.tahun || defaultTahun());
-              infoRouteInput.value =
-                item.pilihan_route_halaman_tujuan || "/dashboard";
-              setInfoStatus(`Mode edit informasi ID ${item.id}`);
-            },
-          );
-
-          tr.querySelector('[data-action="delete-info"]').addEventListener(
-            "click",
-            async () => {
-              if (!confirm(`Hapus informasi ID ${item.id}?`)) {
-                return;
-              }
-              try {
-                await fetchJSON(`${informasiEndpoint}/${item.id}`, {
-                  method: "DELETE",
-                });
-                setInfoStatus(`Informasi ID ${item.id} berhasil dihapus`);
-                if (String(infoIDInput.value) === String(item.id)) {
-                  resetInfoForm();
-                }
-                await Promise.all([loadInformasiList(), loadInformasiSwitcher()]);
-              } catch (error) {
-                setInfoStatus(error.message, true);
-              }
-            },
-          );
-
-          return tr;
-        }
-
-        async function loadInformasiList() {
-          if (!infoTableBody) {
-            return;
-          }
-
-          infoTableBody.innerHTML =
-            '<tr><td colspan="5" class="text-center text-muted py-3">Memuat data informasi...</td></tr>';
-
-          try {
-            const params = new URLSearchParams();
-            params.set("limit", "50");
-            params.set("route", activeInfoRoute);
-            const data = await fetchJSON(`${informasiEndpoint}?${params.toString()}`);
-            const items = Array.isArray(data?.items) ? data.items : [];
-            infoTableBody.innerHTML = "";
-
-            if (items.length === 0) {
-              infoTableBody.innerHTML =
-                '<tr><td colspan="5" class="text-center text-muted py-3">Belum ada informasi</td></tr>';
-              return;
-            }
-
-            items.forEach((item) => {
-              infoTableBody.appendChild(rowTemplateInformasi(item));
-            });
-          } catch (error) {
-            infoTableBody.innerHTML =
-              '<tr><td colspan="5" class="text-center text-danger py-3">Gagal memuat informasi</td></tr>';
-            setInfoStatus(error.message, true);
-          }
-        }
-
-        async function loadInformasiSwitcher() {
-          window.__AUTH__.initInformasiSwitcher("/target-evaluasi");
-        }
 
         async function loadCurrentUser() {
           const me = await fetchJSON("/api/v1/auth/me");
@@ -663,10 +456,6 @@
           }
 
           diinputOlehInput.value = String(currentUserID);
-        }
-
-        function indikatorLabel(id) {
-          return indikatorMap.get(Number(id)) || `Indikator #${id}`;
         }
 
         function formatNumeric(value) {
@@ -701,124 +490,41 @@
           });
         }
 
-        function applyIndikatorFilter(
-          rencanaKerjaId,
-          selectedIndikatorId = "",
-        ) {
-          indikatorInput.innerHTML =
-            '<option value="">Pilih Rencana Aksi</option>';
-          indikatorMap.clear();
-
-          const selectedRkIDNum = Number(rencanaKerjaId || 0);
-          const selectedIndikatorIDNum = Number(selectedIndikatorId || 0);
-
-          const visibleItems = indikatorItemsCache.filter((item) => {
-            if (!selectedRkIDNum) {
-              return true;
-            }
-            return item.rencanaKerjaId === selectedRkIDNum;
-          });
-
-          visibleItems.forEach((item) => {
-            const label = `${item.kode} - ${item.nama}`;
-            indikatorMap.set(item.id, label);
-            indikatorDetailMap.set(item.id, item);
-
-            const option = document.createElement("option");
-            option.value = String(item.id);
-            option.textContent = label;
-            indikatorInput.appendChild(option);
-          });
-
-          if (
-            selectedIndikatorIDNum > 0 &&
-            visibleItems.some((item) => item.id === selectedIndikatorIDNum)
-          ) {
-            indikatorInput.value = String(selectedIndikatorIDNum);
-            return;
-          }
-
-          indikatorInput.value = "";
-        }
-
-        function rowTemplate(item) {
-          const indikatorItem = indikatorDetailMap.get(item.indikatorRkId);
-          const targetTahunan = Number(indikatorItem?.targetTahunan ?? 0);
-          const anggaranTahunan = Number(indikatorItem?.anggaranTahunan ?? 0);
+        function rowTemplateAggregated(rkData, index) {
           const capaianNilai = formatPercent(
-            item.nilaiRealisasi,
-            targetTahunan,
+            rkData.actualNilai,
+            rkData.target,
           );
           const capaianAnggaran = formatPercent(
-            item.realisasiAnggaran,
-            anggaranTahunan,
+            rkData.actualAnggaran,
+            rkData.totalTargetAnggaran,
           );
+
+          // Simple status logic: 100% or more is On Track
+          let statusBadge = '<span class="badge bg-secondary">BELUM DIMULAI</span>';
+          if (rkData.target > 0 && (rkData.actualNilai > 0 || rkData.actualAnggaran > 0)) {
+              const p = (rkData.actualNilai / rkData.target) * 100;
+              if (p >= 100) statusBadge = '<span class="badge bg-success">ON TRACK</span>';
+              else if (p >= 80) statusBadge = '<span class="badge bg-warning">WARNING</span>';
+              else statusBadge = '<span class="badge bg-danger">OFF TRACK</span>';
+          }
 
           const tr = document.createElement("tr");
           tr.innerHTML = `
-            <td>${item.id}</td>
-            <td>${indikatorLabel(item.indikatorRkId)}</td>
-            <td>${formatNumeric(targetTahunan)}</td>
-            <td>${formatNumeric(anggaranTahunan)}</td>
-            <td>${item.tahun || "-"}</td>
-            <td>${item.bulan ?? "-"}</td>
-            <td>${item.triwulan ?? "-"}</td>
-            <td>${item.nilaiRealisasi.toFixed(2)}</td>
-            <td>${capaianNilai}</td>
-            <td>${formatNumeric(item.realisasiAnggaran)}</td>
-            <td>${capaianAnggaran}</td>
-            <td>${item.diinputOleh || "-"}</td>
-            <td>${item.keterangan || "-"}</td>
-            <td class="text-nowrap">
-              ${canMutateByRole(currentUserRole) ? '<button class="btn btn-sm btn-outline-primary me-1" data-action="edit">Edit</button><button class="btn btn-sm btn-outline-danger" data-action="delete">Hapus</button>' : '<span class="text-muted small">Read-only</span>'}
+            <td>${index + 1}</td>
+            <td title="${rkData.nama}">
+                <div class="fw-bold">${rkData.kode}</div>
+                <div class="small text-muted text-truncate" style="max-width:250px;">${rkData.nama}</div>
             </td>
+            <td>${formatNumeric(rkData.target)}</td>
+            <td><span class="badge bg-light text-dark">${rkData.satuan || "-"}</span></td>
+            <td class="fw-bold">${formatNumeric(rkData.totalTargetAnggaran)}</td>
+            <td>${formatNumeric(rkData.actualNilai)}</td>
+            <td class="text-primary fw-bold">${capaianNilai}</td>
+            <td>${formatNumeric(rkData.actualAnggaran)}</td>
+            <td class="text-success fw-bold">${capaianAnggaran}</td>
+            <td>${statusBadge}</td>
           `;
-
-          tr.querySelector('[data-action="edit"]')?.addEventListener(
-            "click",
-            () => {
-              idInput.value = item.id;
-              const indikatorItem = indikatorDetailMap.get(item.indikatorRkId);
-              const rencanaKerjaId = indikatorItem?.rencanaKerjaId ?? 0;
-              rencanaKerjaInput.value = rencanaKerjaId
-                ? String(rencanaKerjaId)
-                : "";
-              applyIndikatorFilter(rencanaKerjaInput.value, item.indikatorRkId);
-
-              tahunInput.value = String(item.tahun || "");
-              bulanInput.value = item.bulan == null ? "" : String(item.bulan);
-              triwulanInput.value =
-                item.triwulan == null ? "" : String(item.triwulan);
-              nilaiRealisasiInput.value = String(item.nilaiRealisasi);
-              realisasiAnggaranInput.value = String(item.realisasiAnggaran);
-              diinputOlehInput.value =
-                currentUserID > 0
-                  ? String(currentUserID)
-                  : String(item.diinputOleh || "");
-              keteranganInput.value = item.keterangan || "";
-              setStatus(`Mode edit ID ${item.id}`);
-            },
-          );
-
-          tr.querySelector('[data-action="delete"]')?.addEventListener(
-            "click",
-            async () => {
-              if (!confirm(`Hapus data realisasi ID ${item.id}?`)) {
-                return;
-              }
-
-              try {
-                await fetchJSON(`${endpoint}/${item.id}`, { method: "DELETE" });
-                setStatus("Data berhasil dihapus");
-                if (Number(idInput.value) === item.id) {
-                  resetForm();
-                }
-                await loadList();
-              } catch (error) {
-                setStatus(error.message, true);
-              }
-            },
-          );
 
           return tr;
         }
@@ -843,13 +549,30 @@
             )
               .map(normalizeIndikator)
               .sort((a, b) => a.id - b.id);
+
+            // Populate mapping for easy access
+            rkDetailMap.clear();
+            rencanaKerjaItems.forEach(rk => {
+                rkDetailMap.set(rk.id, {
+                    ...rk,
+                    totalTargetAnggaran: 0
+                });
+            });
+
+            // Calculate aggregated budget for each RK
+            indikatorItemsCache.forEach(ind => {
+                const rk = rkDetailMap.get(ind.rencanaKerjaId);
+                if (rk) {
+                    rk.totalTargetAnggaran += ind.anggaranTahunan;
+                }
+            });
+
             fillSelect(
               rencanaKerjaInput,
               rencanaKerjaMap,
               rencanaKerjaItems,
               "Pilih rencana kerja",
             );
-            applyIndikatorFilter("", "");
           } catch (error) {
             setStatus(`Gagal memuat data referensi: ${error.message}`, true);
           }
@@ -857,44 +580,65 @@
 
         async function loadList() {
           tableBody.innerHTML =
-            '<tr><td colspan="14" class="text-center text-muted py-4">Memuat...</td></tr>';
+            '<tr><td colspan="10" class="text-center text-muted py-4">Memuat data evaluasi...</td></tr>';
 
           try {
             const params = new URLSearchParams();
-            const q = queryInput.value.trim();
-            if (q) {
-              params.set("q", q);
-            }
-            params.set("final_only", "true");
+            const q = queryInput.value.trim().toLowerCase();
+            params.set("all", "true"); // Load all data for frontend aggregation
 
-            const url = params.size
-              ? `${endpoint}?${params.toString()}`
-              : endpoint;
-            const data = await fetchJSON(url);
-
-            let items = (Array.isArray(data?.items) ? data.items : []).map(
-              normalizeItem,
-            );
+            const data = await fetchJSON(`${endpoint}?${params.toString()}`);
+            const rawItems = Array.isArray(data?.items) ? data.items : [];
             const filterYear = normalizeYearFilter(filterYearInput.value);
-            if (filterYear) {
-              items = items.filter((item) => String(item.tahun) === filterYear);
-            }
+
+            const displayList = Array.from(rkDetailMap.values());
+            const displayListSummary = [];
+
+            displayList.forEach((rk) => {
+              // Apply Year Filter on the RK itself if applicable (rk.tahun is assumed part of rk)
+              if (filterYear && String(rk.tahun) !== filterYear) return;
+              
+              // Apply Search Filter on RK Name/Code
+              if (q && !(rk.nama.toLowerCase().includes(q) || rk.kode.toLowerCase().includes(q))) {
+                  return;
+              }
+
+              const aggregate = {
+                ...rk,
+                actualNilai: 0,
+                actualAnggaran: 0,
+              };
+
+              // Sum all realizations belonging to this RK
+              rawItems.forEach(item => {
+                  const normalized = normalizeItem(item);
+                  if (normalized.rencanaKerjaId === rk.id) {
+                      // Year consistency for realization as well
+                      if (!filterYear || String(normalized.tahun) === filterYear) {
+                        aggregate.actualNilai += normalized.nilaiRealisasi;
+                        aggregate.actualAnggaran += normalized.realisasiAnggaran;
+                      }
+                  }
+              });
+
+              displayListSummary.push(aggregate);
+            });
 
             tableBody.innerHTML = "";
-            metaText.textContent = `Total ${items.length} data`;
+            metaText.textContent = `Total ${displayListSummary.length} Rencana Kerja`;
 
-            if (items.length === 0) {
+            if (displayListSummary.length === 0) {
               tableBody.innerHTML =
-                '<tr><td colspan="14" class="text-center text-muted py-4">Belum ada data</td></tr>';
+                '<tr><td colspan="10" class="text-center text-muted py-4">Tidak ada rencana kerja yang memenuhi kriteria</td></tr>';
               return;
             }
 
-            items
+            displayListSummary
               .sort((a, b) => a.id - b.id)
-              .forEach((item) => tableBody.appendChild(rowTemplate(item)));
+              .forEach((rkData, index) => tableBody.appendChild(rowTemplateAggregated(rkData, index)));
           } catch (error) {
             tableBody.innerHTML =
-              '<tr><td colspan="14" class="text-center text-danger py-4">Gagal memuat data</td></tr>';
+              '<tr><td colspan="10" class="text-center text-danger py-4">Gagal memuat evaluasi</td></tr>';
             setStatus(error.message, true);
           }
         }
@@ -911,8 +655,8 @@
           }
 
           const payload = {
-            indikator_rencana_kerja_id: Number(indikatorInput.value),
-            tahun: Number(tahunInput.value || 0),
+            rencana_kerja_id: Number(rencanaKerjaInput.value),
+            tahun: Number(tahunInput.value),
             nilai_realisasi: Number(nilaiRealisasiInput.value || 0),
             realisasi_anggaran: Number(realisasiAnggaranInput.value || 0),
             diinput_oleh: Number(currentUserID || diinputOlehInput.value || 0),
@@ -934,10 +678,6 @@
             return;
           }
 
-          if (!payload.indikator_rencana_kerja_id) {
-            setStatus("Indikator rencana kerja wajib dipilih", true);
-            return;
-          }
           if (!payload.diinput_oleh) {
             setStatus("ID user login tidak valid", true);
             return;
@@ -1008,49 +748,7 @@
           }
         });
 
-        infoForm?.addEventListener("submit", async (event) => {
-          event.preventDefault();
 
-          const id = String(infoIDInput.value || "").trim();
-          const isEdit = id !== "";
-          const payload = {
-            informasi: infoTextInput.value.trim(),
-            tahun: Number(infoYearInput.value || 0),
-            pilihan_route_halaman_tujuan: infoRouteInput.value,
-          };
-
-          if (
-            !payload.informasi ||
-            !payload.tahun ||
-            !payload.pilihan_route_halaman_tujuan
-          ) {
-            setInfoStatus("Semua field informasi wajib diisi", true);
-            return;
-          }
-
-          try {
-            await fetchJSON(isEdit ? `${informasiEndpoint}/${id}` : informasiEndpoint, {
-              method: isEdit ? "PUT" : "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify(payload),
-            });
-
-            setInfoStatus(
-              isEdit
-                ? `Informasi ID ${id} berhasil diperbarui`
-                : "Informasi baru berhasil disimpan",
-            );
-            resetInfoForm();
-            await Promise.all([loadInformasiList(), loadInformasiSwitcher()]);
-          } catch (error) {
-            setInfoStatus(error.message, true);
-          }
-        });
-
-        infoResetBtn?.addEventListener("click", () => {
-          resetInfoForm();
-          setInfoStatus("Form informasi direset");
-        });
 
         (async () => {
           try {
@@ -1062,12 +760,10 @@
             applyRoleAccess();
             applyInitialYearFilter();
             resetForm();
-            resetInfoForm();
-            await loadReferenceOptions();
             await Promise.all([
+              loadReferenceOptions(),
               loadList(),
-              loadInformasiList(),
-              loadInformasiSwitcher(),
+              window.__AUTH__.initInformasiSwitcher("/target-evaluasi")
             ]);
           } catch (error) {
             setStatus(`Gagal inisialisasi form: ${error.message}`, true);

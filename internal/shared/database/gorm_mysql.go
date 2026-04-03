@@ -71,9 +71,37 @@ func openAndPingGorm(dbCfg GormMySQLConfig, gormCfg *gorm.Config) (*gorm.DB, err
 	return db, nil
 }
 
-// PingMySQL checks database availability without creating a long-lived pool.
+// PingMySQL checks database availability with retries for robustness.
 func PingMySQL(cfg *config.Config) error {
-	db, err := sql.Open("mysql", cfg.MySQLDSN)
+	maxRetries := cfg.DBConnectMaxRetries
+	if maxRetries < 0 {
+		maxRetries = 0
+	}
+
+	retryDelay := time.Duration(cfg.DBConnectRetryDelaySecs) * time.Second
+	if retryDelay <= 0 {
+		retryDelay = time.Second
+	}
+
+	var lastErr error
+	for attempt := 0; attempt <= maxRetries; attempt++ {
+		err := pingOnce(cfg.MySQLDSN)
+		if err == nil {
+			return nil
+		}
+
+		lastErr = err
+		if attempt < maxRetries {
+			fmt.Printf("[DB-PING] Attempt %d/%d failed, retrying in %v: %v\n", attempt+1, maxRetries, retryDelay, err)
+			time.Sleep(retryDelay)
+		}
+	}
+
+	return lastErr
+}
+
+func pingOnce(dsn string) error {
+	db, err := sql.Open("mysql", dsn)
 	if err != nil {
 		return WrapConnectionError("sql open", fmt.Errorf("open mysql: %w", err))
 	}

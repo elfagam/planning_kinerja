@@ -1,15 +1,15 @@
-
 services:
   app:
     build: .
     restart: unless-stopped
     ports:
       - "7002:8080"
+    env_file:
+      - .env
     environment:
+      - PORT=8080
       - HTTP_ADDR=0.0.0.0:8080
       - MYSQL_DSN=root:rootpassword@tcp(db:3306)/e-plan-ai?parseTime=true
-      - AUTH_ENABLED=true
-      - AUTH_TOKEN=change-me-in-production
       - TZ=Asia/Jakarta
     depends_on:
       db:
@@ -24,12 +24,12 @@ services:
       - MYSQL_ROOT_PASSWORD=rootpassword
     healthcheck:
       test: ["CMD", "mysqladmin" ,"ping", "-h", "localhost"]
-      timeout: 20s
-      retries: 10
+      interval: 10s
+      timeout: 5s
+      retries: 5
     volumes:
       - mysql_data:/var/lib/mysql
       - ./init-db:/docker-entrypoint-initdb.d/init.sql
 
 volumes:
   mysql_data:
-

@@ -18,6 +18,8 @@ type ExportIndikatorCSVFlatDTO struct {
 	// Detail Data
 	RencanaKerjaKode         string
 	RencanaKerjaNama         string
+	RencanaKerjaTarget       float64
+	RencanaKerjaSatuan       string
 	StandarHargaIdRekening   string
 	StandarHargaId           uint64
 	IndikatorKode            string
@@ -55,6 +57,8 @@ type RencanaKerja struct {
 	Name                   string
 	Tahun                  int16
 	Triwulan               int8
+	Target                 float64
+	Satuan                 string
 	UnitPengusulID         int64
 	Status                 Status
 	Notes                  string
@@ -98,9 +102,9 @@ type IndikatorRencanaKerja struct {
 
 // RealisasiRencanaKerja represents periodical realization of one indikator rencana kerja.
 type RealisasiRencanaKerja struct {
-	ID                      int64
-	IndikatorRencanaKerjaID int64
-	Tahun                   int16
+	ID             int64
+	RencanaKerjaID int64
+	Tahun          int16
 	Bulan                   int8
 	Triwulan                int8
 	NilaiRealisasi          float64

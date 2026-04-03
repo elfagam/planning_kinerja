@@ -90,7 +90,8 @@ func (h *QnaHandler) getThread(c *gin.Context) {
 func (h *QnaHandler) answerQuestion(c *gin.Context) {
 	questionID, _ := strconv.ParseUint(c.Param("id"), 10, 64)
 	var req struct {
-		Content string `json:"content" binding:"required"`
+		Content      string `json:"content" binding:"required"`
+		BestPractice string `json:"best_practice"`
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -102,9 +103,10 @@ func (h *QnaHandler) answerQuestion(c *gin.Context) {
 	userID, _ := userIDRaw.(uint64)
 
 	a := &domain.Answer{
-		QuestionID: questionID,
-		UserID:     userID,
-		Content:    req.Content,
+		QuestionID:   questionID,
+		UserID:       userID,
+		Content:      req.Content,
+		BestPractice: req.BestPractice,
 	}
 
 	if err := h.usecase.AnswerQuestion(c.Request.Context(), a); err != nil {

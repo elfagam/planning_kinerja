@@ -22,24 +22,24 @@
     try {
       const isOperator = normalizeRole(currentUserRole) === "OPERATOR";
       let url = "/api/v1/unit_pengusul";
+      
+      // Strict API filtering only for OPERATOR
       if (isOperator && currentUserUnitPengusulId) {
         url += `?user_unit_id=${encodeURIComponent(currentUserUnitPengusulId)}`;
       }
+      
       const data = await fetchJSON(url);
       const items = Array.isArray(data?.items) ? data.items : [];
+      
+      // Filter logically in UI for OPERATOR if API didn't handle it
       let filteredItems = items;
       if (isOperator && currentUserUnitPengusulId) {
         filteredItems = items.filter(
           (item) =>
             String(item.id ?? item.ID) === String(currentUserUnitPengusulId),
         );
-        // console.log(
-        //   "[unit_pengusul] filtered for OPERATOR (API):",
-        //   filteredItems,
-        // );
-      } else {
-        // console.log("[unit_pengusul] all items:", items);
       }
+
       filteredItems.forEach((item) => {
         const id = item.id ?? item.ID;
         const nama = item.nama ?? item.Nama;
@@ -50,23 +50,28 @@
           unitPengusulInput.appendChild(opt);
         }
       });
-      // Set default ke unit user login jika ada
+
+      // GLOBAL AUTO-FILL: Default to user's unit for ANY role that has one
       if (currentUserUnitPengusulId) {
         unitPengusulInput.value = String(currentUserUnitPengusulId);
+        // console.log("[unit_pengusul] auto-selected:", currentUserUnitPengusulId);
       }
     } catch (err) {
-      // fallback: kosongkan dropdown
+      console.error("[unit_pengusul] load error:", err);
     }
   }
 
-  async function loadCurrentUserUnitPengusul() {
+  async function refreshSessionInfo() {
     try {
-      const me = await fetchJSON("/api/v1/auth/me");
-      // console.log("[auth/me] for unit_pengusul_id:", me);
+      // Use fetchJSON for consistency (auto-unwraps .data)
+      const userData = await fetchJSON("/api/v1/auth/me");
+      currentUserRole = normalizeRole(userData?.role || "");
+      currentUserID = userData?.user_id ?? userData?.userID ?? 0;
       currentUserUnitPengusulId =
-        me?.unit_pengusul_id ?? me?.unitPengusulID ?? null;
+        userData?.unit_pengusul_id ?? userData?.unitPengusulID ?? null;
+      // console.log("[session] loaded:", { currentUserRole, currentUserUnitPengusulId });
     } catch (err) {
-      console.error("[auth/me] unit_pengusul error:", err);
+      console.error("[session] error:", err);
     }
   }
   const endpoint = document.body.dataset.apiEndpoint;
@@ -87,6 +92,7 @@
   const targetTahunanInput = document.getElementById("targetTahunan");
   const hargaSatuanInput = document.getElementById("hargaSatuan");
   const anggaranTahunanInput = document.getElementById("anggaranTahunan");
+  const dibuatOlehInput = document.getElementById("dibuatOleh");
   const statusText = document.getElementById("status-text");
   const queryInput = document.getElementById("query");
   const btnSearch = document.getElementById("btn-search");
@@ -97,6 +103,7 @@
   const rencanaKerjaMap = new Map();
   let rencanaKerjaItemsCache = [];
   let currentListItems = [];
+  let currentUserID = 0;
   let page = 1;
   const pageSize = window.pageSize || 5;
   let totalItems = 0;
@@ -214,6 +221,7 @@
       targetTahunan: Number(raw.target_tahunan ?? raw.TargetTahunan ?? 0),
       hargaSatuan: Number(raw.harga_satuan ?? raw.HargaSatuan ?? 0),
       anggaranTahunan: Number(raw.anggaran_tahunan ?? raw.AnggaranTahunan ?? 0),
+      dibuatOleh: Number(raw.dibuat_oleh ?? raw.DibuatOleh ?? 0),
     };
   }
 
@@ -262,6 +270,9 @@
     hargaSatuanInput.value = "0";
     targetTahunanInput.value = "0";
     anggaranTahunanInput.value = "0";
+    if (dibuatOlehInput) {
+      dibuatOlehInput.value = currentUserID > 0 ? String(currentUserID) : "";
+    }
   }
 
   function rencanaKerjaLabel(id) {
@@ -339,6 +350,9 @@
           item.hargaSatuan !== undefined ? item.hargaSatuan : "0",
         );
         anggaranTahunanInput.value = String(item.anggaranTahunan);
+        if (dibuatOlehInput) {
+          dibuatOlehInput.value = String(item.dibuatOleh || "");
+        }
         setStatus(`Mode edit ID ${item.id}`);
       });
       tdAction.appendChild(btnEdit);
@@ -668,6 +682,7 @@
       target_tahunan: Number(targetTahunanInput.value || 0),
       harga_satuan: Number(hargaSatuanInput.value || 0),
       anggaran_tahunan: Number(anggaranTahunanInput.value || 0),
+      dibuat_oleh: currentUserID || Number(dibuatOlehInput.value || 0),
     };
     if (tbShId > 0) payload.tb_standar_harga_id = tbShId;
 
@@ -859,25 +874,6 @@
     });
   }
 
-  async function loadCurrentUser() {
-    try {
-      const token = window.__AUTH__
-        ? window.__AUTH__.getAccessToken()
-        : localStorage.getItem("AUTH_TOKEN") ||
-          localStorage.getItem("authToken") ||
-          "";
-      if (!token) return;
-      const res = await fetch("/api/v1/auth/me", {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!res.ok) return;
-      const body = await res.json();
-      // console.log("[auth/me] user data:", body?.data);
-      currentUserRole = normalizeRole(body?.data?.role ?? "");
-    } catch (err) {
-      console.error("[auth/me] error:", err);
-    }
-  }
 
   (async () => {
     targetTahunanInput.addEventListener("input", updateAnggaranTahunan);
@@ -892,16 +888,20 @@
     }
 
     anggaranTahunanInput.readOnly = true;
-
-    // Load user, then unit_pengusul, then rencana kerja
-    await loadCurrentUser();
-    await loadCurrentUserUnitPengusul();
+ 
+    // Wait for session info before everything else
+    await refreshSessionInfo();
+    
+    // Load dropdown options
     await loadUnitPengusulOptions();
     applyRoleAccess();
+    
+    // Load dependent rencana kerja and the final list
     await loadRencanaKerjaOptions();
     await loadList();
+    
     setStatus("Data siap dikelola");
-    // Event listener: reload rencana kerja & list saat unit pengusul berubah
+    
     if (unitPengusulInput) {
       unitPengusulInput.addEventListener("change", async () => {
         await loadRencanaKerjaOptions();

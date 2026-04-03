@@ -127,10 +127,20 @@
                   <h5 class="card-title mb-0 text-primary fw-semibold">
                     <span v-text="q.title"></span>
                   </h5>
-                  <span
-                    :class="['badge', q.status === 'resolved' ? 'bg-success' : 'bg-warning text-dark']"
-                    v-text="q.status === 'resolved' ? 'Selesai' : 'Terbuka'"
-                  ></span>
+                  <div class="d-flex align-items-start gap-2">
+                    <span
+                      :class="['badge', q.status === 'resolved' ? 'bg-success' : 'bg-warning text-dark']"
+                      v-text="q.status === 'resolved' ? 'Selesai' : 'Terbuka'"
+                    ></span>
+                    <button
+                      v-if="canDelete"
+                      @click.stop="deleteQuestion(q.id)"
+                      class="btn btn-sm btn-outline-danger border-0"
+                      title="Hapus Pertanyaan"
+                    >
+                      Hapus
+                    </button>
+                  </div>
                 </div>
                 <p class="card-text text-truncate text-muted">
                   <span v-text="q.content"></span>
@@ -246,10 +256,16 @@
                 class="answer-item"
               >
                 <p
-                  class="mb-2"
+                  class="mb-3"
                   style="white-space: pre-wrap"
                   v-text="ans.content"
                 ></p>
+                <div v-if="ans.best_practice" class="alert alert-success border-0 bg-opacity-10 bg-success shadow-sm mb-3">
+                  <div class="d-flex align-items-center mb-1 text-success">
+                    <h6 class="alert-heading fw-bold mb-0 small">💡 Saran Best Practice:</h6>
+                  </div>
+                  <p class="mb-0 text-dark" style="font-size: 0.9rem;" v-text="ans.best_practice"></p>
+                </div>
                 <div class="d-flex gap-2 text-muted small">
                   <span>👤 <span v-text="ans.username"></span></span>
                   <span
@@ -266,6 +282,17 @@
                   rows="4"
                   id="reply-content"
                   name="reply-content"
+                  placeholder="Ketik jawaban Anda di sini..."
+                ></textarea>
+                
+                <h6 class="fw-bold mb-2 small text-success">💡 Saran Best Practice (Opsional)</h6>
+                <textarea
+                  v-model="replyForm.best_practice"
+                  class="form-control mb-3"
+                  rows="2"
+                  id="reply-best-practice"
+                  name="reply-best-practice"
+                  placeholder="Masukan tips atau langkah-langkah praktis..."
                 ></textarea>
                 <button
                   @click="postAnswer"

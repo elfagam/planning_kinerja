@@ -44,12 +44,24 @@ Setelah proyek berjalan, gunakan akun berikut untuk masuk. Tiap akun memiliki ak
 
 Semua akun demo di atas menggunakan password yang sama: `Admin123!`.
 
-## Fitur Keamanan Modern (RBAC Backend & Frontend)
+## Fitur Keamanan & Workflow Modern
 
-Aplikasi ini telah diperkeras dengan keamanan berlapis:
-- **Client-Side Guard (JavaScript):** File `auth-client.js` secara mandiri membaca token JWT pengguna dan secara dinamis menyembunyikan navigasi (*Menu Guard*) serta melindungi halaman (*Route Guard*) jika peran anggota memindai halaman diluar akses (seperti `/ui/manajemen-user` untuk Operator). Perlindungan path bersifat *subfolder proxy-safe*.
-- **Server-Side API Shield (Golang):** Di-*backup* oleh global *middleware* Golang `OperatorReadOnly`. Setiap *request* manipulasi data (POST/PUT/DELETE) ke grup API `/api/v1` akan dimoderasi ketat. Peran terbatas (seperti `OPERATOR`) hanya diizinkan memodifikasi rujukan API yang ditetapkan dalam profil mereka secara absolut (misal `/api/v1/rencana_kerja`). Pelanggaran luar rute tersebut otomatis dijatuhkan dengan kode `403 Forbidden`.
-- **Mitigasi *Clock Drift*:** Deteksi JWT Refresh Token pintar untuk memitigasi selisih waktu sistem antara Docker kontainer (backend) dan Jam perangkat (*browser*) klien, mencegah terjadinya malfungsi *infinite reload loop*.
+Aplikasi ini telah diperkeras dengan keamanan berlapis dan alur kerja (workflow) yang ketat:
+
+- **Alur Kerja 3-Lapis (3-Tier Approval):** Untuk modul Rencana Kerja, sistem menerapkan pemisahan tugas (SoD):
+  - **OPERATOR & PERENCANA (Inputter):** Hanya dapat membuat dan mengubah data dalam status `DRAFT`. Form akan terkunci secara otomatis jika data sudah masuk tahap verifikasi.
+  - **VERIFIKATOR (Reviewer):** Memeriksa `DRAFT` dan mengubahnya menjadi `DIAJUKAN` atau `DITOLAK` (kembali ke inputter).
+  - **PIMPINAN & ADMIN (Approver):** Memberikan keputusan akhir `DISETUJUI` pada data yang sudah berstatus `DIAJUKAN`.
+  
+- **Validasi Catatan Penolakan:** Setiap perubahan status menjadi `DITOLAK` diwajibkan menyertakan isi pada field `catatan`. Sistem akan menolak penyimpanan jika catatan kosong.
+
+- **Automated User Tracking:** Field pelacakan pembuat data (`dibuat_oleh` / `diinput_oleh`) kini diotomatisasi. Sistem mengambil ID pengguna langsung dari sesi JWT aktif dan menginjeksikannya ke dalam database untuk menjamin akuntabilitas data.
+
+- **Client-Side Guard (JavaScript):** File `auth-client.js` secara mandiri membaca token JWT pengguna dan secara dinamis menyembunyikan navigasi (*Menu Guard*) serta melindungi halaman (*Route Guard*). UI juga secara dinamis melakukan *form locking* berdasarkan status data dan peran pengguna.
+
+- **Server-Side API Shield (Golang):** Selain validasi role global, backend kini memiliki logika `validateRencanaKerjaStatusTransition` yang menjaga agar transisi status hanya bisa dilakukan oleh role yang berwenang (misal: Operator dilarang melakukan Approve).
+
+- **Mitigasi *Clock Drift*:** Deteksi JWT Refresh Token pintar untuk memitigasi selisih waktu sistem antara Docker kontainer (backend) dan Jam perangkat klien.
 
 ## Struktur Folder
 

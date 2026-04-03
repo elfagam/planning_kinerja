@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"e-plan-ai/internal/config"
+	"e-plan-ai/internal/modules/performance/usecase"
 	"e-plan-ai/internal/shared/database"
 	"e-plan-ai/internal/shared/response"
 
@@ -310,6 +311,8 @@ func (h *Handler) list(rc resourceConfig) gin.HandlerFunc {
 				"nama":                      "rencana_kerja.nama",
 				"tahun":                     "rencana_kerja.tahun",
 				"triwulan":                  "rencana_kerja.triwulan",
+				"target":                    "rencana_kerja.target",
+				"satuan":                    "rencana_kerja.satuan",
 				"status":                    "rencana_kerja.status",
 				"created_at":                "rencana_kerja.created_at",
 				"updated_at":                "rencana_kerja.updated_at",
@@ -324,7 +327,7 @@ func (h *Handler) list(rc resourceConfig) gin.HandlerFunc {
 				Model(&database.RencanaKerja{}).
 				Joins("LEFT JOIN indikator_sub_kegiatan ON indikator_sub_kegiatan.id = rencana_kerja.indikator_sub_kegiatan_id").
 				Joins("LEFT JOIN unit_pengusul ON unit_pengusul.id = rencana_kerja.unit_pengusul_id").
-				Preload("IndikatorSubKegiatan").
+				Preload("IndikatorSubKegiatan.SubKegiatan").
 				Preload("UnitPengusul")
 
 			if q != "" {
@@ -333,12 +336,13 @@ func (h *Handler) list(rc resourceConfig) gin.HandlerFunc {
 					strings.Join([]string{
 						"rencana_kerja.kode LIKE ?",
 						"rencana_kerja.nama LIKE ?",
+						"rencana_kerja.satuan LIKE ?",
 						"indikator_sub_kegiatan.kode LIKE ?",
 						"indikator_sub_kegiatan.nama LIKE ?",
 						"unit_pengusul.kode LIKE ?",
 						"unit_pengusul.nama LIKE ?",
 					}, " OR "),
-					like, like, like, like, like, like,
+					like, like, like, like, like, like, like,
 				)
 			}
 
@@ -369,13 +373,13 @@ func (h *Handler) list(rc resourceConfig) gin.HandlerFunc {
 				queryx = queryx.Where("rencana_kerja.unit_pengusul_id = ?", unitID)
 			}
 
-			if indikatorIDRaw := strings.TrimSpace(c.Query("indikator_sub_kegiatan_id")); indikatorIDRaw != "" {
-				indikatorID, err := strconv.ParseUint(indikatorIDRaw, 10, 64)
-				if err != nil || indikatorID == 0 {
+			if rkIDRaw := strings.TrimSpace(c.Query("indikator_sub_kegiatan_id")); rkIDRaw != "" {
+				rkID, err := strconv.ParseUint(rkIDRaw, 10, 64)
+				if err != nil || rkID == 0 {
 					response.Error(c, http.StatusBadRequest, "indikator_sub_kegiatan_id harus berupa angka > 0")
 					return
 				}
-				queryx = queryx.Where("rencana_kerja.indikator_sub_kegiatan_id = ?", indikatorID)
+				queryx = queryx.Where("rencana_kerja.indikator_sub_kegiatan_id = ?", rkID)
 			}
 
 			if statusRaw := strings.TrimSpace(c.Query("status")); statusRaw != "" {
@@ -387,11 +391,33 @@ func (h *Handler) list(rc resourceConfig) gin.HandlerFunc {
 				queryx = queryx.Where("rencana_kerja.status = ?", status)
 			}
 
+			if targetRaw := strings.TrimSpace(c.Query("target")); targetRaw != "" {
+				target, err := coerceFloat64(targetRaw)
+				if err != nil {
+					response.Error(c, http.StatusBadRequest, "target harus berupa angka")
+					return
+				}
+				queryx = queryx.Where("rencana_kerja.target = ?", target)
+			}
+
+			if satuanRaw := strings.TrimSpace(c.Query("satuan")); satuanRaw != "" {
+				queryx = queryx.Where("rencana_kerja.satuan LIKE ?", "%"+satuanRaw+"%")
+			}
+
 			if isTruthy(c.Query("final_only")) {
 				queryx = queryx.Where("rencana_kerja.status = ?", "DISETUJUI")
 			}
 
-			h.respondPaginated(c, queryx.Order(sortColumn+" "+strings.ToUpper(order)), items, rc)
+			var rows []database.RencanaKerja
+			if err := queryx.Order(sortColumn + " " + strings.ToUpper(order)).Find(&rows).Error; err != nil {
+				response.Error(c, http.StatusInternalServerError, mapReadError(rc, "list", err))
+				return
+			}
+
+			response.Success(c, gin.H{
+				"items": rows,
+				"total": len(rows),
+			})
 			return
 		}
 
@@ -436,8 +462,7 @@ func (h *Handler) list(rc resourceConfig) gin.HandlerFunc {
 		}
 
 		if rc.path == "realisasi_rencana_kerja" && isTruthy(c.Query("final_only")) {
-			query = query.Joins("JOIN indikator_rencana_kerja irk ON irk.id = realisasi_rencana_kerja.indikator_rencana_kerja_id").
-				Joins("JOIN rencana_kerja rk ON rk.id = irk.rencana_kerja_id").
+			query = query.Joins("JOIN rencana_kerja rk ON rk.id = realisasi_rencana_kerja.rencana_kerja_id").
 				Where("rk.status = ?", "DISETUJUI")
 		}
 
@@ -629,7 +654,7 @@ func (h *Handler) get(rc resourceConfig) gin.HandlerFunc {
 		if rc.path == "rencana_kerja" {
 			var item database.RencanaKerja
 			err := h.db.WithContext(c.Request.Context()).
-				Preload("IndikatorSubKegiatan").
+				Preload("IndikatorSubKegiatan.SubKegiatan").
 				Preload("UnitPengusul").
 				First(&item, "id = ?", id).Error
 			if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -728,10 +753,20 @@ func (h *Handler) create(rc resourceConfig) gin.HandlerFunc {
 			}
 		}
 
-		// Auto-inject dibuat_oleh from auth context for all resources that need it
-		if userID, ok := c.Get("auth.user_id"); ok {
-			if _, exists := payload["dibuat_oleh"]; !exists || payload["dibuat_oleh"] == nil || payload["dibuat_oleh"] == 0 {
-				payload["dibuat_oleh"] = userID
+		// Auto-inject dibuat_oleh from auth context if it's part of required keys and not provided
+		hasDibuatOlehKey := false
+		for _, k := range rc.requiredKeys {
+			if k == "dibuat_oleh" {
+				hasDibuatOlehKey = true
+				break
+			}
+		}
+
+		if hasDibuatOlehKey {
+			if userID, ok := c.Get("auth.user_id"); ok {
+				if _, exists := payload["dibuat_oleh"]; !exists || payload["dibuat_oleh"] == nil || payload["dibuat_oleh"] == 0 {
+					payload["dibuat_oleh"] = userID
+				}
 			}
 		}
 
@@ -799,12 +834,12 @@ func (h *Handler) create(rc resourceConfig) gin.HandlerFunc {
 		}
 
 		if rc.path == "realisasi_rencana_kerja" {
-			indikatorID, err := payloadUint64(payload, "indikator_rencana_kerja_id")
-			if err != nil || indikatorID == 0 {
-				response.Error(c, http.StatusBadRequest, "indikator_rencana_kerja_id harus berupa angka > 0")
+			rkID, err := payloadUint64(payload, "rencana_kerja_id")
+			if err != nil || rkID == 0 {
+				response.Error(c, http.StatusBadRequest, "rencana_kerja_id harus berupa angka > 0")
 				return
 			}
-			if err := h.ensureIndikatorRencanaKerjaFinal(c, indikatorID); err != nil {
+			if err := h.ensureRencanaKerjaFinal(c, rkID); err != nil {
 				response.Error(c, http.StatusUnprocessableEntity, err.Error())
 				return
 			}
@@ -833,7 +868,7 @@ func (h *Handler) create(rc resourceConfig) gin.HandlerFunc {
 
 			var created database.RencanaKerja
 			if err := h.db.WithContext(c.Request.Context()).
-				Preload("IndikatorSubKegiatan").
+				Preload("IndikatorSubKegiatan.SubKegiatan").
 				Preload("UnitPengusul").
 				First(&created, "id = ?", rencanaKerja.ID).Error; err != nil {
 				response.Error(c, http.StatusInternalServerError, mapReadError(rc, "get", err))
@@ -870,9 +905,43 @@ func (h *Handler) create(rc resourceConfig) gin.HandlerFunc {
 			}
 		}
 
+		if rc.path == "indikator_rencana_kerja" {
+			if err := normalizeIndikatorRencanaKerjaPayload(payload); err != nil {
+				response.Error(c, http.StatusBadRequest, err.Error())
+				return
+			}
+			rkID, _ := payloadUint64(payload, "rencana_kerja_id")
+			if err := h.ensureRencanaKerjaEditable(c, rkID); err != nil {
+				response.Error(c, http.StatusForbidden, err.Error())
+				return
+			}
+		}
+
+		if rc.path == "realisasi_rencana_kerja" {
+			delete(payload, "dibuat_oleh")
+		}
+
 		if err := h.db.WithContext(c.Request.Context()).Model(rc.newModel()).Create(payload).Error; err != nil {
 			response.Error(c, http.StatusBadRequest, mapWriteError(rc, "create", err))
 			return
+		}
+
+		if rc.path == "realisasi_rencana_kerja" {
+			rkID, _ := payloadUint64(payload, "rencana_kerja_id")
+			tahunRaw, _ := coerceInt(payload["tahun"])
+			tahun := int16(tahunRaw)
+			bulanRaw, _ := coerceInt(payload["bulan"])
+			bulan := int8(bulanRaw)
+			triwulanRaw, _ := coerceInt(payload["triwulan"])
+			triwulan := int8(triwulanRaw)
+
+			if triwulan == 0 && bulan > 0 {
+				triwulan = (bulan + 2) / 3
+			}
+			if triwulan > 0 {
+				dbSource := h.db.Session(&gorm.Session{})
+				go usecase.SyncTargetDanRealisasi(dbSource, rkID, tahun, triwulan)
+			}
 		}
 
 		if rc.path == "program" {
@@ -990,20 +1059,61 @@ func (h *Handler) update(rc resourceConfig) gin.HandlerFunc {
 			return
 		}
 		if rc.path == "realisasi_rencana_kerja" {
-			indikatorID, err := payloadUint64(payload, "indikator_rencana_kerja_id")
-			if err != nil || indikatorID == 0 {
-				response.Error(c, http.StatusBadRequest, "indikator_rencana_kerja_id harus berupa angka > 0")
+			rkID, err := payloadUint64(payload, "rencana_kerja_id")
+			if err != nil || rkID == 0 {
+				response.Error(c, http.StatusBadRequest, "rencana_kerja_id harus berupa angka > 0")
 				return
 			}
-			if err := h.ensureIndikatorRencanaKerjaFinal(c, indikatorID); err != nil {
+			if err := h.ensureRencanaKerjaFinal(c, rkID); err != nil {
 				response.Error(c, http.StatusUnprocessableEntity, err.Error())
 				return
 			}
 		}
 		if rc.path == "rencana_kerja" {
+			var old database.RencanaKerja
+			if err := h.db.WithContext(c.Request.Context()).First(&old, id).Error; err != nil {
+				response.Error(c, http.StatusNotFound, "rencana_kerja not found")
+				return
+			}
+
+			rawRole, _ := c.Get("auth.role")
+			role := strings.ToUpper(strings.TrimSpace(fmt.Sprintf("%v", rawRole)))
+
+			// 1. Basic permission: check unit ownership for non-ADMIN
+			if role != "ADMIN" {
+				uid, ok := h.getAuthUnitID(c)
+				if !ok || uid != old.UnitPengusulID {
+					response.Error(c, http.StatusForbidden, "anda tidak memiliki akses ke rencana_kerja ini")
+					return
+				}
+			}
+
 			if err := normalizeRencanaKerjaPayload(payload); err != nil {
 				response.Error(c, http.StatusBadRequest, err.Error())
 				return
+			}
+
+			newStatus, _ := payload["status"].(string)
+			if newStatus == "" {
+				newStatus = old.Status
+			}
+
+			// 2. Status Transition Validation
+			if err := validateRencanaKerjaStatusTransition(old.Status, newStatus, role); err != nil {
+				response.Error(c, http.StatusForbidden, err.Error())
+				return
+			}
+
+			// 3. Automated Approval Fields
+			if newStatus == "DISETUJUI" && old.Status != "DISETUJUI" {
+				rawUserID, _ := c.Get("auth.user_id")
+				userID, _ := coerceInt(rawUserID)
+				if userID > 0 {
+					uid64 := uint64(userID)
+					payload["disetujui_oleh"] = &uid64
+					now := time.Now()
+					payload["tanggal_persetujuan"] = &now
+				}
 			}
 
 			delete(payload, "id")
@@ -1031,7 +1141,7 @@ func (h *Handler) update(rc resourceConfig) gin.HandlerFunc {
 
 			var updated database.RencanaKerja
 			if err := h.db.WithContext(c.Request.Context()).
-				Preload("IndikatorSubKegiatan").
+				Preload("IndikatorSubKegiatan.SubKegiatan").
 				Preload("UnitPengusul").
 				First(&updated, "id = ?", id).Error; err != nil {
 				response.Error(c, http.StatusInternalServerError, mapReadError(rc, "get", err))
@@ -1053,10 +1163,53 @@ func (h *Handler) update(rc resourceConfig) gin.HandlerFunc {
 		delete(payload, "created_at")
 		delete(payload, "updated_at")
 
+		if rc.path == "indikator_rencana_kerja" {
+			if err := normalizeIndikatorRencanaKerjaPayload(payload); err != nil {
+				response.Error(c, http.StatusBadRequest, err.Error())
+				return
+			}
+			// For update, we need the parent ID. If not in payload, fetch from DB.
+			rkID, _ := payloadUint64(payload, "rencana_kerja_id")
+			if rkID == 0 {
+				var irk database.IndikatorRencanaKerja
+				if err := h.db.First(&irk, id).Error; err == nil {
+					rkID = irk.RencanaKerjaID
+				}
+			}
+			if rkID > 0 {
+				if err := h.ensureRencanaKerjaEditable(c, rkID); err != nil {
+					response.Error(c, http.StatusForbidden, err.Error())
+					return
+				}
+			}
+		}
+
+		if rc.path == "realisasi_rencana_kerja" {
+			delete(payload, "dibuat_oleh")
+		}
+
 		res := h.db.WithContext(c.Request.Context()).Model(rc.newModel()).Where("id = ?", id).Updates(payload)
 		if res.Error != nil {
 			response.Error(c, http.StatusBadRequest, mapWriteError(rc, "update", res.Error))
 			return
+		}
+
+		if rc.path == "realisasi_rencana_kerja" && res.RowsAffected > 0 {
+			var item database.RealisasiRencanaKerja
+			if err := h.db.WithContext(c.Request.Context()).First(&item, id).Error; err == nil {
+				rkID := item.RencanaKerjaID
+				tahun := item.Tahun
+				var triwulan int8
+				if item.Triwulan != nil {
+					triwulan = *item.Triwulan
+				} else if item.Bulan != nil {
+					triwulan = (*item.Bulan + 2) / 3
+				}
+				if triwulan > 0 {
+					dbSource := h.db.Session(&gorm.Session{})
+					go usecase.SyncTargetDanRealisasi(dbSource, rkID, tahun, triwulan)
+				}
+			}
 		}
 		if res.RowsAffected == 0 {
 			var exists int64
@@ -1090,6 +1243,22 @@ func (h *Handler) delete(rc resourceConfig) gin.HandlerFunc {
 			return
 		}
 
+		var rkSyncID uint64
+		var tahunSync int16
+		var triwulanSync int8
+		if rc.path == "realisasi_rencana_kerja" {
+			var item database.RealisasiRencanaKerja
+			if err := h.db.WithContext(c.Request.Context()).First(&item, id).Error; err == nil {
+				rkSyncID = item.RencanaKerjaID
+				tahunSync = item.Tahun
+				if item.Triwulan != nil {
+					triwulanSync = *item.Triwulan
+				} else if item.Bulan != nil {
+					triwulanSync = (*item.Bulan + 2) / 3
+				}
+			}
+		}
+
 		res := h.db.WithContext(c.Request.Context()).Delete(rc.newModel(), "id = ?", id)
 		if res.Error != nil {
 			if rc.path == "rencana_kerja" {
@@ -1102,6 +1271,11 @@ func (h *Handler) delete(rc resourceConfig) gin.HandlerFunc {
 		if res.RowsAffected == 0 {
 			response.Error(c, http.StatusNotFound, rc.name+" not found")
 			return
+		}
+
+		if rc.path == "realisasi_rencana_kerja" && rkSyncID > 0 {
+			dbSource := h.db.Session(&gorm.Session{})
+			go usecase.SyncTargetDanRealisasi(dbSource, rkSyncID, tahunSync, triwulanSync)
 		}
 
 		response.Success(c, gin.H{"deleted": id})
@@ -1332,6 +1506,12 @@ func normalizeRencanaKerjaPayload(payload map[string]any) error {
 		if !isValidRencanaKerjaStatus(status) {
 			return errors.New("status harus salah satu: DRAFT, DIAJUKAN, DISETUJUI, DITOLAK")
 		}
+		if status == "DITOLAK" {
+			catatan, _ := payload["catatan"].(string)
+			if strings.TrimSpace(catatan) == "" {
+				return errors.New("catatan wajib diisi saat menolak")
+			}
+		}
 		payload["status"] = status
 	}
 
@@ -1345,6 +1525,14 @@ func normalizeRencanaKerjaPayload(payload map[string]any) error {
 		}
 	}
 
+	if targetRaw, ok := payload["target"]; ok {
+		target, err := coerceFloat64(targetRaw)
+		if err != nil {
+			return errors.New("target harus berupa angka")
+		}
+		payload["target"] = target
+	}
+
 	return nil
 }
 
@@ -1355,6 +1543,92 @@ func isValidRencanaKerjaStatus(status string) bool {
 	default:
 		return false
 	}
+}
+
+func validateRencanaKerjaStatusTransition(oldStatus, newStatus, role string) error {
+	role = strings.ToUpper(role)
+	oldStatus = strings.ToUpper(oldStatus)
+	newStatus = strings.ToUpper(newStatus)
+
+	if oldStatus == newStatus {
+		return nil
+	}
+
+	// Matrix Validation
+	switch role {
+	case "OPERATOR", "PERENCANA":
+		// Level 1: Only DRAFT. They cannot even set DIAJUKAN.
+		if newStatus != "DRAFT" {
+			return fmt.Errorf("penginput (%s) hanya diperbolehkan menyetel status ke DRAFT", role)
+		}
+	case "VERIFIKATOR":
+		// Level 2: Can set DIAJUKAN or DITOLAK.
+		if newStatus != "DIAJUKAN" && newStatus != "DITOLAK" {
+			return errors.New("verifikator hanya diperbolehkan menyetel status ke DIAJUKAN atau DITOLAK")
+		}
+	case "PIMPINAN", "ADMIN":
+		// Level 3: Can set DISETUJUI or DITOLAK.
+		if oldStatus == "DRAFT" && newStatus == "DISETUJUI" {
+			return errors.New("status DRAFT tidak boleh langsung diubah ke DISETUJUI (harus melalui DIAJUKAN)")
+		}
+		// Admin carries all, but mostly Pim is DISETUJUI/DITOLAK.
+		if role != "ADMIN" && newStatus != "DISETUJUI" && newStatus != "DITOLAK" {
+			return errors.New("pimpinan hanya diperbolehkan menyetel status ke DISETUJUI atau DITOLAK")
+		}
+	default:
+		return fmt.Errorf("role %s tidak memiliki akses untuk mengubah status", role)
+	}
+
+	return nil
+}
+
+func (h *Handler) ensureRencanaKerjaEditable(c *gin.Context, rkID uint64) error {
+	var rk database.RencanaKerja
+	if err := h.db.WithContext(c.Request.Context()).First(&rk, rkID).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return errors.New("rencana_kerja tidak ditemukan")
+		}
+		return errors.New("gagal memvalidasi rencana_kerja")
+	}
+
+	// Rule 1: Only DRAFT or DITOLAK can be edited
+	if rk.Status != "DRAFT" && rk.Status != "DITOLAK" {
+		return fmt.Errorf("rencana_kerja dengan status %s tidak dapat diubah", rk.Status)
+	}
+
+	// Rule 2: Check unit ownership for non-ADMIN
+	roleRaw, ok := c.Get("auth.role")
+	if !ok {
+		return errors.New("sesi tidak valid")
+	}
+	role := strings.ToUpper(fmt.Sprintf("%v", roleRaw))
+	if role != "ADMIN" {
+		uid, ok := h.getAuthUnitID(c)
+		if !ok || uid != rk.UnitPengusulID {
+			return errors.New("anda tidak memiliki akses ke rencana_kerja ini")
+		}
+	}
+
+	return nil
+}
+
+func (h *Handler) getAuthUnitID(c *gin.Context) (uint64, bool) {
+	val, ok := c.Get("auth.unit_pengusul_id")
+	if !ok || val == nil {
+		return 0, false
+	}
+	// The auth middleware stores it as *uint64 from JWT claims
+	if p, ok := val.(*uint64); ok && p != nil {
+		return *p, true
+	}
+	// Fallback for other potential types
+	if u, ok := val.(uint64); ok {
+		return u, true
+	}
+	if i, ok := val.(int); ok {
+		return uint64(i), true
+	}
+	return 0, false
 }
 
 func coerceInt(v any) (int, error) {
@@ -1395,6 +1669,39 @@ func coerceInt(v any) (int, error) {
 		return parsed, nil
 	default:
 		return 0, fmt.Errorf("unsupported type %T", v)
+	}
+}
+
+func coerceFloat64(v any) (float64, error) {
+	switch n := v.(type) {
+	case float64:
+		return n, nil
+	case float32:
+		return float64(n), nil
+	case int:
+		return float64(n), nil
+	case int32:
+		return float64(n), nil
+	case int64:
+		return float64(n), nil
+	case uint:
+		return float64(n), nil
+	case uint32:
+		return float64(n), nil
+	case uint64:
+		return float64(n), nil
+	case string:
+		s := strings.TrimSpace(n)
+		if s == "" {
+			return 0, nil
+		}
+		parsed, err := strconv.ParseFloat(s, 64)
+		if err != nil {
+			return 0, err
+		}
+		return parsed, nil
+	default:
+		return 0, fmt.Errorf("unsupported type %T for float64", v)
 	}
 }
 
@@ -1566,18 +1873,17 @@ func userFromPayload(payload map[string]any, isCreate bool) (userUpsertPayload, 
 	return out, nil
 }
 
-func (h *Handler) ensureIndikatorRencanaKerjaFinal(c *gin.Context, indikatorRencanaKerjaID uint64) error {
+func (h *Handler) ensureRencanaKerjaFinal(c *gin.Context, rkID uint64) error {
 	var total int64
 	err := h.db.WithContext(c.Request.Context()).
-		Table("indikator_rencana_kerja irk").
-		Joins("JOIN rencana_kerja rk ON rk.id = irk.rencana_kerja_id").
-		Where("irk.id = ? AND rk.status = ?", indikatorRencanaKerjaID, "DISETUJUI").
+		Table("rencana_kerja rk").
+		Where("rk.id = ? AND rk.status = ?", rkID, "DISETUJUI").
 		Count(&total).Error
 	if err != nil {
 		return errors.New("gagal memverifikasi status rencana_kerja")
 	}
 	if total == 0 {
-		return errors.New("Evaluasi Rencana Aksi hanya dapat digunakan untuk rencana_kerja berstatus DISETUJUI")
+		return errors.New("Evaluasi Rencana Kerja hanya dapat digunakan untuk rencana_kerja berstatus DISETUJUI")
 	}
 	return nil
 }
@@ -1622,6 +1928,18 @@ func rencanaKerjaFromPayload(payload map[string]any) (database.RencanaKerja, err
 		Tahun:                  int16(tahun),
 		Status:                 status,
 		DibuatOleh:             uint64(dibuatOleh),
+	}
+
+	if targetRaw, ok := payload["target"]; ok {
+		target, err := coerceFloat64(targetRaw)
+		if err != nil {
+			return database.RencanaKerja{}, errors.New("target harus berupa angka")
+		}
+		model.Target = target
+	}
+
+	if satuanRaw, ok := payload["satuan"]; ok {
+		model.Satuan = strings.TrimSpace(fmt.Sprintf("%v", satuanRaw))
 	}
 
 	if triwulanRaw, ok := payload["triwulan"]; ok {
@@ -1683,7 +2001,7 @@ func planningResources() []resourceConfig {
 		{path: "rencana_kerja", name: "rencana_kerja", requiredKeys: []string{"indikator_sub_kegiatan_id", "kode", "nama", "tahun", "unit_pengusul_id", "status", "dibuat_oleh"}, searchFields: []string{"kode", "nama"}, newModel: func() any { return &database.RencanaKerja{} }, newSlice: func() any { return &[]database.RencanaKerja{} }},
 		{path: "standar_harga", name: "tb_standar_harga", requiredKeys: []string{}, searchFields: []string{"jenis_standar", "uraian_barang", "spesifikasi", "id_rekening"}, newModel: func() any { return &database.StandarHarga{} }, newSlice: func() any { return &[]database.StandarHarga{} }},
 		{path: "indikator_rencana_kerja", name: "indikator_rencana_kerja", requiredKeys: []string{"rencana_kerja_id", "kode", "nama"}, searchFields: []string{"kode", "nama"}, newModel: func() any { return &database.IndikatorRencanaKerja{} }, newSlice: func() any { return &[]database.IndikatorRencanaKerja{} }},
-		{path: "realisasi_rencana_kerja", name: "realisasi_rencana_kerja", requiredKeys: []string{"indikator_rencana_kerja_id", "tahun", "nilai_realisasi", "realisasi_anggaran", "diinput_oleh"}, searchFields: []string{"keterangan"}, newModel: func() any { return &database.RealisasiRencanaKerja{} }, newSlice: func() any { return &[]database.RealisasiRencanaKerja{} }},
+		{path: "realisasi_rencana_kerja", name: "realisasi_rencana_kerja", requiredKeys: []string{"rencana_kerja_id", "tahun", "nilai_realisasi", "realisasi_anggaran", "diinput_oleh"}, searchFields: []string{"keterangan"}, newModel: func() any { return &database.RealisasiRencanaKerja{} }, newSlice: func() any { return &[]database.RealisasiRencanaKerja{} }},
 		{path: "users", name: "users", requiredKeys: []string{"nama_lengkap", "email", "role"}, searchFields: []string{"nama_lengkap", "email"}, newModel: func() any { return &database.User{} }, newSlice: func() any { return &[]database.User{} }},
 	}
 }
@@ -1762,4 +2080,21 @@ func (h *Handler) GetPaguControl(c *gin.Context) {
 		"total": len(results),
 		"tahun": tahun,
 	})
+}
+
+func normalizeIndikatorRencanaKerjaPayload(payload map[string]any) error {
+	for _, key := range []string{"target_tahunan", "harga_satuan", "anggaran_tahunan"} {
+		if v, ok := payload[key]; ok {
+			val, err := coerceFloat64(v)
+			if err != nil {
+				return fmt.Errorf("%s harus berupa angka: %w", key, err)
+			}
+			payload[key] = val
+		}
+	}
+	// Clear standard harga if manual
+	if isManual, ok := payload["isManual"].(bool); ok && isManual {
+		payload["tb_standar_harga_id"] = nil
+	}
+	return nil
 }

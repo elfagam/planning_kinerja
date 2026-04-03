@@ -35,6 +35,8 @@ func ToDomainRencanaKerja(m database.RencanaKerja) domain.RencanaKerja {
 		Name:                   m.Nama,
 		Tahun:                  m.Tahun,
 		Triwulan:               triwulan,
+		Target:                 m.Target,
+		Satuan:                 m.Satuan,
 		UnitPengusulID:         int64(m.UnitPengusulID),
 		Status:                 domain.Status(m.Status),
 		Notes:                  m.Catatan,
@@ -61,6 +63,8 @@ func ToGormRencanaKerja(d domain.RencanaKerja) database.RencanaKerja {
 		Nama:                   d.Name,
 		Tahun:                  d.Tahun,
 		Triwulan:               nullableInt8(d.Triwulan),
+		Target:                 d.Target,
+		Satuan:                 d.Satuan,
 		UnitPengusulID:         uint64(d.UnitPengusulID),
 		Status:                 string(d.Status),
 		Catatan:                catatan,
@@ -114,25 +118,25 @@ func ToDomainRealisasiRencanaKerja(m database.RealisasiRencanaKerja) domain.Real
 	}
 
 	return domain.RealisasiRencanaKerja{
-		ID:                      int64(m.ID),
-		IndikatorRencanaKerjaID: int64(m.IndikatorRencanaKerjaID),
-		Tahun:                   m.Tahun,
-		Bulan:                   bulan,
-		Triwulan:                triwulan,
-		NilaiRealisasi:          m.NilaiRealisasi,
-		RealisasiAnggaran:       m.RealisasiAnggaran,
-		Keterangan:              m.Keterangan,
-		DiinputOleh:             int64(m.DiinputOleh),
-		CreatedAt:               m.CreatedAt,
-		UpdatedAt:               m.UpdatedAt,
+		ID:             int64(m.ID),
+		RencanaKerjaID: int64(m.RencanaKerjaID),
+		Tahun:          m.Tahun,
+		Bulan:          bulan,
+		Triwulan:       triwulan,
+		NilaiRealisasi: m.NilaiRealisasi,
+		RealisasiAnggaran: m.RealisasiAnggaran,
+		Keterangan:     m.Keterangan,
+		DiinputOleh:    int64(m.DiinputOleh),
+		CreatedAt:      m.CreatedAt,
+		UpdatedAt:      m.UpdatedAt,
 	}
 }
 
 func ToGormRealisasiRencanaKerja(d domain.RealisasiRencanaKerja) database.RealisasiRencanaKerja {
 	return database.RealisasiRencanaKerja{
-		ID:                      uint64(d.ID),
-		IndikatorRencanaKerjaID: uint64(d.IndikatorRencanaKerjaID),
-		Tahun:                   d.Tahun,
+		ID:             uint64(d.ID),
+		RencanaKerjaID: uint64(d.RencanaKerjaID),
+		Tahun:          d.Tahun,
 		Bulan:                   nullableInt8(d.Bulan),
 		Triwulan:                nullableInt8(d.Triwulan),
 		NilaiRealisasi:          d.NilaiRealisasi,

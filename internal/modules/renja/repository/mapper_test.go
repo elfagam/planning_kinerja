@@ -107,8 +107,8 @@ func TestIndikatorMappingRoundTrip(t *testing.T) {
 func TestRealisasiMappingHandlesNullablePeriod(t *testing.T) {
 	now := time.Now().UTC().Truncate(time.Second)
 	d := domain.RealisasiRencanaKerja{
-		ID:                      1,
-		IndikatorRencanaKerjaID: 2,
+		ID:             1,
+		RencanaKerjaID: 2,
 		Tahun:                   2026,
 		Bulan:                   0,
 		Triwulan:                2,
@@ -129,17 +129,17 @@ func TestRealisasiMappingHandlesNullablePeriod(t *testing.T) {
 	}
 
 	got := ToDomainRealisasiRencanaKerja(database.RealisasiRencanaKerja{
-		ID:                      gormModel.ID,
-		IndikatorRencanaKerjaID: gormModel.IndikatorRencanaKerjaID,
-		Tahun:                   gormModel.Tahun,
-		Bulan:                   gormModel.Bulan,
-		Triwulan:                gormModel.Triwulan,
-		NilaiRealisasi:          gormModel.NilaiRealisasi,
-		RealisasiAnggaran:       gormModel.RealisasiAnggaran,
-		Keterangan:              gormModel.Keterangan,
-		DiinputOleh:             gormModel.DiinputOleh,
-		CreatedAt:               gormModel.CreatedAt,
-		UpdatedAt:               gormModel.UpdatedAt,
+		ID:             gormModel.ID,
+		RencanaKerjaID: gormModel.RencanaKerjaID,
+		Tahun:          gormModel.Tahun,
+		Bulan:          gormModel.Bulan,
+		Triwulan:       gormModel.Triwulan,
+		NilaiRealisasi: gormModel.NilaiRealisasi,
+		RealisasiAnggaran: gormModel.RealisasiAnggaran,
+		Keterangan:     gormModel.Keterangan,
+		DiinputOleh:    gormModel.DiinputOleh,
+		CreatedAt:      gormModel.CreatedAt,
+		UpdatedAt:      gormModel.UpdatedAt,
 	})
 
 	if got.Bulan != 0 || got.Triwulan != 2 {
