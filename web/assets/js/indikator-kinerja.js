@@ -97,6 +97,7 @@
   const queryInput = document.getElementById("query");
   const btnSearch = document.getElementById("btn-search");
   const btnReset = document.getElementById("btn-reset");
+  const btnGenerateKode = document.getElementById("btn-generate-kode");
   const tableBody = document.getElementById("table-body");
   const metaText = document.getElementById("meta-text");
 
@@ -256,6 +257,24 @@
       }
     });
     return `IRK-${String(maxNumber + 1).padStart(padWidth, "0")}`;
+  }
+
+  function generateRandomAlphanumeric(length = 6) {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    let result = 'IRK-';
+    for (let i = 0; i < length; i++) {
+      result += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return result;
+  }
+
+  if (btnGenerateKode) {
+    btnGenerateKode.addEventListener("click", () => {
+      const rand = generateRandomAlphanumeric(6);
+      kodeInput.value = rand;
+      setStatus(`Kode random dihasilkan: ${rand}`);
+      kodeInput.focus();
+    });
   }
 
   function resetForm() {

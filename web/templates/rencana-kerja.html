@@ -129,7 +129,12 @@
                   <option value="">Pilih unit pengusul</option>
                 </select>
 
-                <label class="form-label mb-0" for="kode">Kode <i class="bi bi-info-circle text-muted" data-bs-toggle="tooltip" title="Gunakan kode unik (contoh: RK-001). Cek daftar data untuk menghindari duplikat."></i></label>
+                <div class="d-flex justify-content-between align-items-center mb-1">
+                  <label class="form-label mb-0" for="kode">Kode <i class="bi bi-info-circle text-muted" data-bs-toggle="tooltip" title="Gunakan kode unik (contoh: RK-001). Cek daftar data untuk menghindari duplikat."></i></label>
+                  <button type="button" id="btn-generate-kode" class="btn btn-link btn-sm p-0 text-decoration-none">
+                    <i class="bi bi-magic"></i> Saran Kode Random
+                  </button>
+                </div>
                 <input
                   id="kode"
                   class="form-control"
@@ -137,7 +142,7 @@
                   required
                 />
 
-                <label class="form-label mb-0" for="nama">Nama</label>
+                <label class="form-label mb-0 mt-2" for="nama">Nama</label>
                 <input
                   id="nama"
                   class="form-control"
@@ -529,6 +534,7 @@
           const btnSearchReset = document.getElementById("btn-search-reset");
           const btnExportCSV = document.getElementById("btn-export-csv");
           const btnReset = document.getElementById("btn-reset");
+          const btnGenerateKode = document.getElementById("btn-generate-kode");
           const tableBody = document.getElementById("table-body");
           const metaText = document.getElementById("meta-text");
           const pagePrevBtn = document.getElementById("page-prev");
@@ -823,6 +829,24 @@
             });
 
             return `RK-${String(maxNumber + 1).padStart(padWidth, "0")}`;
+          }
+
+          function generateRandomAlphanumeric(length = 6) {
+            const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+            let result = 'RK-';
+            for (let i = 0; i < length; i++) {
+              result += chars.charAt(Math.floor(Math.random() * chars.length));
+            }
+            return result;
+          }
+
+          if (btnGenerateKode) {
+            btnGenerateKode.addEventListener("click", () => {
+              const rand = generateRandomAlphanumeric(6);
+              kodeInput.value = rand;
+              setStatus(`Kode random dihasilkan: ${rand}`);
+              kodeInput.focus();
+            });
           }
 
           function resetForm() {
