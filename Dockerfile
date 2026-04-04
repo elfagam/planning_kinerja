@@ -9,7 +9,7 @@ COPY frontend/ ./
 RUN npm run build
 
 # --- Stage 2: Build Backend (Go) ---
-FROM golang:1.23-alpine3.20 AS backend-builder
+FROM golang:1.24-alpine AS backend-builder
 WORKDIR /app
 # Copy go mod and sum first for caching
 COPY go.mod go.sum ./
@@ -21,7 +21,7 @@ RUN CGO_ENABLED=0 GOOS=linux go build -o main ./cmd/api/main.go && \
     CGO_ENABLED=0 GOOS=linux go build -o migrate ./cmd/migrate/main.go
 
 # --- Stage 3: Runtime (Final Image) ---
-FROM alpine:3.20
+FROM alpine:latest
 WORKDIR /app
 
 # Install necessary runtime dependencies
