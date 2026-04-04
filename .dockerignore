@@ -3,13 +3,25 @@
 *.log
 tmp/
 .env
+.env.*
 .DS_Store
+Thumbs.db
+Makefile
 
 # Frontend
 frontend/node_modules/
 frontend/dist/
+frontend/.env*
 
-# Backend (built binaries)
+# Backend (built binaries and coverage)
 api
 main
+migrate
 vendor/
+*.out
+cover.html
+
+# Documentation & Tests
+docs/
+tests/
+test-results/

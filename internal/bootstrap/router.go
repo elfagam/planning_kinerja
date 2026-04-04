@@ -47,6 +47,9 @@ func NewRouter(cfg *config.Config) *gin.Engine {
 		}
 	}
 
+	// Middleware untuk caching PDF statis
+	r.Use(middleware.StaticCache())
+
 	r.Static("/assets", "web/assets")
 	r.GET("/favicon.ico", func(c *gin.Context) {
 		c.Status(204)
@@ -137,15 +140,16 @@ func NewRouter(cfg *config.Config) *gin.Engine {
 	planninggormhttp.NewHandler(cfg).RegisterRoutes(v1)
 	performancehttp.NewHandler(cfg).RegisterRoutes(v1)
 
-	// Q&A Module
-	qnaRepository := qnarepo.NewQnaGormRepository(db)
-	qnaUsecase := qnausecase.NewQnaUsecase(qnaRepository)
-	qnahttp.NewQnaHandler(qnaUsecase).RegisterRoutes(v1)
+	// Q&A Module (Hanya inisialisasi jika DB tersedia)
+	if db != nil {
+		qnaRepository := qnarepo.NewQnaGormRepository(db)
+		qnaUsecase := qnausecase.NewQnaUsecase(qnaRepository)
+		qnahttp.NewQnaHandler(qnaUsecase).RegisterRoutes(v1)
 
-	dokumenPDFHandler := dokumenpdfhttp.NewHandler(db)
-
-	v1.GET("/dokumen_pdf/latest", dokumenPDFHandler.GetLatestDokumenPDF)
-	dokumenPDFHandler.RegisterRoutes(v1)
+		dokumenPDFHandler := dokumenpdfhttp.NewHandler(db)
+		v1.GET("/dokumen_pdf/latest", dokumenPDFHandler.GetLatestDokumenPDF)
+		dokumenPDFHandler.RegisterRoutes(v1)
+	}
 
 
 	return r
