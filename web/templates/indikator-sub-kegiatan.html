@@ -216,9 +216,9 @@
     <script>
       (() => {
         const endpoint = document.body.dataset.apiEndpoint;
-        const subKegiatanEndpoint = "/api/v1/sub_kegiatan";
-        const indikatorKegiatanEndpoint = "/api/v1/indikator_kegiatan";
-        const kegiatanEndpoint = "/api/v1/kegiatan";
+        const subKegiatanEndpoint = "/api/v1/sub_kegiatan?all=true";
+        const indikatorKegiatanEndpoint = "/api/v1/indikator_kegiatan?all=true";
+        const kegiatanEndpoint = "/api/v1/kegiatan?all=true";
         const form = document.getElementById("crud-form");
         const idInput = document.getElementById("entity-id");
         const kegiatanIdInput = document.getElementById("kegiatanId");
