@@ -315,7 +315,7 @@ type Informasi struct {
 func (Informasi) TableName() string { return "informasi" }
 
 type StandarHarga struct {
-	ID           uint64   `json:"id" gorm:"primaryKey;column:id"`
+	ID           uint64   `json:"id" gorm:"primaryKey;autoIncrement;column:id"`
 	JenisStandar *string  `json:"jenis_standar" gorm:"column:jenis_standar"`
 	UraianBarang *string  `json:"uraian_barang" gorm:"column:uraian_barang"`
 	Spesifikasi  *string  `json:"spesifikasi" gorm:"column:spesifikasi"`

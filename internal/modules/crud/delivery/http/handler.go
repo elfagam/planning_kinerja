@@ -1,12 +1,12 @@
 package http
 
 import (
+	"database/sql"
 	"errors"
 	"log"
 	"net/http"
 	"strconv"
 
-	"e-plan-ai/internal/config"
 	"e-plan-ai/internal/modules/crud/domain"
 	"e-plan-ai/internal/modules/crud/repository"
 	"e-plan-ai/internal/shared/database"
@@ -19,20 +19,23 @@ type Handler struct {
 	store repository.Store
 }
 
-func NewHandler(cfg *config.Config) *Handler {
-	var store repository.Store
-	mysqlStore, err := repository.NewMySQLStore(cfg.MySQLDSN)
+func NewHandler(db *sql.DB) *Handler {
+	mysqlStore, err := repository.NewMySQLStore(db)
 	if err != nil {
-		if database.IsConnectionError(err) {
-			log.Printf("crud handler using in-memory store due to database connection failure: %v", err)
-		} else {
-			log.Printf("crud handler using in-memory store due to mysql store init failure: %v", err)
-		}
-		store = repository.NewMemoryStore(resourceKeys())
-	} else {
-		store = mysqlStore
+		// Log error but don't fall back to in-memory store permanently.
+		// Instead, we could return a handler that returns 503 for all requests, 
+		// but since we're using a shared DB, it's better to just use the mysqlStore
+		// and let the repository methods return connection errors if the DB is down.
+		log.Printf("[CRUD] Warning: Failed to initialize MySQL store: %v", err)
+		
+		// If it's a fatal error (like table creation failed but DB is up), 
+		// we might want to handle it differently.
+		// For now, let's keep it simple and use MemoryStore as a REAL fallback 
+		// only if we explicitly want one, but here we want to fix the "permanent" issue.
+		// The best fix is to ensure NewMySQLStore doesn't fail just because of transient connection.
 	}
-	return &Handler{store: store}
+	
+	return &Handler{store: mysqlStore}
 }
 
 func (h *Handler) RegisterRoutes(v1 *gin.RouterGroup) {

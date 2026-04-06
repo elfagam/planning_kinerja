@@ -1,6 +1,7 @@
 package bootstrap
 
 import (
+	"database/sql"
 	"e-plan-ai/internal/config"
 	authhttp "e-plan-ai/internal/modules/auth/delivery/http"
 	clienthttp "e-plan-ai/internal/modules/client/delivery/http"
@@ -121,6 +122,13 @@ func NewRouter(cfg *config.Config) *gin.Engine {
 		})
 	})
 
+	var sqlDB *sql.DB
+	if db != nil {
+		if sDB, err := db.DB(); err == nil {
+			sqlDB = sDB
+		}
+	}
+
 	authGroup := r.Group("/api/v1/auth")
 	authhttp.NewHandler(cfg).RegisterRoutes(authGroup)
 
@@ -130,7 +138,7 @@ func NewRouter(cfg *config.Config) *gin.Engine {
 		middleware.DevelopmentActor(cfg.AuthEnabled, devActor),
 		middleware.OperatorReadOnly(cfg.AuthEnabled),
 	)
-	crudhttp.NewHandler(cfg).RegisterRoutes(v1)
+	crudhttp.NewHandler(sqlDB).RegisterRoutes(v1)
 	clienthttp.NewHandler(cfg).RegisterRoutes(v1)
 	planninghttp.NewHandler().RegisterRoutes(v1)
 	renjahttp.NewHandler(cfg).RegisterRoutes(v1)

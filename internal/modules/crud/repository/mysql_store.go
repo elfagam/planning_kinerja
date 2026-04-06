@@ -1,11 +1,9 @@
 package repository
 
 import (
-	"context"
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"time"
 
 	"e-plan-ai/internal/modules/crud/domain"
 	"e-plan-ai/internal/shared/database"
@@ -17,22 +15,13 @@ type MySQLStore struct {
 	db *sql.DB
 }
 
-func NewMySQLStore(dsn string) (*MySQLStore, error) {
-	db, err := sql.Open("mysql", dsn)
-	if err != nil {
-		return nil, database.WrapConnectionError("sql open", err)
-	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
-	defer cancel()
-	if err := db.PingContext(ctx); err != nil {
-		_ = db.Close()
-		return nil, database.WrapConnectionError("sql ping", err)
+func NewMySQLStore(db *sql.DB) (*MySQLStore, error) {
+	if db == nil {
+		return nil, fmt.Errorf("database connection is nil")
 	}
 
 	s := &MySQLStore{db: db}
 	if err := s.ensureTable(); err != nil {
-		_ = db.Close()
 		return nil, database.WrapIfConnectionError("ensure crud_records table", err)
 	}
 
