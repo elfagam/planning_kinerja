@@ -1,5 +1,6 @@
 services:
   app:
+    container_name: e-plan-app
     build: .
     restart: unless-stopped
     ports:
@@ -23,6 +24,7 @@ services:
         condition: service_healthy
 
   db:
+    container_name: e-plan-db
     image: mysql:8.4
     ports:
       - "3307:3306"

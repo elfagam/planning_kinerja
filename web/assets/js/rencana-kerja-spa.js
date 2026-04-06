@@ -16,6 +16,7 @@ createApp({
             tahun: new Date().getFullYear(),
             triwulan: '', 
             sub_kegiatan_id: '',
+            unit_pengusul_id: '',
             sk_search: '' 
         });
 
@@ -417,6 +418,10 @@ createApp({
         });
 
         watch(() => filters.triwulan, () => {
+            fetchData();
+        });
+
+        watch(() => filters.unit_pengusul_id, () => {
             fetchData();
         });
 

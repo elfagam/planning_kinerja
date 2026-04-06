@@ -27,28 +27,30 @@ WORKDIR /app
 # Install necessary runtime dependencies
 RUN apk add --no-cache ca-certificates tzdata
 
-# Create a non-root user for security
-RUN addgroup -S appgroup && adduser -S appuser -G appgroup
-USER appuser
-
 # Copy binaries from backend-builder
-COPY --from=backend-builder --chown=appuser:appgroup /app/main .
-COPY --from=backend-builder --chown=appuser:appgroup /app/migrate .
+COPY --from=backend-builder /app/main .
+COPY --from=backend-builder /app/migrate .
 
 # Copy static folders (Templates & Assets)
-COPY --from=backend-builder --chown=appuser:appgroup /app/web ./web
+COPY --from=backend-builder /app/web ./web
 
 # Copy migrations folder
-COPY --from=backend-builder --chown=appuser:appgroup /app/migrations ./migrations
+COPY --from=backend-builder /app/migrations ./migrations
 
 # Copy startup script
-COPY --from=backend-builder --chown=appuser:appgroup /app/scripts/entrypoint.sh ./scripts/entrypoint.sh
+COPY --from=backend-builder /app/scripts/entrypoint.sh ./scripts/entrypoint.sh
 
 # Copy frontend build output from frontend-builder
-COPY --from=frontend-builder --chown=appuser:appgroup /app/frontend/dist ./frontend/dist
+COPY --from=frontend-builder /app/frontend/dist ./frontend/dist
 
-# Ensure entrypoint is executable
-RUN chmod +x ./scripts/entrypoint.sh
+# Ensure binaries and entrypoint are executable
+RUN chmod +x ./main ./migrate ./scripts/entrypoint.sh
+
+# Create a non-root user and set ownership
+RUN addgroup -S appgroup && adduser -S appuser -G appgroup && \
+    chown -R appuser:appgroup /app
+
+USER appuser
 
 # Expose port (default 8080)
 EXPOSE 8080

@@ -73,30 +73,41 @@
               <div class="col-md-2">
                 <label class="form-label mb-1">Triwulan</label>
                 <select v-model="filters.triwulan" class="form-select">
-                  <option value="">Semua (Tahunan)</option>
+                  <option value="">Semua</option>
                   <option value="1">1</option>
                   <option value="2">2</option>
                   <option value="3">3</option>
                   <option value="4">4</option>
                 </select>
               </div>
-              <div class="col-md-5">
+              <div class="col-md-2">
+                <label class="form-label mb-1">Unit Pengusul</label>
+                <select v-model="filters.unit_pengusul_id" class="form-select">
+                  <option value="">Semua Unit</option>
+                  <option
+                    v-for="u in unitItems"
+                    :key="u.id"
+                    :value="u.id"
+                    v-text="u.nama"
+                  ></option>
+                </select>
+              </div>
+              <div class="col-md-4">
                 <label class="form-label mb-1 small opacity-75"
                   >Sub Kegiatan (Cari & Pilih)</label
                 >
                 <div class="row g-1">
-                  <div class="col-5">
+                  <div class="col-4">
                     <input
                       v-model="filters.sk_search"
                       class="form-control form-control-sm"
-                      placeholder="Cari Kode/Nama..."
+                      placeholder="Kode/Nama..."
                     />
                   </div>
-                  <div class="col-7">
+                  <div class="col-8">
                     <select
                       v-model="filters.sub_kegiatan_id"
                       class="form-select form-select-sm"
-                      @mousedown="logSubKegiatanDropdown"
                     >
                       <option value="">Semua Sub Kegiatan</option>
                       <option
