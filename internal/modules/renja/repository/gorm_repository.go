@@ -74,7 +74,7 @@ func (r *RenjaGormRepository) GetRencanaKerjaCSVData(ctx context.Context, subKeg
 			unit_pengusul.nama as unit_pengusul_nama,
 			rencana_kerja.tahun as rencana_kerja_tahun,
 			rencana_kerja.kode as rencana_kerja_kode,
-			rencana_kerja.name as rencana_kerja_nama,
+			rencana_kerja.nama as rencana_kerja_nama,
 			rencana_kerja.target as rencana_kerja_target,
 			rencana_kerja.satuan as rencana_kerja_satuan,
 			tb_standar_harga.id_rekening as standar_harga_id_rekening,
