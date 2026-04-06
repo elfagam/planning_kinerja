@@ -199,7 +199,7 @@
     <script>
       (() => {
         const endpoint = document.body.dataset.apiEndpoint;
-        const kegiatanEndpoint = "/api/v1/kegiatan";
+        const kegiatanEndpoint = "/api/v1/kegiatan?all=true";
         const form = document.getElementById("crud-form");
         const idInput = document.getElementById("entity-id");
         const programIdInput = document.getElementById("programId");
@@ -224,7 +224,7 @@
         );
 
         const kegiatanMap = new Map();
-        const indikatorProgramEndpoint = "/api/v1/indikator_program";
+        const indikatorProgramEndpoint = "/api/v1/indikator_program?all=true";
         const indikatorProgramIdInput =
           document.getElementById("indikatorProgramId");
         const indikatorProgramMap = new Map();
