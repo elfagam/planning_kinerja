@@ -36,11 +36,17 @@ func NewGormMySQL(cfg *config.Config) (*gorm.DB, error) {
 	for attempt := 0; attempt <= maxRetries; attempt++ {
 		db, err := openAndPingGorm(dbCfg, gormCfg)
 		if err == nil {
+			if attempt > 0 {
+				fmt.Printf("[DATABASE] Connection established successfully after %d attempts.\n", attempt+1)
+			}
 			return db, nil
 		}
 
 		lastErr = err
 		if attempt < maxRetries {
+			if attempt%2 == 0 { // Log every 2nd attempt to avoid too much noise
+				fmt.Printf("[DATABASE] Connection attempt %d/%d failed, retrying in %v: %v\n", attempt+1, maxRetries+1, retryDelay, err)
+			}
 			time.Sleep(retryDelay)
 		}
 	}

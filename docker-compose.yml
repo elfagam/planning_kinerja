@@ -9,6 +9,15 @@ services:
     environment:
       - PORT=8080
       - TZ=Asia/Jakarta
+      # Docker Networking: Override host/port to point to the 'db' service in the shared network
+      - DB_HOST=db
+      - DB_PORT=3306
+      - MYSQLHOST=db
+      - MYSQLPORT=3306
+      # Clear DSN to force rebuilding from components
+      - MYSQL_DSN=
+      - MYSQL_URL=
+      - DATABASE_URL=
     depends_on:
       db:
         condition: service_healthy

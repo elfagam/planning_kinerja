@@ -57,7 +57,8 @@ func Load() *Config {
 
 	// CRITICAL FIX: Jika sedang di Railway dan DSN mengandung 'localhost' padahal 
 	// kita sudah berhasil mendeteksi host Railway, maka abaikan DSN tersebut dan rakit ulang.
-	isRailway := os.Getenv("RAILWAY_ENVIRONMENT_NAME") != "" || os.Getenv("PORT") != ""
+	// Kita gunakan RAILWAY_ENVIRONMENT_NAME sebagai penanda utama environment Railway.
+	isRailway := os.Getenv("RAILWAY_ENVIRONMENT_NAME") != "" || (os.Getenv("PORT") != "" && os.Getenv("RAILWAY_STATIC_URL") != "")
 	if isRailway && strings.Contains(dsn, "localhost") && dbHost != "127.0.0.1" && dbHost != "localhost" {
 		dsn = "" 
 	}
